@@ -1,0 +1,95 @@
+{
+  "round_id": "round-1",
+  "option_revision": "1",
+  "option_snapshot_id": "options-1",
+  "timezone": "Asia/Singapore",
+  "currency": "SGD",
+  "roster": [
+    "p1",
+    "p2"
+  ],
+  "activities": [
+    {
+      "activity_id": "cafe",
+      "title": "Board-game café",
+      "duration_minutes": 120,
+      "estimated_cost_minor": 2500,
+      "currency": "SGD",
+      "windows": [
+        {
+          "start_at": "2026-10-02T19:00:00+08:00",
+          "end_at": "2026-10-02T21:00:00+08:00"
+        }
+      ],
+      "attributes": [
+        {
+          "attribute_id": "vegetarian_option",
+          "value": "yes"
+        },
+        {
+          "attribute_id": "indoor",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "activity_id": "dinner",
+      "title": "Dinner",
+      "duration_minutes": 120,
+      "estimated_cost_minor": 3500,
+      "currency": "SGD",
+      "windows": [
+        {
+          "start_at": "2026-10-02T19:00:00+08:00",
+          "end_at": "2026-10-02T21:00:00+08:00"
+        }
+      ],
+      "attributes": [
+        {
+          "attribute_id": "vegetarian_option",
+          "value": "unknown"
+        },
+        {
+          "attribute_id": "indoor",
+          "value": "no"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "q_availability",
+      "label": "When are you free?",
+      "kind": "availability"
+    },
+    {
+      "question_id": "q_budget",
+      "label": "Maximum spend in SGD?",
+      "kind": "budget"
+    },
+    {
+      "question_id": "q_rating",
+      "label": "Rate each activity",
+      "kind": "activity_rating"
+    },
+    {
+      "question_id": "q_requirement",
+      "label": "Any essential venue requirements?",
+      "kind": "open_requirement",
+      "supported_attributes": [
+        "vegetarian_option",
+        "step_free_access"
+      ],
+      "required": false
+    },
+    {
+      "question_id": "q_environment",
+      "label": "What sort of venue would you prefer?",
+      "kind": "open_preference",
+      "supported_attributes": [
+        "indoor",
+        "quiet"
+      ]
+    }
+  ]
+}

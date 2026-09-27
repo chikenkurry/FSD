@@ -1,0 +1,27 @@
+{
+  "round_id": "round-semantic-1",
+  "option_revision": "1",
+  "response_snapshot_id": "responses-semantic-1",
+  "participants": [
+    {
+      "participant_id": "p1",
+      "response_status": "complete",
+      "answers": [
+        {"answer_id": "p1-a1", "question_id": "q_availability", "value": [{"start_at": "2026-10-02T19:00:00+08:00", "end_at": "2026-10-02T21:00:00+08:00"}]},
+        {"answer_id": "p1-a2", "question_id": "q_budget", "value": {"kind": "limited", "max_cost_minor": 3000, "currency": "SGD"}},
+        {"answer_id": "p1-a3", "question_id": "q_travel", "value": {"choice_id": "walk"}},
+        {"answer_id": "p1-a4", "question_id": "q_access", "value": "I need a ramp"}
+      ]
+    },
+    {
+      "participant_id": "p2",
+      "response_status": "complete",
+      "answers": [
+        {"answer_id": "p2-a1", "question_id": "q_availability", "value": [{"start_at": "2026-10-02T19:00:00+08:00", "end_at": "2026-10-02T21:00:00+08:00"}]},
+        {"answer_id": "p2-a2", "question_id": "q_budget", "value": {"kind": "unlimited"}},
+        {"answer_id": "p2-a3", "question_id": "q_travel", "value": {"choice_id": "walk"}},
+        {"answer_id": "p2-a4", "question_id": "q_access", "value": "I need a ramp"}
+      ]
+    }
+  ]
+}

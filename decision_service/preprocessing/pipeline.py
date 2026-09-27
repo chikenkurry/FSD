@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 from .candidates import generate_candidates
+from .comparisons import build_question_matches
 from .common import (
     InputError,
     require_in,
@@ -16,16 +19,24 @@ from .common import (
     utc_string,
 )
 from .extractors import ATTRIBUTE_PHRASES, extract_budget, extract_preference, extract_requirement
+from .semantics import (
+    SemanticProvider,
+    SemanticServiceError,
+    answer_as_text,
+    validate_answer_assessment,
+    validate_question_assessment,
+)
 from .weights import resolve_weights
 
 
 QUESTION_KINDS = {
     "availability", "budget", "activity_rating", "candidate_flag",
     "open_requirement", "open_preference", "open_budget",
+    "semantic_preference", "semantic_requirement",
 }
 REQUIRED_STATUSES = {"complete", "incomplete", "stale", "needs_clarification"}
-PROCESSING_VERSION = "rules-v1"
-WEIGHT_POLICY_VERSION = "equal-or-leader-v1"
+PROCESSING_VERSION = "semantic-v2"
+WEIGHT_POLICY_VERSION = "option-relevance-v1"
 
 
 def _issue(code: str, path: str, message: str) -> dict[str, str]:
@@ -89,6 +100,24 @@ def _questions(raw_questions: Any) -> list[dict]:
             raise InputError("INVALID_TYPE", f"{path}.required", "Expected true or false")
         if kind in {"activity_rating", "open_preference"} and not required:
             raise InputError("UNSUPPORTED_POLICY", path, "Soft questions must require an explicit answer in v1")
+        if kind in {"semantic_preference", "semantic_requirement"} and not required:
+            raise InputError("UNSUPPORTED_POLICY", path, "Semantic questions must require an explicit answer in v1")
+        if kind not in {"activity_rating", "open_preference", "semantic_preference"} and q.get("leader_weight") is not None:
+            raise InputError("HARD_WEIGHT_UNSUPPORTED", path, "Hard questions are mandatory checks and cannot carry a score weight")
+        answer_format = q.get("answer_format", "text")
+        choices = {}
+        if kind in {"semantic_preference", "semantic_requirement"}:
+            answer_format = require_in(answer_format, {"text", "choice"}, f"{path}.answer_format")
+            if answer_format == "choice":
+                for ci, raw_choice in enumerate(require_list(q.get("choices"), f"{path}.choices")):
+                    choice_path = f"{path}.choices[{ci}]"
+                    choice = require_object(raw_choice, choice_path)
+                    choice_id = require_text(choice.get("choice_id"), f"{choice_path}.choice_id")
+                    if choice_id in choices:
+                        raise InputError("DUPLICATE_ID", choice_path, "Duplicate choice ID")
+                    choices[choice_id] = require_text(choice.get("label"), f"{choice_path}.label")
+                if not choices:
+                    raise InputError("MISSING_MAPPING", path, "Choice question needs choices")
         questions.append({
             "question_id": question_id,
             "label": require_text(q.get("label"), f"{path}.label"),
@@ -96,6 +125,8 @@ def _questions(raw_questions: Any) -> list[dict]:
             "required": required,
             "supported_attributes": allowed,
             "leader_weight": q.get("leader_weight"),
+            "answer_format": answer_format,
+            "choices": choices,
         })
     return questions
 
@@ -108,7 +139,7 @@ def _process_member(
     activity_ids: set[str],
     currency: str,
     issues: list[dict],
-) -> tuple[dict, list[dict]]:
+) -> tuple[dict, list[dict], dict[str, str]]:
     member_path = f"responses.participants.{member_id}"
     answers = {}
     question_ids = {q["question_id"] for q in questions}
@@ -131,8 +162,9 @@ def _process_member(
         "candidate_flags": [],
     }
     preferences = []
+    semantic_answers: dict[str, str] = {}
     budget_values: list[dict] = []
-    flagged_activities: dict[str, str] = {}
+    flagged_activities: dict[str, tuple[str, str]] = {}
     for q in questions:
         if q["kind"] != "candidate_flag" or q["question_id"] not in answers:
             continue
@@ -144,14 +176,15 @@ def _process_member(
             if activity_id not in activity_ids:
                 raise InputError("UNKNOWN_ACTIVITY", flag_path, "Flag references an unknown activity")
             flag_value = require_in(flag.get("flag"), {"cannot_join", "needs_information"}, f"{flag_path}.flag")
-            if activity_id in flagged_activities and flagged_activities[activity_id] != flag_value:
+            if activity_id in flagged_activities and flagged_activities[activity_id][0] != flag_value:
                 issues.append(_issue("CONFLICTING_ANSWER", flag_path, "Activity has conflicting flags"))
-            flagged_activities[activity_id] = flag_value
+            flagged_activities[activity_id] = (flag_value, q["question_id"])
     for candidate in candidates:
         if candidate["activity_id"] in flagged_activities:
             constraint["candidate_flags"].append({
                 "candidate_id": candidate["candidate_id"],
-                "flag": flagged_activities[candidate["activity_id"]],
+                "flag": flagged_activities[candidate["activity_id"]][0],
+                "source_question_id": flagged_activities[candidate["activity_id"]][1],
             })
 
     for q in questions:
@@ -174,10 +207,11 @@ def _process_member(
             elif kind == "open_requirement":
                 extracted = extract_requirement(require_text(value, path), set(q["supported_attributes"]))
                 for requirement in extracted:
+                    requirement["source_question_id"] = question_id
                     existing = next((r for r in constraint["required_attributes"] if r["attribute_id"] == requirement["attribute_id"]), None)
                     if existing and existing["required_value"] != requirement["required_value"]:
                         issues.append(_issue("CONFLICTING_ANSWER", path, "Requirements conflict"))
-                    elif not existing:
+                    else:
                         constraint["required_attributes"].append(requirement)
             elif kind == "open_preference":
                 for extracted in extract_preference(require_text(value, path), set(q["supported_attributes"])):
@@ -198,6 +232,8 @@ def _process_member(
                     preferences.append({"participant_id": member_id, "activity_id": activity_id, "rating": rating, "kind": "rating", "source_question_id": question_id})
             elif kind == "candidate_flag":
                 pass  # Flags were processed before ratings, regardless of question order.
+            elif kind in {"semantic_preference", "semantic_requirement"}:
+                semantic_answers[question_id] = answer_as_text(q, value, path)
         except InputError as exc:
             if exc.code in {"AMBIGUOUS_ANSWER", "UNSUPPORTED_ANSWER", "CONFLICTING_ANSWER"}:
                 issues.append(_issue(exc.code, path, exc.message))
@@ -211,20 +247,26 @@ def _process_member(
         constraint["budget"] = usable_budgets[0]
     else:
         issues.append(_issue("MISSING_BUDGET", member_path, "No usable budget answer"))
-    return constraint, preferences
+    return constraint, preferences, semantic_answers
 
 
-def preprocess(planning_snapshot: dict, response_snapshot: dict, policy: dict | None = None) -> dict:
+def preprocess(
+    planning_snapshot: dict,
+    response_snapshot: dict,
+    policy: dict | None = None,
+    semantic_provider: SemanticProvider | None = None,
+    semantic_evidence: dict | None = None,
+) -> dict:
     """Return status/issues and, when ready, a DecisionAlgorithmInput.
 
-    No network or model calls occur here. Callers can cache this result by
-    snapshot IDs and processing/policy versions.
+    A supplied semantic provider may call a model for generic questions.
+    Persist returned semantic_evidence and reuse it on retries.
     """
     issues: list[dict] = []
     try:
         planning = require_object(planning_snapshot, "planning")
         responses = require_object(response_snapshot, "responses")
-        policy = require_object(policy or {}, "policy")
+        policy = require_object({} if policy is None else policy, "policy")
         round_id = require_text(planning.get("round_id"), "planning.round_id")
         option_revision = require_text(planning.get("option_revision"), "planning.option_revision")
         option_snapshot_id = require_text(planning.get("option_snapshot_id"), "planning.option_snapshot_id")
@@ -238,9 +280,10 @@ def preprocess(planning_snapshot: dict, response_snapshot: dict, policy: dict | 
             raise InputError("INVALID_QUESTION_CONFIG", "planning.questions", "Exactly one availability question is required")
         if not any(q["kind"] in {"budget", "open_budget"} for q in questions):
             raise InputError("MISSING_QUESTION", "planning.questions", "Budget question is required")
-        scoring_questions = resolve_weights(questions)
         activities = require_list(planning.get("activities"), "planning.activities")
         candidates = generate_candidates(activities, option_revision, timezone_name)
+        if any(q["kind"].startswith("semantic_") for q in questions) and len(candidates) > 100:
+            raise InputError("LIMIT_EXCEEDED", "planning.activities", "Model-assisted questions support at most 100 candidates per run")
         activity_ids = {a["activity_id"] for a in activities}
         if any(require_text(a.get("currency"), "planning.activities.currency").upper() != currency for a in activities):
             raise InputError("CURRENCY_MISMATCH", "planning.activities", "Activity and plan currencies differ")
@@ -261,6 +304,7 @@ def preprocess(planning_snapshot: dict, response_snapshot: dict, policy: dict | 
         participants = []
         constraints = []
         preferences = []
+        semantic_answers: dict[tuple[str, str], str] = {}
         for member_id in roster:
             member = response_by_id.get(member_id)
             if member is None:
@@ -270,12 +314,85 @@ def preprocess(planning_snapshot: dict, response_snapshot: dict, policy: dict | 
             participants.append({"participant_id": member_id, "response_status": status, "is_required_for_decision": True})
             if status != "complete":
                 issues.append(_issue("INCOMPLETE_RESPONSE", f"responses.participants.{member_id}", "Participant response is not complete and current"))
-            constraint, member_preferences = _process_member(member_id, member, questions, candidates, activity_ids, currency, issues)
+            constraint, member_preferences, member_semantic = _process_member(member_id, member, questions, candidates, activity_ids, currency, issues)
             constraints.append(constraint)
             preferences.extend(member_preferences)
+            semantic_answers.update({(member_id, qid): answer for qid, answer in member_semantic.items()})
 
         if issues:
             return {"status": "needs_clarification", "issues": issues, "algorithm_input": None}
+        semantic_questions = [q for q in questions if q["kind"].startswith("semantic_")]
+        if semantic_questions and candidates and semantic_provider is None and semantic_evidence is None:
+            return {"status": "needs_clarification", "issues": [_issue("SEMANTIC_PROVIDER_REQUIRED", "planning.questions", "Generic semantic questions need a configured model provider")], "algorithm_input": None}
+        if semantic_evidence is not None:
+            semantic_evidence = require_object(semantic_evidence, "semantic_evidence")
+            if semantic_evidence.get("option_snapshot_id") != option_snapshot_id or semantic_evidence.get("response_snapshot_id") != response_snapshot_id or semantic_evidence.get("processing_version") != PROCESSING_VERSION:
+                raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence", "Semantic evidence does not match the input snapshots or processing version")
+            saved_questions = require_object(semantic_evidence.get("question_assessments"), "semantic_evidence.question_assessments")
+            saved_answers = require_object(semantic_evidence.get("answer_assessments"), "semantic_evidence.answer_assessments")
+        else:
+            saved_questions = {}
+            saved_answers = {}
+        semantic_context = {
+            "plan_title": planning.get("plan_title", ""),
+            "plan_description": planning.get("plan_description", ""),
+            "timezone": timezone_name,
+            "currency": currency,
+        }
+        semantic_matches: dict[tuple[str, str, str], dict] = {}
+        interpretations = []
+        for question in semantic_questions:
+            if candidates:
+                if semantic_evidence is None:
+                    saved_questions[question["question_id"]] = semantic_provider.assess_question(question, semantic_context, candidates)
+                assessed = validate_question_assessment(saved_questions.get(question["question_id"]), f"semantic.questions.{question['question_id']}")
+                question["semantic_relevance"] = assessed["relevance"]
+                question["semantic_criterion"] = assessed["criterion"]
+                question["semantic_relevance_reason"] = assessed["reason"]
+            else:
+                question["semantic_relevance"] = 0.0
+                question["semantic_criterion"] = question["label"]
+            for member_id in roster:
+                answer_text = semantic_answers[(member_id, question["question_id"])]
+                if not candidates:
+                    continue
+                if semantic_evidence is None:
+                    saved_answers.setdefault(member_id, {})[question["question_id"]] = semantic_provider.compare_answer(question, answer_text, semantic_context, candidates)
+                member_evidence = require_object(saved_answers.get(member_id), f"semantic_evidence.answer_assessments.{member_id}")
+                response = member_evidence.get(question["question_id"])
+                interpretation, matches = validate_answer_assessment(response, question, candidates, f"semantic.answers.{member_id}.{question['question_id']}")
+                interpretations.append({"participant_id": member_id, "question_id": question["question_id"], "criterion": question["semantic_criterion"], "meaning": interpretation})
+                semantic_matches.update({(question["question_id"], member_id, candidate_id): match for candidate_id, match in matches.items()})
+
+        if semantic_evidence is not None and candidates:
+            expected_question_ids = {q["question_id"] for q in semantic_questions}
+            if set(saved_questions) != expected_question_ids or set(saved_answers) != set(roster):
+                raise InputError("INVALID_SEMANTIC_EVIDENCE", "semantic_evidence", "Evidence question or member IDs differ from this run")
+            for member_id in roster:
+                if set(saved_answers[member_id]) != expected_question_ids:
+                    raise InputError("INVALID_SEMANTIC_EVIDENCE", f"semantic_evidence.answer_assessments.{member_id}", "Evidence question IDs differ from this run")
+
+        frozen_evidence = None
+        artifact_id = None
+        if semantic_questions:
+            frozen_evidence = semantic_evidence or {
+                "option_snapshot_id": option_snapshot_id,
+                "response_snapshot_id": response_snapshot_id,
+                "processing_version": PROCESSING_VERSION,
+                "model": getattr(semantic_provider, "model", None),
+                "question_assessments": saved_questions,
+                "answer_assessments": saved_answers,
+            }
+            canonical = json.dumps(frozen_evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            artifact_id = hashlib.sha256(canonical).hexdigest()
+
+        scoring_questions = resolve_weights(questions, candidates)
+        for scoring_question in scoring_questions:
+            original = next(q for q in questions if q["question_id"] == scoring_question["question_id"])
+            if "semantic_criterion" in original:
+                scoring_question["criterion"] = original["semantic_criterion"]
+                scoring_question["relevance_reason"] = original.get("semantic_relevance_reason")
+        question_matches = build_question_matches(questions, candidates, constraints, preferences, semantic_matches)
         algorithm_input = {
             "context": {
                 "round_id": round_id,
@@ -285,11 +402,15 @@ def preprocess(planning_snapshot: dict, response_snapshot: dict, policy: dict | 
                 "algorithm_version": require_text(policy.get("algorithm_version", "baseline-v1"), "policy.algorithm_version"),
                 "policy_version": require_text(policy.get("policy_version", WEIGHT_POLICY_VERSION), "policy.policy_version"),
                 "processing_version": PROCESSING_VERSION,
+                "semantic_model": frozen_evidence.get("model") if frozen_evidence else None,
+                "semantic_artifact_id": artifact_id,
             },
             "candidates": candidates,
             "participants": participants,
             "constraints": constraints,
             "preferences": preferences,
+            "semantic_interpretations": interpretations,
+            "question_matches": question_matches,
             "scoring_model": {
                 "questions": scoring_questions,
                 "ranking_policy": {
@@ -305,6 +426,8 @@ def preprocess(planning_snapshot: dict, response_snapshot: dict, policy: dict | 
                 },
             },
         }
-        return {"status": "ready", "issues": [], "algorithm_input": algorithm_input}
+        return {"status": "ready", "issues": [], "algorithm_input": algorithm_input, "semantic_evidence": frozen_evidence}
     except InputError as exc:
         return {"status": "invalid_input", "issues": [exc.as_issue()], "algorithm_input": None}
+    except SemanticServiceError as exc:
+        return {"status": "upstream_unavailable", "issues": [_issue("SEMANTIC_SERVICE_UNAVAILABLE", "semantic_provider", str(exc))], "algorithm_input": None}

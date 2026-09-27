@@ -37,6 +37,9 @@ def generate_candidates(
             raise InputError("DUPLICATE_ID", f"{path}.activity_id", "Duplicate activity ID")
         activity_ids.add(activity_id)
         title = require_text(activity.get("title"), f"{path}.title")
+        description = activity.get("description", "")
+        if not isinstance(description, str):
+            raise InputError("INVALID_TYPE", f"{path}.description", "Expected text")
         duration = require_int(activity.get("duration_minutes"), f"{path}.duration_minutes", minimum=30)
         if duration % grid_minutes:
             raise InputError("INVALID_DURATION", f"{path}.duration_minutes", "Duration must align to the time grid")
@@ -83,6 +86,7 @@ def generate_candidates(
                             "activity_id": activity_id,
                             "option_revision": option_revision,
                             "title": title,
+                            "description": description,
                             "start_at": start_at,
                             "end_at": utc_string(cursor + timedelta(minutes=duration)),
                             "duration_minutes": duration,

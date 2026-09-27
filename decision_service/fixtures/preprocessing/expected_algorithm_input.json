@@ -5,8 +5,10 @@
     "response_snapshot_id": "responses-1",
     "timezone": "Asia/Singapore",
     "algorithm_version": "baseline-v1",
-    "policy_version": "equal-or-leader-v1",
-    "processing_version": "rules-v1"
+    "policy_version": "option-relevance-v1",
+    "processing_version": "semantic-v2",
+    "semantic_model": null,
+    "semantic_artifact_id": null
   },
   "candidates": [
     {
@@ -14,6 +16,7 @@
       "activity_id": "cafe",
       "option_revision": "1",
       "title": "Board-game café",
+      "description": "",
       "start_at": "2026-10-02T11:00:00Z",
       "end_at": "2026-10-02T13:00:00Z",
       "duration_minutes": 120,
@@ -35,6 +38,7 @@
       "activity_id": "dinner",
       "option_revision": "1",
       "title": "Dinner",
+      "description": "",
       "start_at": "2026-10-02T11:00:00Z",
       "end_at": "2026-10-02T13:00:00Z",
       "duration_minutes": 120,
@@ -83,7 +87,8 @@
       "required_attributes": [
         {
           "attribute_id": "vegetarian_option",
-          "required_value": "yes"
+          "required_value": "yes",
+          "source_question_id": "q_requirement"
         }
       ],
       "candidate_flags": []
@@ -149,6 +154,189 @@
       "utility_rule": "neutral_v1"
     }
   ],
+  "semantic_interpretations": [],
+  "question_matches": [
+    {
+      "participant_id": "p1",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_availability",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "AVAILABLE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_budget",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "BUDGET_OK",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_rating",
+      "state": "known",
+      "fit": 1.0,
+      "reason_code": "RATING",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_requirement",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "REQUIREMENT_MET",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_environment",
+      "state": "known",
+      "fit": 1.0,
+      "reason_code": "ATTRIBUTE_PREFERENCE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_availability",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "AVAILABLE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_budget",
+      "state": "fail",
+      "fit": null,
+      "reason_code": "BUDGET_CONFLICT",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_rating",
+      "state": "known",
+      "fit": 0.75,
+      "reason_code": "RATING",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_requirement",
+      "state": "unresolved",
+      "fit": null,
+      "reason_code": "MISSING_OPTION_FACT",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p1",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_environment",
+      "state": "known",
+      "fit": 1.0,
+      "reason_code": "ATTRIBUTE_PREFERENCE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_availability",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "AVAILABLE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_budget",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "BUDGET_OK",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_rating",
+      "state": "known",
+      "fit": 0.75,
+      "reason_code": "RATING",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_requirement",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "REQUIREMENT_MET",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "question_id": "q_environment",
+      "state": "known",
+      "fit": 0.5,
+      "reason_code": "NO_PREFERENCE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_availability",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "AVAILABLE",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_budget",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "BUDGET_OK",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_rating",
+      "state": "known",
+      "fit": 0.5,
+      "reason_code": "RATING",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_requirement",
+      "state": "pass",
+      "fit": null,
+      "reason_code": "REQUIREMENT_MET",
+      "source": "deterministic"
+    },
+    {
+      "participant_id": "p2",
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "question_id": "q_environment",
+      "state": "known",
+      "fit": 0.5,
+      "reason_code": "NO_PREFERENCE",
+      "source": "deterministic"
+    }
+  ],
   "scoring_model": {
     "questions": [
       {
@@ -157,6 +345,7 @@
         "kind": "availability",
         "weight": null,
         "weight_source": null,
+        "relevance": null,
         "aggregation": "direct",
         "is_hard_constraint": true
       },
@@ -166,6 +355,7 @@
         "kind": "budget",
         "weight": null,
         "weight_source": null,
+        "relevance": null,
         "aggregation": "direct",
         "is_hard_constraint": true
       },
@@ -175,6 +365,7 @@
         "kind": "activity_rating",
         "weight": 0.6,
         "weight_source": "leader",
+        "relevance": 1.0,
         "aggregation": "direct",
         "is_hard_constraint": false
       },
@@ -184,6 +375,7 @@
         "kind": "open_requirement",
         "weight": null,
         "weight_source": null,
+        "relevance": null,
         "aggregation": "direct",
         "is_hard_constraint": true
       },
@@ -193,6 +385,7 @@
         "kind": "open_preference",
         "weight": 0.4,
         "weight_source": "leader",
+        "relevance": 0.125,
         "aggregation": "average",
         "is_hard_constraint": false
       }

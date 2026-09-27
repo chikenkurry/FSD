@@ -1,0 +1,44 @@
+{
+  "option_snapshot_id": "options-semantic-1",
+  "response_snapshot_id": "responses-semantic-1",
+  "processing_version": "semantic-v2",
+  "model": "reviewed-fixture-v1",
+  "question_assessments": {
+    "q_travel": {"criterion": "travel convenience", "relevance": 0.75, "reason": "Options describe different travel times"},
+    "q_access": {"criterion": "step-free access", "relevance": 0.9, "reason": "Options describe a ramp and stairs"}
+  },
+  "answer_assessments": {
+    "p1": {
+      "q_travel": {
+        "interpretation": "Prefers a walkable venue",
+        "matches": [
+          {"candidate_id": "cafe@2026-10-02T11:00:00Z", "state": "known", "fit": 1.0, "reason_code": "SEMANTIC_MATCH", "evidence": "five minute walk"},
+          {"candidate_id": "dinner@2026-10-02T11:00:00Z", "state": "known", "fit": 0.0, "reason_code": "SEMANTIC_CONFLICT", "evidence": "thirty minute drive"}
+        ]
+      },
+      "q_access": {
+        "interpretation": "Requires a ramp",
+        "matches": [
+          {"candidate_id": "cafe@2026-10-02T11:00:00Z", "state": "pass", "fit": null, "reason_code": "SEMANTIC_MATCH", "evidence": "Ramp available"},
+          {"candidate_id": "dinner@2026-10-02T11:00:00Z", "state": "fail", "fit": null, "reason_code": "SEMANTIC_CONFLICT", "evidence": "Stairs only"}
+        ]
+      }
+    },
+    "p2": {
+      "q_travel": {
+        "interpretation": "Prefers a walkable venue",
+        "matches": [
+          {"candidate_id": "cafe@2026-10-02T11:00:00Z", "state": "known", "fit": 1.0, "reason_code": "SEMANTIC_MATCH", "evidence": "five minute walk"},
+          {"candidate_id": "dinner@2026-10-02T11:00:00Z", "state": "known", "fit": 0.0, "reason_code": "SEMANTIC_CONFLICT", "evidence": "thirty minute drive"}
+        ]
+      },
+      "q_access": {
+        "interpretation": "Requires a ramp",
+        "matches": [
+          {"candidate_id": "cafe@2026-10-02T11:00:00Z", "state": "pass", "fit": null, "reason_code": "SEMANTIC_MATCH", "evidence": "Ramp available"},
+          {"candidate_id": "dinner@2026-10-02T11:00:00Z", "state": "fail", "fit": null, "reason_code": "SEMANTIC_CONFLICT", "evidence": "Stairs only"}
+        ]
+      }
+    }
+  }
+}
