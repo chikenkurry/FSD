@@ -1,0 +1,28 @@
+{
+  "round_id": "round-1",
+  "option_revision": "1",
+  "response_snapshot_id": "responses-1",
+  "participants": [
+    {
+      "participant_id": "p1",
+      "response_status": "complete",
+      "answers": [
+        {"answer_id": "p1-a1", "question_id": "q_availability", "value": [{"start_at": "2026-10-02T18:30:00+08:00", "end_at": "2026-10-02T21:00:00+08:00"}]},
+        {"answer_id": "p1-a2", "question_id": "q_budget", "value": {"kind": "limited", "max_cost_minor": 3000, "currency": "SGD"}},
+        {"answer_id": "p1-a3", "question_id": "q_rating", "value": {"cafe": 4, "dinner": 3}},
+        {"answer_id": "p1-a4", "question_id": "q_requirement", "value": "I must have a vegetarian option."},
+        {"answer_id": "p1-a5", "question_id": "q_environment", "value": "I prefer an indoor venue."}
+      ]
+    },
+    {
+      "participant_id": "p2",
+      "response_status": "complete",
+      "answers": [
+        {"answer_id": "p2-a1", "question_id": "q_availability", "value": [{"start_at": "2026-10-02T19:00:00+08:00", "end_at": "2026-10-02T21:30:00+08:00"}]},
+        {"answer_id": "p2-a2", "question_id": "q_budget", "value": {"kind": "unlimited"}},
+        {"answer_id": "p2-a3", "question_id": "q_rating", "value": {"cafe": 3, "dinner": "no_preference"}},
+        {"answer_id": "p2-a4", "question_id": "q_environment", "value": "No preference"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "context": {
+    "round_id": "round-1",
+    "option_snapshot_id": "options-1",
+    "response_snapshot_id": "responses-1",
+    "timezone": "Asia/Singapore",
+    "algorithm_version": "baseline-v1",
+    "policy_version": "equal-or-leader-v1",
+    "processing_version": "rules-v1"
+  },
+  "candidates": [
+    {
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "activity_id": "cafe",
+      "option_revision": "1",
+      "title": "Board-game café",
+      "start_at": "2026-10-02T11:00:00Z",
+      "end_at": "2026-10-02T13:00:00Z",
+      "duration_minutes": 120,
+      "estimated_cost_minor": 2500,
+      "currency": "SGD",
+      "attributes": [
+        {
+          "attribute_id": "vegetarian_option",
+          "value": "yes"
+        },
+        {
+          "attribute_id": "indoor",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "activity_id": "dinner",
+      "option_revision": "1",
+      "title": "Dinner",
+      "start_at": "2026-10-02T11:00:00Z",
+      "end_at": "2026-10-02T13:00:00Z",
+      "duration_minutes": 120,
+      "estimated_cost_minor": 3500,
+      "currency": "SGD",
+      "attributes": [
+        {
+          "attribute_id": "vegetarian_option",
+          "value": "unknown"
+        },
+        {
+          "attribute_id": "indoor",
+          "value": "yes"
+        }
+      ]
+    }
+  ],
+  "participants": [
+    {
+      "participant_id": "p1",
+      "response_status": "complete",
+      "is_required_for_decision": true
+    },
+    {
+      "participant_id": "p2",
+      "response_status": "complete",
+      "is_required_for_decision": true
+    }
+  ],
+  "constraints": [
+    {
+      "participant_id": "p1",
+      "availability": {
+        "available_intervals": [
+          {
+            "start_at": "2026-10-02T10:30:00Z",
+            "end_at": "2026-10-02T13:00:00Z"
+          }
+        ]
+      },
+      "budget": {
+        "kind": "limited",
+        "max_cost_minor": 3000,
+        "currency": "SGD"
+      },
+      "required_attributes": [
+        {
+          "attribute_id": "vegetarian_option",
+          "required_value": "yes"
+        }
+      ],
+      "candidate_flags": []
+    },
+    {
+      "participant_id": "p2",
+      "availability": {
+        "available_intervals": [
+          {
+            "start_at": "2026-10-02T11:00:00Z",
+            "end_at": "2026-10-02T13:30:00Z"
+          }
+        ]
+      },
+      "budget": {
+        "kind": "unlimited"
+      },
+      "required_attributes": [],
+      "candidate_flags": []
+    }
+  ],
+  "preferences": [
+    {
+      "participant_id": "p1",
+      "activity_id": "cafe",
+      "rating": 4,
+      "kind": "rating",
+      "source_question_id": "q_rating"
+    },
+    {
+      "participant_id": "p1",
+      "activity_id": "dinner",
+      "rating": 3,
+      "kind": "rating",
+      "source_question_id": "q_rating"
+    },
+    {
+      "participant_id": "p1",
+      "source_question_id": "q_environment",
+      "kind": "attribute_preference",
+      "attribute_id": "indoor",
+      "preferred_value": "yes",
+      "utility_rule": "attribute_match_v1"
+    },
+    {
+      "participant_id": "p2",
+      "activity_id": "cafe",
+      "rating": 3,
+      "kind": "rating",
+      "source_question_id": "q_rating"
+    },
+    {
+      "participant_id": "p2",
+      "activity_id": "dinner",
+      "rating": 2,
+      "kind": "rating",
+      "source_question_id": "q_rating"
+    },
+    {
+      "participant_id": "p2",
+      "source_question_id": "q_environment",
+      "kind": "indifferent",
+      "utility_rule": "neutral_v1"
+    }
+  ],
+  "scoring_model": {
+    "questions": [
+      {
+        "question_id": "q_availability",
+        "label": "When are you free?",
+        "kind": "availability",
+        "weight": null,
+        "weight_source": null,
+        "aggregation": "direct",
+        "is_hard_constraint": true
+      },
+      {
+        "question_id": "q_budget",
+        "label": "Maximum spend in SGD?",
+        "kind": "budget",
+        "weight": null,
+        "weight_source": null,
+        "aggregation": "direct",
+        "is_hard_constraint": true
+      },
+      {
+        "question_id": "q_rating",
+        "label": "Rate each activity",
+        "kind": "activity_rating",
+        "weight": 0.6,
+        "weight_source": "leader",
+        "aggregation": "direct",
+        "is_hard_constraint": false
+      },
+      {
+        "question_id": "q_requirement",
+        "label": "Any essential venue requirements?",
+        "kind": "open_requirement",
+        "weight": null,
+        "weight_source": null,
+        "aggregation": "direct",
+        "is_hard_constraint": true
+      },
+      {
+        "question_id": "q_environment",
+        "label": "What sort of venue would you prefer?",
+        "kind": "open_preference",
+        "weight": 0.4,
+        "weight_source": "leader",
+        "aggregation": "average",
+        "is_hard_constraint": false
+      }
+    ],
+    "ranking_policy": {
+      "feasibility_policy": "all_required_participants",
+      "sort_order": [
+        "highest_min_member_score",
+        "highest_average_member_score",
+        "lowest_estimated_cost",
+        "earliest_start",
+        "stable_candidate_id"
+      ]
+    },
+    "missing_value_policy": {
+      "missing_budget": "incomplete",
+      "missing_rating": "incomplete",
+      "missing_required_attribute": "unresolved",
+      "missing_availability": "unavailable",
+      "no_preference": "neutral"
+    }
+  }
+}

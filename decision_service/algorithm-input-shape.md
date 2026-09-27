@@ -1,6 +1,6 @@
 # Algorithm Input Shape
 
-This document describes the expected input shape for the Decision service algorithm. It is a draft contract for the algorithm layer and can be refined as the Planning and Participation service contracts become more specific.
+This document describes the expected input shape for the Decision service algorithm. It is a draft contract for the algorithm layer and can be refined as the Planning and Participation service contracts become more specific. The preprocessing prototype in `preprocessing/` produces this shape from immutable mock snapshots.
 
 The main design principle is:
 
@@ -18,6 +18,10 @@ The intended Decision service pipeline is:
 4. Return ranked candidates and explanation codes.
 
 The algorithm step should always receive the same categories of input, even if earlier services collect data in different ways.
+
+The preprocessing function accepts an immutable planning snapshot, an immutable response snapshot, and a processing policy. The planning snapshot contains `round_id`, `option_snapshot_id`, `option_revision`, `timezone`, `currency`, the exact `roster`, `activities` with windows and attributes, and `questions` with optional `leader_weight`. The response snapshot contains `round_id`, `option_revision`, `response_snapshot_id`, and `participants`, each with `response_status` and answers linked by `question_id`. See the two JSON fixtures in `fixtures/preprocessing/` for the complete current adapter shape. Planning and Participation still need to confirm the network contracts that provide these fields.
+
+Preprocessing returns `{status, issues, algorithm_input}`. `status` is `ready`, `needs_clarification`, or `invalid_input`. Only `ready` contains an algorithm input. Incomplete answers and ambiguous text cause `needs_clarification`; malformed or mismatched snapshots cause `invalid_input`. Neither should be passed to the matcher.
 
 ## Algorithm Responsibilities
 
@@ -62,6 +66,7 @@ type DecisionContext = {
   timezone: string;
   algorithm_version: string;
   policy_version: string;
+  processing_version: string;
 };
 ```
 
@@ -153,7 +158,7 @@ type BudgetConstraint = {
 
 type RequiredAttributeConstraint = {
   attribute_id: string;
-  required_value: "yes";
+  required_value: "yes" | "no";
 };
 
 type CandidateFlag = {
@@ -180,10 +185,14 @@ Soft preferences influence ranking only after hard constraints are satisfied.
 ```ts
 type ParticipantPreference = {
   participant_id: string;
+  kind: "rating" | "attribute_preference" | "indifferent";
   candidate_id?: string;
   activity_id?: string;
-  rating: 0 | 1 | 2 | 3 | 4;
-  source_question_id?: string;
+  rating?: 0 | 1 | 2 | 3 | 4;
+  attribute_id?: string;
+  preferred_value?: "yes" | "no";
+  utility_rule?: "attribute_match_v1" | "neutral_v1";
+  source_question_id: string;
 };
 ```
 
@@ -199,9 +208,11 @@ Suggested rating scale:
 
 Notes:
 
-- Missing ratings should not automatically become neutral.
-- The processing step may convert an explicit "no preference" answer to `2`.
-- Preferences may apply to an activity or to a specific candidate, depending on the final contract.
+- `kind: "rating"` requires an `activity_id` or `candidate_id` and a `rating`.
+- `kind: "attribute_preference"` requires `attribute_id`, `preferred_value`, and `utility_rule: "attribute_match_v1"`. The matcher compares it with the candidate's known attribute fact.
+- `kind: "indifferent"` is an explicit no-preference answer with `utility_rule: "neutral_v1"`; the matcher must define a fixed neutral utility for it.
+- Missing ratings should not automatically become neutral. The processing step may convert an explicit rating answer of "no preference" to `2`.
+- Several preferences from one question share that question's weight; aggregate their utilities before applying that weight.
 
 ## Scoring Model
 
@@ -210,7 +221,6 @@ The scoring model describes how normalized questions and answers should contribu
 ```ts
 type ScoringModel = {
   questions: QuestionDefinition[];
-  option_weights: OptionWeight[];
   ranking_policy: RankingPolicy;
   missing_value_policy: MissingValuePolicy;
 };
@@ -222,33 +232,20 @@ type ScoringModel = {
 type QuestionDefinition = {
   question_id: string;
   label: string;
-  weight_by_candidate: Record<string, number>;
+  kind: "availability" | "budget" | "activity_rating" | "candidate_flag" | "open_requirement" | "open_preference" | "open_budget";
+  weight: number | null;
+  weight_source: "leader" | "equal_default" | null;
   is_hard_constraint: boolean;
-  aggregation: "sum" | "average" | "minimum" | "maximum" | "veto";
+  aggregation: "direct" | "average";
 };
 ```
 
 Notes:
 
-- Question weights should be explicit and normalized before the algorithm runs.
-- If a question represents a hard constraint, it should be evaluated before soft scoring.
-- For the MVP, many core constraints may be represented directly rather than through generic weighted questions.
-
-### Option Weights
-
-```ts
-type OptionWeight = {
-  question_id: string;
-  option_id: string;
-  weight_by_candidate: Record<string, number>;
-  is_hard_constraint: boolean;
-};
-```
-
-Notes:
-
-- Option weights are useful for generalized survey-style decision inputs.
-- They should not be used to override explicit hard constraints such as availability or budget.
+- Soft-question weights are normalized across questions before the algorithm runs; hard questions have `weight: null`.
+- With no leader weights, preprocessing gives soft questions equal weights. Partial leader weights are invalid in this first version.
+- `direct` applies to a single activity rating. `average` combines several extracted preferences from one open question without multiplying its importance.
+- Availability, budget, and hard requirements are evaluated before soft scoring.
 
 ### Ranking Policy
 
@@ -259,22 +256,22 @@ type RankingPolicy = {
 };
 
 type RankingCriterion =
-  | "highest_min_rating"
-  | "highest_average_rating"
+  | "highest_min_member_score"
+  | "highest_average_member_score"
   | "lowest_estimated_cost"
   | "earliest_start"
   | "stable_candidate_id";
 ```
 
-Suggested MVP ranking order:
+Proposed ranking order when weighted soft questions are enabled:
 
-1. Highest minimum member rating.
-2. Highest average member rating.
+1. Highest minimum member score.
+2. Highest average member score.
 3. Lowest estimated cost.
 4. Earliest start.
 5. Stable candidate ID.
 
-This policy prioritizes avoiding a strongly disliked option before maximizing average enthusiasm.
+For each member and candidate, the matcher calculates a 0–1 utility for each answered soft question, averages multiple extracted preferences from the same question, then sums `question.weight × question_utility`. An activity rating maps to `rating / 4`. `neutral_v1` returns 0.5. `attribute_match_v1` returns 1 for a matching known candidate attribute and 0 for a conflicting known value; an unknown candidate attribute makes that candidate unresolved for that question. The group ranking prioritizes avoiding a very low member score before maximizing average satisfaction. The team should review this proposed policy before using it for authoritative results.
 
 ### Missing Value Policy
 
@@ -311,9 +308,8 @@ type DecisionAlgorithmOutput = {
 type RankedCandidate = {
   candidate_id: string;
   rank: number;
-  min_rating: number;
-  average_rating: number;
-  average_preference_score: number;
+  min_member_score: number;
+  average_member_score: number;
   estimated_cost_minor: number | null;
   explanation_codes: ExplanationCode[];
 };
@@ -350,4 +346,3 @@ Shared product explanations should use aggregate wording and avoid exposing priv
 - Store failed checks as structured reason codes for explanations.
 - Use stable tie breakers so repeated runs on the same snapshots return the same order.
 - Treat the straightforward implementation as the correctness baseline if optimized versions are added later.
-
