@@ -7,7 +7,6 @@ import json
 from typing import Any
 
 from .candidates import generate_candidates
-from .comparisons import build_question_matches
 from .common import (
     InputError,
     require_in,
@@ -26,7 +25,8 @@ from .semantics import (
     validate_answer_assessment,
     validate_question_assessment,
 )
-from .weights import resolve_weights
+from .sparse import preprocess_sparse
+from .weights import SOFT_KINDS, resolve_weights
 
 
 QUESTION_KINDS = {
@@ -35,8 +35,8 @@ QUESTION_KINDS = {
     "semantic_preference", "semantic_requirement",
 }
 REQUIRED_STATUSES = {"complete", "incomplete", "stale", "needs_clarification"}
-PROCESSING_VERSION = "semantic-v2"
-WEIGHT_POLICY_VERSION = "option-relevance-v1"
+PROCESSING_VERSION = "semantic-v4"
+WEIGHT_POLICY_VERSION = "goal-option-relevance-v2"
 
 
 def _issue(code: str, path: str, message: str) -> dict[str, str]:
@@ -262,6 +262,8 @@ def preprocess(
     A supplied semantic provider may call a model for generic questions.
     Persist returned semantic_evidence and reuse it on retries.
     """
+    if isinstance(planning_snapshot, dict) and "options" in planning_snapshot and "activities" not in planning_snapshot:
+        return preprocess_sparse(planning_snapshot, response_snapshot, semantic_provider, semantic_evidence)
     issues: list[dict] = []
     try:
         planning = require_object(planning_snapshot, "planning")
@@ -282,7 +284,8 @@ def preprocess(
             raise InputError("MISSING_QUESTION", "planning.questions", "Budget question is required")
         activities = require_list(planning.get("activities"), "planning.activities")
         candidates = generate_candidates(activities, option_revision, timezone_name)
-        if any(q["kind"].startswith("semantic_") for q in questions) and len(candidates) > 100:
+        model_questions = [q for q in questions if q["kind"].startswith("semantic_") or (semantic_provider is not None and q["kind"] in SOFT_KINDS and q["leader_weight"] is None)]
+        if model_questions and len(candidates) > 100:
             raise InputError("LIMIT_EXCEEDED", "planning.activities", "Model-assisted questions support at most 100 candidates per run")
         activity_ids = {a["activity_id"] for a in activities}
         if any(require_text(a.get("currency"), "planning.activities.currency").upper() != currency for a in activities):
@@ -322,7 +325,7 @@ def preprocess(
         if issues:
             return {"status": "needs_clarification", "issues": issues, "algorithm_input": None}
         semantic_questions = [q for q in questions if q["kind"].startswith("semantic_")]
-        if semantic_questions and candidates and semantic_provider is None and semantic_evidence is None:
+        if semantic_questions and semantic_provider is None and semantic_evidence is None:
             return {"status": "needs_clarification", "issues": [_issue("SEMANTIC_PROVIDER_REQUIRED", "planning.questions", "Generic semantic questions need a configured model provider")], "algorithm_input": None}
         if semantic_evidence is not None:
             semantic_evidence = require_object(semantic_evidence, "semantic_evidence")
@@ -333,15 +336,38 @@ def preprocess(
         else:
             saved_questions = {}
             saved_answers = {}
+        decision_question = planning.get("decision_question")
+        if decision_question is not None:
+            decision_question = require_text(decision_question, "planning.decision_question")
+        else:
+            decision_question = planning.get("plan_description") or planning.get("plan_title") or "Choose the best activity and time for this group"
         semantic_context = {
+            "decision_question": decision_question,
             "plan_title": planning.get("plan_title", ""),
             "plan_description": planning.get("plan_description", ""),
             "timezone": timezone_name,
             "currency": currency,
         }
-        semantic_matches: dict[tuple[str, str, str], dict] = {}
+        if not isinstance(semantic_context["decision_question"], str) or not semantic_context["decision_question"].strip():
+            raise InputError("INVALID_DECISION_QUESTION", "planning.decision_question", "Decision question must be nonempty text")
+        # With a model, missing leader weights are assessed against the plan goal
+        # even for structured and controlled-vocabulary questions. Without one,
+        # the deterministic option-relevance baseline remains available.
+        model_weight_questions = [q for q in questions if q["kind"] in SOFT_KINDS and q["leader_weight"] is None]
+        if semantic_evidence is not None:
+            assessed_ids = set(saved_questions)
+            allowed_ids = {q["question_id"] for q in semantic_questions + model_weight_questions}
+            required_ids = {q["question_id"] for q in semantic_questions} if candidates else set()
+            if not required_ids <= assessed_ids or not assessed_ids <= allowed_ids:
+                raise InputError("INVALID_SEMANTIC_EVIDENCE", "semantic_evidence.question_assessments", "Evidence question IDs differ from this run")
+            assessed_questions = [q for q in questions if q["question_id"] in assessed_ids]
+        elif semantic_provider is not None:
+            assessed_ids = {q["question_id"] for q in semantic_questions + model_weight_questions}
+            assessed_questions = [q for q in questions if q["question_id"] in assessed_ids]
+        else:
+            assessed_questions = []
         interpretations = []
-        for question in semantic_questions:
+        for question in assessed_questions:
             if candidates:
                 if semantic_evidence is None:
                     saved_questions[question["question_id"]] = semantic_provider.assess_question(question, semantic_context, candidates)
@@ -352,29 +378,33 @@ def preprocess(
             else:
                 question["semantic_relevance"] = 0.0
                 question["semantic_criterion"] = question["label"]
+        for question in semantic_questions:
             for member_id in roster:
                 answer_text = semantic_answers[(member_id, question["question_id"])]
-                if not candidates:
-                    continue
                 if semantic_evidence is None:
-                    saved_answers.setdefault(member_id, {})[question["question_id"]] = semantic_provider.compare_answer(question, answer_text, semantic_context, candidates)
+                    saved_answers.setdefault(member_id, {})[question["question_id"]] = semantic_provider.extract_answer(question, answer_text, semantic_context)
                 member_evidence = require_object(saved_answers.get(member_id), f"semantic_evidence.answer_assessments.{member_id}")
                 response = member_evidence.get(question["question_id"])
-                interpretation, matches = validate_answer_assessment(response, question, candidates, f"semantic.answers.{member_id}.{question['question_id']}")
-                interpretations.append({"participant_id": member_id, "question_id": question["question_id"], "criterion": question["semantic_criterion"], "meaning": interpretation})
-                semantic_matches.update({(question["question_id"], member_id, candidate_id): match for candidate_id, match in matches.items()})
+                interpretation = validate_answer_assessment(response, answer_text, f"semantic.answers.{member_id}.{question['question_id']}")
+                if interpretation["status"] == "unresolved":
+                    issues.append(_issue("AMBIGUOUS_ANSWER", f"responses.participants.{member_id}.answers.{question['question_id']}", "Semantic answer needs clarification"))
+                interpretations.append({"participant_id": member_id, "question_id": question["question_id"], "kind": question["kind"], **interpretation})
 
-        if semantic_evidence is not None and candidates:
+        if semantic_evidence is not None:
             expected_question_ids = {q["question_id"] for q in semantic_questions}
-            if set(saved_questions) != expected_question_ids or set(saved_answers) != set(roster):
+            if set(saved_answers) != (set(roster) if semantic_questions else set()):
                 raise InputError("INVALID_SEMANTIC_EVIDENCE", "semantic_evidence", "Evidence question or member IDs differ from this run")
-            for member_id in roster:
-                if set(saved_answers[member_id]) != expected_question_ids:
-                    raise InputError("INVALID_SEMANTIC_EVIDENCE", f"semantic_evidence.answer_assessments.{member_id}", "Evidence question IDs differ from this run")
+            if semantic_questions:
+                for member_id in roster:
+                    if set(saved_answers[member_id]) != expected_question_ids:
+                        raise InputError("INVALID_SEMANTIC_EVIDENCE", f"semantic_evidence.answer_assessments.{member_id}", "Evidence question IDs differ from this run")
+
+        if issues:
+            return {"status": "needs_clarification", "issues": issues, "algorithm_input": None}
 
         frozen_evidence = None
         artifact_id = None
-        if semantic_questions:
+        if semantic_questions or assessed_questions:
             frozen_evidence = semantic_evidence or {
                 "option_snapshot_id": option_snapshot_id,
                 "response_snapshot_id": response_snapshot_id,
@@ -392,7 +422,6 @@ def preprocess(
             if "semantic_criterion" in original:
                 scoring_question["criterion"] = original["semantic_criterion"]
                 scoring_question["relevance_reason"] = original.get("semantic_relevance_reason")
-        question_matches = build_question_matches(questions, candidates, constraints, preferences, semantic_matches)
         algorithm_input = {
             "context": {
                 "round_id": round_id,
@@ -410,7 +439,6 @@ def preprocess(
             "constraints": constraints,
             "preferences": preferences,
             "semantic_interpretations": interpretations,
-            "question_matches": question_matches,
             "scoring_model": {
                 "questions": scoring_questions,
                 "ranking_policy": {

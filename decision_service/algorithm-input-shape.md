@@ -1,5 +1,74 @@
 # Algorithm Input Shape
 
+## Sparse option handoff (`sparse-v2`)
+
+`preprocess(planning_snapshot, response_snapshot)` selects this version when
+planning has `options` instead of `activities`. The planning input needs the
+immutable round/snapshot IDs, decision question, roster, option names or
+`{option_id, title, description?, facts?}` objects, and leader-written
+questions. Member answers arrive in the response snapshot. See
+`fixtures/preprocessing/planning_grad_trip.json` and `response_grad_trip.json`.
+
+The returned `algorithm_input` has:
+
+```ts
+type SparseHandoff = {
+  context: { schema_version: "sparse-v2"; round_id: string;
+    option_snapshot_id: string; response_snapshot_id: string;
+    decision_question: string; currency: string | null;
+    cost_scope: string | null; details: object;
+    semantic_artifact_id: string | null };
+  candidates: { candidate_id: string; option_id: string; title: string;
+    description: string; facts: SourcedFact[]; missing_criteria: string[];
+    tag_suggestions: { criterion: string; value: string; reason: string;
+      status: "hypothesis" }[] }[];
+  scenario_requests: { option_id: string; duration_days: number;
+    earliest_start_date: string; latest_start_date: string;
+    cost_evidence_status: "unknown" | "estimated" | "confirmed";
+    cost_evidence?: object }[];
+  participants: { participant_id: string; response_status: string }[];
+  constraints: object[];
+  preferences: object[];
+  informational_answers: object[];
+  unclassified_answers: object[];
+  scoring_model: { questions: object[]; missing_fact_policy: "unresolved" };
+};
+
+type SourcedFact = { criterion: string; value: string | number | boolean | (string | number | boolean)[];
+  status: "confirmed" | "estimated"; source: string;
+  unit?: string; context?: object };
+```
+
+The question entries carry `role` (`hard`, `soft`, `informational`, or unresolved
+`unclassified`),
+`criterion`, `relevance`, `reason`, `inference_source`, and `weight`.
+Automatically weighted duplicate topics share their relevance. Hard and
+informational questions have `weight: null`. A zero-relevance informational
+question is never given equal fallback weight. Each extracted open preference
+has an exact answer `evidence` substring. A potential must-have has
+`status: needs_confirmation` and triggers clarification.
+
+Option names generate identities and requests for missing criteria; they
+generate no factual claims. Sourced option facts can cover any criterion.
+Model-generated tags remain hypotheses and cannot satisfy a missing criterion
+or hard requirement. Natural-language date extraction requires an evidence
+substring and an explicit year in the member answer.
+When the questions include both availability and duration, `scenario_requests`
+intersect member date intervals, then describe feasible start-date ranges
+for the offered durations. A later
+evidence collector can attach `planning.scenario_costs` records matching the
+option, duration, and date range, with amount, currency, explicit budget scope,
+status, and source. When there are no date/duration scenarios, a budget can
+instead compare a confirmed option fact under `max_cost`. Estimated costs
+keep the result provisional. The current
+activity/time matcher must not consume this version.
+
+`status: provisional` retains a partial handoff with issues about unknown
+option/scenario facts or missing semantic extraction. `needs_clarification`
+also retains partial data when a member answer needs work. Neither is a
+confirmed recommendation. The older activity/time contract below is
+unchanged and still returns `algorithm_input: null` unless `ready`.
+
 This document describes the expected input shape for the Decision service algorithm. It is a draft contract for the algorithm layer and can be refined as the Planning and Participation service contracts become more specific. The preprocessing prototype in `preprocessing/` produces this shape from immutable mock snapshots.
 
 The main design principle is:
@@ -19,17 +88,17 @@ The intended Decision service pipeline is:
 
 The algorithm step should always receive the same categories of input, even if earlier services collect data in different ways.
 
-The preprocessing function accepts an immutable planning snapshot, an immutable response snapshot, and a processing policy. The planning snapshot contains `round_id`, `option_snapshot_id`, `option_revision`, `timezone`, `currency`, the exact `roster`, `activities` with windows and attributes, and `questions` with optional `leader_weight`. The response snapshot contains `round_id`, `option_revision`, `response_snapshot_id`, and `participants`, each with `response_status` and answers linked by `question_id`. See the two JSON fixtures in `fixtures/preprocessing/` for the complete current adapter shape. Planning and Participation still need to confirm the network contracts that provide these fields.
+The preprocessing function accepts an immutable planning snapshot, an immutable response snapshot, and a processing policy. The planning snapshot contains `round_id`, `option_snapshot_id`, `option_revision`, `timezone`, `currency`, the exact `roster`, `activities` with windows and attributes, and `questions` with optional `leader_weight`. Provide `decision_question` for model-based relevance assessment; otherwise the provider falls back to the plan description, title, or a generic group-choice goal. The response snapshot contains `round_id`, `option_revision`, `response_snapshot_id`, and `participants`, each with `response_status` and answers linked by `question_id`. See the two JSON fixtures in `fixtures/preprocessing/` for the complete current adapter shape. Planning and Participation still need to confirm the network contracts that provide these fields.
 
-Preprocessing returns `{status, issues, algorithm_input, semantic_evidence?}`. `status` is `ready`, `needs_clarification`, `invalid_input`, or `upstream_unavailable`. Only `ready` contains an algorithm input. Incomplete answers and ambiguous text cause `needs_clarification`; malformed or mismatched snapshots cause `invalid_input`; a model service failure is retryable. Other statuses must not be passed to the matcher. A ready run with generic questions also returns validated `semantic_evidence`; persist it and pass it back on retries to avoid another model interpretation.
+Preprocessing returns `{status, issues, algorithm_input, semantic_evidence?}`. `status` is `ready`, `needs_clarification`, `invalid_input`, or `upstream_unavailable`. Only `ready` contains an algorithm input. Incomplete answers and ambiguous text cause `needs_clarification`; malformed or mismatched snapshots cause `invalid_input`; a model service failure is retryable. Other statuses must not be passed to the matcher. A ready run with model-assessed questions also returns validated `semantic_evidence`; persist it and pass it back on retries to avoid another model interpretation.
 
-Questions with a controlled mapping use `availability`, `budget`, `activity_rating`, `candidate_flag`, `open_requirement`, `open_preference`, or `open_budget`. A question outside that vocabulary uses `semantic_preference` or `semantic_requirement` and a configured semantic provider. It may have `answer_format: "text"`, or `answer_format: "choice"` with `choices: [{choice_id, label}]`. Both formats become an interpreted answer before candidate comparison. Model-assisted results require evidence from the supplied option description or attributes.
+Questions with a controlled mapping use `availability`, `budget`, `activity_rating`, `candidate_flag`, `open_requirement`, `open_preference`, or `open_budget`. A question outside that vocabulary uses `semantic_preference` or `semantic_requirement` and a configured semantic provider. It may have `answer_format: "text"`, or `answer_format: "choice"` with `choices: [{choice_id, label}]`. Both formats become an interpreted answer. Model-assisted answer interpretations require an exact evidence substring from the member's answer.
 
 ## Algorithm Responsibilities
 
 The algorithm should:
 
-- combine the precomputed per-question comparisons to decide whether each candidate is feasible;
+- compare normalized constraints, preferences, and semantic interpretations with each candidate;
 - apply hard question results before soft scoring;
 - rank feasible candidates using a deterministic policy;
 - preserve reason codes for infeasible or unresolved candidates;
@@ -53,7 +122,6 @@ type DecisionAlgorithmInput = {
   constraints: ParticipantConstraint[];
   preferences: ParticipantPreference[];
   semantic_interpretations: SemanticInterpretation[];
-  question_matches: QuestionMatch[];
   scoring_model: ScoringModel;
 };
 ```
@@ -223,33 +291,26 @@ Notes:
 - Missing ratings should not automatically become neutral. The processing step may convert an explicit rating answer of "no preference" to `2`.
 - Several preferences from one question share that question's weight; aggregate their utilities before applying that weight.
 
-## Interpreted Meaning and Candidate Comparisons
+## Interpreted Meaning
 
-Preprocessing compares every required participant and concrete candidate against every question. `semantic_interpretations` records the model's normalized meaning for generic text or choice questions. It is private internal data; public result APIs should return only aggregate explanations.
+`semantic_interpretations` records the model's normalized meaning for generic text or choice questions. The provider sees the question, answer, and decision context, but no candidates during answer extraction. It is private internal data; public result APIs should return only aggregate explanations.
 
 ```ts
 type SemanticInterpretation = {
   participant_id: string;
   question_id: string;
+  kind: "semantic_preference" | "semantic_requirement";
+  status: "resolved";
   criterion: string;
+  value: string;
   meaning: string;
-};
-
-type QuestionMatch = {
-  participant_id: string;
-  candidate_id: string;
-  question_id: string;
-  state: "pass" | "fail" | "known" | "unresolved" | "skipped";
-  fit: number | null;
-  reason_code: string;
-  source: "deterministic" | "model";
-  evidence?: string;
+  evidence: string;
 };
 ```
 
-Hard questions use `pass`, `fail`, or `unresolved` and `fit: null`. Soft questions use `known` with `fit` in `[0,1]`, or `unresolved` with `fit: null`. `skipped` applies to a rating replaced by an explicit cannot-join/needs-information flag; that candidate is already failed or unresolved by the flag. A model-based known comparison includes a short `evidence` string from a supplied option description or known attribute. An absent option fact stays unresolved.
+An unresolved model interpretation causes `needs_clarification`, so only resolved interpretations reach the matcher. `evidence` is an exact substring of the member answer. `criterion` and `value` are model-generated strings, not a shared ontology; the matcher must agree on their meaning or use `meaning` and candidate facts when comparing them. Candidate facts can be unknown or absent, so a missing fact cannot prove a requirement passes.
 
-The proposed matcher rule is: a candidate is infeasible if any required member has a hard `fail`; otherwise unresolved if any hard question or positively weighted soft question is `unresolved`; otherwise feasible. It then calculates each member's score as the sum of `question.weight × question_match.fit` for soft questions and uses the ranking policy below. A zero-weight soft question does not affect ranking. The two Decision Service developers should accept this shared contract before using it for authoritative results: preprocessing owns semantic interpretation and option comparison; the matcher owns aggregation and ranking.
+The matcher owns all member-to-candidate comparisons, hard pass/fail decisions, soft fit scores, aggregation, and ranking. The two developers should agree on how the matcher consumes free-form semantic values and how it handles missing candidate evidence before using results for decisions.
 
 ## Scoring Model
 
@@ -271,7 +332,7 @@ type QuestionDefinition = {
   label: string;
   kind: "availability" | "budget" | "activity_rating" | "candidate_flag" | "open_requirement" | "open_preference" | "open_budget" | "semantic_preference" | "semantic_requirement";
   weight: number | null;
-  weight_source: "leader" | "auto_relevance" | "no_relevance_fallback" | null;
+  weight_source: "leader" | "auto_relevance" | "model_relevance" | "no_relevance_fallback" | null;
   relevance: number | null;
   criterion?: string;
   relevance_reason?: string;
@@ -283,7 +344,7 @@ type QuestionDefinition = {
 Notes:
 
 - Soft-question weights are normalized across questions before the algorithm runs; hard questions have `weight: null`.
-- For each soft question with no leader weight, preprocessing estimates relevance from the decision context and option facts. A direct activity rating has relevance `1`. A mapped attribute preference uses the fraction of activities with known facts times `(0.25 + 0.75 × distinction)`, averaged across its mapped attributes. `distinction` is `1` when known options differ and `0` otherwise. Generic semantic questions use a validated model relevance in `[0,1]` based on the question, context, and options, without seeing member answers.
+- With a configured semantic provider, every soft question without a leader weight receives a validated model relevance in `[0,1]` based on the plan's decision question, the question, and option facts. Member answers are excluded. Without a provider, deterministic relevance remains available for supported questions: direct activity rating has relevance `1`, and mapped attributes use the fraction of activities with known facts times `(0.25 + 0.75 × distinction)`, averaged across attributes. `distinction` is `1` when known options differ and `0` otherwise. Generic semantic questions require a provider or saved evidence.
 - Repeated automatic questions mapped to the same topic share that topic's raw relevance, so duplication does not multiply its influence. Supplied leader weights are scaled by `max(1, largest supplied weight)` before mixing them with calculated relevance for missing weights. The resulting raw values are divided by their sum. This supports fully or partly supplied weights. If every raw weight is zero, the unresolved option evidence cannot determine relative relevance, so soft questions receive equal fallback weights marked `no_relevance_fallback`.
 - These automatic weights measure how useful questions are for distinguishing the supplied options. They do not claim to measure how much members personally care.
 - `direct` applies to a single activity rating. `average` combines several extracted preferences from one open question without multiplying its importance.
@@ -313,7 +374,7 @@ Proposed ranking order when weighted soft questions are enabled:
 4. Earliest start.
 5. Stable candidate ID.
 
-Preprocessing supplies one `fit` per member, candidate, and soft question. An activity rating maps to `rating / 4`; explicit indifference maps to `0.5`; a known attribute match maps to `1` and conflict to `0`; multiple extracted attributes under one question are averaged. The matcher sums `question.weight × fit` for each member, then ranks by minimum member score followed by mean member score and the stable tie breakers. The group ranking prioritizes avoiding a very low member score before maximizing average satisfaction. The team should review this proposed policy before using it for authoritative results.
+The matcher may map an activity rating to `rating / 4`, explicit indifference to `0.5`, and a known attribute match to `1` or conflict to `0`. It must calculate its own per-member, per-candidate fit for each soft question and decide how several preferences from one question combine. It then sums `question.weight × fit` for each member and applies the ranking policy. The team should review this proposed policy before using it for authoritative results.
 
 ### Missing Value Policy
 

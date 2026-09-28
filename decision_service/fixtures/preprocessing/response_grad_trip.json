@@ -1,0 +1,29 @@
+{
+  "round_id": "grad-trip-1",
+  "option_revision": "1",
+  "response_snapshot_id": "grad-responses-1",
+  "participants": [
+    {
+      "participant_id": "p1", "response_status": "complete",
+      "answers": [
+        {"question_id": "q1", "value": "2027-06-01 to 2027-06-12"},
+        {"question_id": "q2", "value": {"choice_id": "fine-with-anything"}},
+        {"question_id": "q3", "value": {"choice_id": "3000"}},
+        {"question_id": "q4", "value": "I like hiking and museums"},
+        {"question_id": "q5", "value": "Sushi"},
+        {"question_id": "q6", "value": "History"}
+      ]
+    },
+    {
+      "participant_id": "p2", "response_status": "complete",
+      "answers": [
+        {"question_id": "q1", "value": "2027-06-03 to 2027-06-10"},
+        {"question_id": "q2", "value": {"choice_id": "7-days"}},
+        {"question_id": "q3", "value": {"choice_id": "unlimited"}},
+        {"question_id": "q4", "value": "I want nature"},
+        {"question_id": "q5", "value": "Pho"},
+        {"question_id": "q6", "value": "Physics"}
+      ]
+    }
+  ]
+}

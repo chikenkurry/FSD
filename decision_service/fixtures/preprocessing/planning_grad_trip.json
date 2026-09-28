@@ -1,0 +1,19 @@
+{
+  "round_id": "grad-trip-1",
+  "option_revision": "1",
+  "option_snapshot_id": "grad-options-1",
+  "decision_question": "Which country should we visit for our grad trip?",
+  "currency": "SGD",
+  "cost_scope": "per_person_total_including_transport",
+  "context": {"departure_city": "Singapore"},
+  "roster": ["p1", "p2"],
+  "options": ["Switzerland", "New Zealand", "Vietnam", "Japan"],
+  "questions": [
+    {"question_id": "q1", "label": "When is your availability?"},
+    {"question_id": "q2", "label": "How many days do you want to travel for?", "choices": ["5 days", "6 days", "7 days", "Fine with anything"]},
+    {"question_id": "q3", "label": "Budget", "choices": ["$1000", "$3000", "$4000", "Unlimited"]},
+    {"question_id": "q4", "label": "Personal Preferences"},
+    {"question_id": "q5", "label": "Favourite food"},
+    {"question_id": "q6", "label": "Favourite Subject"}
+  ]
+}

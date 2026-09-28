@@ -2,6 +2,7 @@
   "round_id": "round-1",
   "option_revision": "1",
   "option_snapshot_id": "options-1",
+  "decision_question": "Which Friday evening activity and time should our group choose?",
   "timezone": "Asia/Singapore",
   "currency": "SGD",
   "roster": ["p1", "p2"],

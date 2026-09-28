@@ -20,10 +20,10 @@ def option_relevance(question: dict, candidates: list[dict]) -> float:
     activities = {candidate["activity_id"]: candidate for candidate in candidates}
     if not activities:
         return 0.0
+    if "semantic_relevance" in question:
+        return float(question["semantic_relevance"])
     if question["kind"] == "activity_rating":
         return 1.0
-    if question["kind"] == "semantic_preference":
-        return float(question.get("semantic_relevance", 0.0))
     if question["kind"] != "open_preference":
         return 0.0
 
@@ -73,7 +73,7 @@ def resolve_weights(questions: list[dict], candidates: list[dict]) -> list[dict]
             sources[question_id] = "leader"
         else:
             raw_weights[question_id] = relevance / topic_counts[topic_key(q)]
-            sources[question_id] = "auto_relevance"
+            sources[question_id] = "model_relevance" if "semantic_relevance" in q else "auto_relevance"
 
     total = sum(raw_weights.values())
     if soft and total <= 0:

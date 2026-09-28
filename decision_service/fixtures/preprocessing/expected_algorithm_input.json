@@ -5,8 +5,8 @@
     "response_snapshot_id": "responses-1",
     "timezone": "Asia/Singapore",
     "algorithm_version": "baseline-v1",
-    "policy_version": "option-relevance-v1",
-    "processing_version": "semantic-v2",
+    "policy_version": "goal-option-relevance-v2",
+    "processing_version": "semantic-v4",
     "semantic_model": null,
     "semantic_artifact_id": null
   },
@@ -15,7 +15,7 @@
       "candidate_id": "cafe@2026-10-02T11:00:00Z",
       "activity_id": "cafe",
       "option_revision": "1",
-      "title": "Board-game café",
+      "title": "Board-game caf\u00e9",
       "description": "",
       "start_at": "2026-10-02T11:00:00Z",
       "end_at": "2026-10-02T13:00:00Z",
@@ -155,188 +155,6 @@
     }
   ],
   "semantic_interpretations": [],
-  "question_matches": [
-    {
-      "participant_id": "p1",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_availability",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "AVAILABLE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_budget",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "BUDGET_OK",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_rating",
-      "state": "known",
-      "fit": 1.0,
-      "reason_code": "RATING",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_requirement",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "REQUIREMENT_MET",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_environment",
-      "state": "known",
-      "fit": 1.0,
-      "reason_code": "ATTRIBUTE_PREFERENCE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_availability",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "AVAILABLE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_budget",
-      "state": "fail",
-      "fit": null,
-      "reason_code": "BUDGET_CONFLICT",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_rating",
-      "state": "known",
-      "fit": 0.75,
-      "reason_code": "RATING",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_requirement",
-      "state": "unresolved",
-      "fit": null,
-      "reason_code": "MISSING_OPTION_FACT",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p1",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_environment",
-      "state": "known",
-      "fit": 1.0,
-      "reason_code": "ATTRIBUTE_PREFERENCE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_availability",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "AVAILABLE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_budget",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "BUDGET_OK",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_rating",
-      "state": "known",
-      "fit": 0.75,
-      "reason_code": "RATING",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_requirement",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "REQUIREMENT_MET",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "cafe@2026-10-02T11:00:00Z",
-      "question_id": "q_environment",
-      "state": "known",
-      "fit": 0.5,
-      "reason_code": "NO_PREFERENCE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_availability",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "AVAILABLE",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_budget",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "BUDGET_OK",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_rating",
-      "state": "known",
-      "fit": 0.5,
-      "reason_code": "RATING",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_requirement",
-      "state": "pass",
-      "fit": null,
-      "reason_code": "REQUIREMENT_MET",
-      "source": "deterministic"
-    },
-    {
-      "participant_id": "p2",
-      "candidate_id": "dinner@2026-10-02T11:00:00Z",
-      "question_id": "q_environment",
-      "state": "known",
-      "fit": 0.5,
-      "reason_code": "NO_PREFERENCE",
-      "source": "deterministic"
-    }
-  ],
   "scoring_model": {
     "questions": [
       {
