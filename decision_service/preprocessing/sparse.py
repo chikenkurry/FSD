@@ -14,16 +14,20 @@ from collections import Counter
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from decision_service.contract import ContractError, group_objective
+
 from .common import InputError, require_in, require_list, require_object, require_text
+from .generic_mapping import fact_registry, local_question, model_question_role, resolve_mapping
+from .generic_preparation import MEMBER_ISSUES, compile_preparation
+from .generic_answers import _duration, process_answers
 from .semantics import (
-    SemanticProvider, SemanticServiceError, validate_sparse_answer_assessment,
-    validate_sparse_dates, validate_sparse_option_suggestions, validate_sparse_question_assessment,
+    SemanticProvider, SemanticServiceError,
+    validate_sparse_option_suggestions, validate_sparse_question_assessment,
 )
 
 
-VERSION = "sparse-v2"
-NO_PREFERENCE = {"anything", "fine with anything", "no preference", "none", "either"}
-DATE_RANGE_RE = re.compile(r"\s*(\d{4}-\d{2}-\d{2})(?:\s*(?:to|through|until|–|—| - )\s*(\d{4}-\d{2}-\d{2}))?\s*", re.I)
+SCHEMA_VERSION = "sparse-v3"
+VERSION = "sparse-v4"
 
 
 def _issue(code: str, path: str, message: str) -> dict:
@@ -62,7 +66,7 @@ def _local_question(label: str) -> dict | None:
         return {"role": "hard", "criterion": "availability", "relevance": 0.0, "reason": "Availability may constrain the choice"}
     if any(term in text for term in ("budget", "maximum spend", "max spend", "how much can you spend")):
         return {"role": "hard", "criterion": "max_cost", "relevance": 0.0, "reason": "A maximum spend is a feasibility limit"}
-    if any(term in text for term in ("how many days", "how long", "duration", "length")):
+    if "days" in text and any(term in text for term in ("how many", "how long", "duration", "length")):
         return {"role": "soft", "criterion": "duration_days", "relevance": 0.5, "reason": "Duration may affect the choice"}
     if "prefer" in text or "what do you enjoy" in text:
         return {"role": "soft", "criterion": "preferences", "relevance": 0.5, "reason": "The question asks for preferences"}
@@ -72,15 +76,20 @@ def _local_question(label: str) -> dict | None:
 def _fact(raw: object, path: str) -> dict:
     item = require_object(raw, path)
     criterion = require_text(item.get("criterion"), f"{path}.criterion")
-    status = require_in(item.get("status"), {"confirmed", "estimated"}, f"{path}.status")
+    status = require_in(item.get("status"), {"confirmed", "estimated", "unknown"}, f"{path}.status")
     source = require_text(item.get("source"), f"{path}.source")
     value = item.get("value")
     values = value if isinstance(value, list) else [value]
-    if not values or any(v is None or isinstance(v, (dict, list)) or
+    if status == "unknown":
+        if value is not None or item.get("value_type") is None:
+            raise InputError("INVALID_FACT", path, "Unknown facts need a null value and an explicit value_type")
+    elif not values or any(v is None or isinstance(v, (dict, list)) or
                          (isinstance(v, str) and not v.strip()) or
                          (isinstance(v, float) and not math.isfinite(v)) for v in values):
         raise InputError("INVALID_FACT", f"{path}.value", "Provide a factual value or nonempty list of values")
     fact = {"criterion": criterion, "value": value, "status": status, "source": source}
+    if "value_type" in item:
+        fact["value_type"] = require_text(item["value_type"], f"{path}.value_type")
     if "unit" in item:
         fact["unit"] = require_text(item["unit"], f"{path}.unit")
     if "context" in item:
@@ -120,89 +129,18 @@ def _check_option_cost_facts(candidates: list[dict], currency: str | None, cost_
         for fact in candidate["facts"]:
             if fact["criterion"] != "max_cost":
                 continue
+            if currency is not None and fact.get("unit") != currency:
+                raise InputError("CURRENCY_MISMATCH", "planning.options.facts", "Cost fact currency differs from the budget currency")
+            if cost_scope is not None and fact.get("context", {}).get("scope") != cost_scope:
+                raise InputError("INVALID_COST_SCOPE", "planning.options.facts", "Cost fact scope differs from the budget scope")
+            if fact["status"] == "unknown":
+                continue
             try:
                 amount = Decimal(str(fact["value"]))
             except (InvalidOperation, TypeError, ValueError) as exc:
                 raise InputError("INVALID_COST", "planning.options.facts", "Cost fact needs a numeric amount") from exc
             if not amount.is_finite() or amount < 0:
                 raise InputError("INVALID_COST", "planning.options.facts", "Cost fact needs a nonnegative amount")
-            if currency is not None and fact.get("unit") != currency:
-                raise InputError("CURRENCY_MISMATCH", "planning.options.facts", "Cost fact currency differs from the budget currency")
-            if cost_scope is not None and fact.get("context", {}).get("scope") != cost_scope:
-                raise InputError("INVALID_COST_SCOPE", "planning.options.facts", "Cost fact scope differs from the budget scope")
-
-
-def _answer_text(value: object, question: dict, path: str) -> str:
-    if isinstance(value, dict):
-        choice_id = require_text(value.get("choice_id"), f"{path}.choice_id")
-        if choice_id not in question["choices"]:
-            raise InputError("UNKNOWN_CHOICE", path, "Answer references a choice outside this question")
-        return question["choices"][choice_id]
-    text = require_text(value, path)
-    if question["choices"] and text not in question["choices"].values() and text not in question["choices"]:
-        raise InputError("UNKNOWN_CHOICE", path, "Answer must use a declared choice")
-    return question["choices"].get(text, text)
-
-
-def _dates(value: object, path: str) -> list[dict] | None:
-    if isinstance(value, list):
-        intervals = []
-        for i, raw in enumerate(value):
-            item = require_object(raw, f"{path}[{i}]")
-            start = require_text(item.get("start_date"), f"{path}[{i}].start_date")
-            end = require_text(item.get("end_date"), f"{path}[{i}].end_date")
-            try:
-                if date.fromisoformat(start) > date.fromisoformat(end):
-                    raise ValueError
-            except ValueError as exc:
-                raise InputError("INVALID_DATE", f"{path}[{i}]", "Expected ordered ISO dates") from exc
-            intervals.append({"start_date": start, "end_date": end})
-        return intervals or None
-    text = require_text(value, path)
-    match = DATE_RANGE_RE.fullmatch(text)
-    if match is None:
-        return None
-    try:
-        start = date.fromisoformat(match.group(1))
-        end = date.fromisoformat(match.group(2) or match.group(1))
-    except ValueError:
-        return None
-    if start > end:
-        return None
-    return [{"start_date": start.isoformat(), "end_date": end.isoformat()}]
-
-
-def _budget(text: str, currency: str | None) -> dict | None:
-    normalized = text.casefold().strip()
-    if normalized in {"unlimited", "no limit", "no budget limit"}:
-        return {"kind": "unlimited"}
-    match = re.fullmatch(r"(?:(?P<prefix>[a-z]{3}|[$£€])\s*)?(?P<amount>[0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?P<suffix>[a-z]{3})?", normalized)
-    if not match:
-        return None
-    explicit = match.group("suffix") or match.group("prefix")
-    if explicit and explicit not in {"$", "£", "€"} and currency and explicit.upper() != currency:
-        return None
-    if explicit in {"£", "€"} and currency and {"£": "GBP", "€": "EUR"}[explicit] != currency:
-        return None
-    if explicit == "$" and currency and currency not in {"SGD", "USD", "CAD", "AUD", "NZD", "HKD"}:
-        return None
-    try:
-        amount = Decimal(match.group("amount").replace(",", ""))
-    except InvalidOperation:
-        return None
-    if amount < 0:
-        return None
-    return {"kind": "limited", "amount": str(amount), "currency": currency}
-
-
-def _duration(text: str) -> dict | None:
-    normalized = text.casefold().strip()
-    if normalized in NO_PREFERENCE:
-        return {"kind": "indifferent"}
-    match = re.fullmatch(r"(\d+)\s*(?:days?|nights?)?", normalized)
-    if not match or not 1 <= int(match.group(1)) <= 365:
-        return None
-    return {"kind": "preferred", "days": int(match.group(1))}
 
 
 def _scenario_requests(candidates: list[dict], roster: list[str], constraints: list[dict], preferences: list[dict], questions: list[dict]) -> list[dict]:
@@ -282,11 +220,14 @@ def _scenario_costs(raw: object, currency: str | None, cost_scope: str | None, o
 def preprocess_sparse(
     planning_snapshot: dict, response_snapshot: dict, semantic_provider: SemanticProvider | None = None,
     semantic_evidence: dict | None = None,
+    policy: dict | None = None,
 ) -> dict:
     issues: list[dict] = []
     try:
         planning = require_object(planning_snapshot, "planning")
         responses = require_object(response_snapshot, "responses")
+        policy = require_object({} if policy is None else policy, "policy")
+        objective = group_objective(policy.get("group_objective"))
         round_id = require_text(planning.get("round_id"), "planning.round_id")
         revision = require_text(planning.get("option_revision"), "planning.option_revision")
         option_snapshot_id = require_text(planning.get("option_snapshot_id"), "planning.option_snapshot_id")
@@ -307,6 +248,8 @@ def preprocess_sparse(
             context["cost_scope"] = require_text(context["cost_scope"], "planning.cost_scope")
         candidates = _options(planning.get("options"))
         _check_option_cost_facts(candidates, currency, context["cost_scope"])
+        registry = fact_registry(candidates)
+        context["criteria"] = list(registry.values())
         context["options"] = [{"option_id": c["option_id"], "title": c["title"], "description": c["description"],
                                "facts": c["facts"]} for c in candidates]
         roster = [require_text(x, "planning.roster") for x in require_list(planning.get("roster"), "planning.roster")]
@@ -337,30 +280,39 @@ def preprocess_sparse(
             ids.add(qid)
             label = require_text(item.get("label", item.get("text")), f"{path}.label")
             choices = _choices(item.get("choices"), f"{path}.choices")
+            local = local_question(label, registry) or _local_question(label)
+            # The general preference fallback cannot identify a specific attribute.
+            # Let a provider resolve that meaning when one is available.
+            trusted_local = local if local and local["criterion"] != "preferences" else None
             if "role" in item or "criterion" in item:
                 explicit = {"role": item.get("role"), "criterion": item.get("criterion"),
                             "relevance": item.get("relevance", 0.0),
                             "reason": item.get("reason", "Defined by the leader")}
                 inferred = validate_sparse_question_assessment(explicit, path)
                 source = "leader"
+            elif trusted_local is not None:
+                inferred = trusted_local
+                source = "rules"
             elif qid in assessments:
-                inferred = validate_sparse_question_assessment(assessments[qid], f"semantic.questions.{qid}")
+                inferred = validate_sparse_question_assessment(assessments[qid], f"semantic.questions.{qid}", model_derived=True)
+                inferred = model_question_role(inferred, label)
                 source = "model"
             elif semantic_provider is not None:
                 if not hasattr(semantic_provider, "classify_question"):
                     raise SemanticServiceError("Sparse questions require classify_question on the semantic provider")
-                assessments[qid] = semantic_provider.classify_question({"label": label, "choices": choices}, context)
-                inferred = validate_sparse_question_assessment(assessments[qid], f"semantic.questions.{qid}")
+                assessments[qid] = semantic_provider.classify_question({"question_id": qid, "label": label, "choices": choices}, context)
+                inferred = validate_sparse_question_assessment(assessments[qid], f"semantic.questions.{qid}", model_derived=True)
+                inferred = model_question_role(inferred, label)
                 source = "model"
             else:
-                inferred = _local_question(label)
+                inferred = local
                 source = "rules"
                 if inferred is None:
                     inferred = {"role": "unclassified", "criterion": "unclassified", "relevance": 0.0, "reason": "Question role needs review"}
                     issues.append(_issue("UNKNOWN_QUESTION_ROLE", path, "Question needs classification"))
                     source = "unclassified"
             weight = item.get("leader_weight")
-            if weight is not None and (isinstance(weight, bool) or not isinstance(weight, (int, float)) or not math.isfinite(weight) or weight < 0):
+            if weight is not None and (type(weight) not in {int, float} or not 0 <= weight <= 1e308):
                 raise InputError("INVALID_WEIGHT", f"{path}.leader_weight", "Weight must be finite and nonnegative")
             if weight is not None and inferred["role"] != "soft":
                 raise InputError("HARD_WEIGHT_UNSUPPORTED", path, "Only soft questions can carry a weight")
@@ -370,6 +322,12 @@ def preprocess_sparse(
                               "leader_weight": weight, "required": item.get("required", inferred["role"] != "informational")})
             if type(questions[-1]["required"]) is not bool:
                 raise InputError("INVALID_TYPE", f"{path}.required", "Expected true or false")
+            question = questions[-1]
+            question["answer_format"] = require_in(item.get("answer_format", "choice" if choices else "text"),
+                                                  {"text", "choice", "multi_choice", "number", "boolean", "date_intervals"}, f"{path}.answer_format")
+            question["mapping"] = resolve_mapping(question, registry, candidates, context, item.get("mapping"))
+            if question["mapping"]["status"] == "unresolved" and question["role"] != "unclassified":
+                issues.append(_issue("UNRESOLVED_QUESTION_MAPPING", path, "Define a supported comparison or numeric scale for this question"))
         soft = [q for q in questions if q["role"] == "soft"]
         topic_counts = Counter(q["criterion"] for q in soft if q["leader_weight"] is None)
         leader_scale = max([1.0] + [float(q["leader_weight"]) for q in soft if q["leader_weight"] is not None])
@@ -383,110 +341,24 @@ def preprocess_sparse(
             q["weight_source"] = ("leader" if q["leader_weight"] is not None else q["inference_source"]) if q["role"] == "soft" else None
             del q["leader_weight"]
 
-        members = {}
-        for i, raw in enumerate(require_list(responses.get("participants"), "responses.participants")):
-            member = require_object(raw, f"responses.participants[{i}]")
-            member_id = require_text(member.get("participant_id"), f"responses.participants[{i}].participant_id")
-            if member_id in members:
-                raise InputError("DUPLICATE_ID", "responses.participants", "Duplicate participant ID")
-            members[member_id] = member
-        if set(members) != set(roster):
-            issues.append(_issue("ROSTER_MISMATCH", "responses.participants", "Response roster differs from approved roster"))
-        constraints, preferences, informational, unclassified_answers = [], [], [], []
-        for member_id in roster:
-            member = members.get(member_id)
-            if member is None:
-                continue
-            if member.get("response_status") != "complete":
-                issues.append(_issue("INCOMPLETE_RESPONSE", f"responses.participants.{member_id}", "Response is not complete"))
-            answers = {}
-            for ai, raw in enumerate(require_list(member.get("answers"), f"responses.participants.{member_id}.answers")):
-                answer = require_object(raw, f"responses.participants.{member_id}.answers[{ai}]")
-                qid = require_text(answer.get("question_id"), "responses.answers.question_id")
-                if qid not in ids or qid in answers:
-                    raise InputError("INVALID_ANSWER", f"responses.participants.{member_id}.answers[{ai}]", "Unknown or repeated question ID")
-                answers[qid] = answer.get("value")
-            for q in questions:
-                qid = q["question_id"]
-                path = f"responses.participants.{member_id}.answers.{qid}"
-                if qid not in answers:
-                    if q["required"]:
-                        issues.append(_issue("MISSING_ANSWER", path, "Required question was not answered"))
-                    continue
-                value = answers[qid]
-                criterion = q["criterion"]
-                if criterion == "availability" and q["role"] == "hard":
-                    parsed = _dates(value, path)
-                    if parsed is None and isinstance(value, str):
-                        saved_dates = date_assessments.get(member_id, {}).get(qid) if isinstance(date_assessments.get(member_id, {}), dict) else None
-                        if saved_dates is None and semantic_provider is not None and hasattr(semantic_provider, "extract_sparse_dates"):
-                            saved_dates = semantic_provider.extract_sparse_dates(q, value, context)
-                            date_assessments.setdefault(member_id, {})[qid] = saved_dates
-                        if saved_dates is not None:
-                            date_result = validate_sparse_dates(saved_dates, value, f"semantic.dates.{member_id}.{qid}")
-                            if date_result["status"] == "resolved":
-                                parsed = date_result["intervals"]
-                    if parsed is None:
-                        issues.append(_issue("AMBIGUOUS_AVAILABILITY", path, "Provide exact dates or date intervals"))
-                    else:
-                        constraints.append({"participant_id": member_id, "question_id": qid, "criterion": criterion, "value": parsed})
-                    continue
-                answer_text = _answer_text(value, q, path)
-                if criterion == "max_cost" and q["role"] == "hard":
-                    parsed = _budget(answer_text, currency)
-                    if parsed is None:
-                        issues.append(_issue("AMBIGUOUS_BUDGET", path, "Provide a numeric budget or unlimited"))
-                    else:
-                        constraints.append({"participant_id": member_id, "question_id": qid, "criterion": criterion, "value": parsed})
-                    continue
-                if criterion == "duration_days" and q["role"] == "soft":
-                    parsed = _duration(answer_text)
-                    if parsed is None:
-                        issues.append(_issue("AMBIGUOUS_DURATION", path, "Provide a number of days or no preference"))
-                    else:
-                        preferences.append({"participant_id": member_id, "question_id": qid, "criterion": criterion, "value": parsed, "evidence": answer_text})
-                    continue
-                if q["role"] == "informational":
-                    informational.append({"participant_id": member_id, "question_id": qid, "value": answer_text})
-                    continue
-                if q["role"] == "unclassified":
-                    unclassified_answers.append({"participant_id": member_id, "question_id": qid, "value": answer_text})
-                    continue
-                if answer_text.casefold().strip() in NO_PREFERENCE and q["role"] == "soft":
-                    preferences.append({"participant_id": member_id, "question_id": qid, "criterion": criterion, "value": {"kind": "indifferent"}, "evidence": answer_text})
-                    continue
-                saved = extracted.get(member_id, {}).get(qid) if isinstance(extracted.get(member_id, {}), dict) else None
-                if saved is None and semantic_provider is not None:
-                    if not hasattr(semantic_provider, "extract_sparse_answer"):
-                        raise SemanticServiceError("Sparse answers require extract_sparse_answer on the semantic provider")
-                    saved = semantic_provider.extract_sparse_answer(q, answer_text, context)
-                    extracted.setdefault(member_id, {})[qid] = saved
-                if saved is None:
-                    issues.append(_issue("SEMANTIC_PROVIDER_REQUIRED", path, "Open answer needs semantic extraction"))
-                    continue
-                result = validate_sparse_answer_assessment(saved, answer_text, f"semantic.answers.{member_id}.{qid}", criterion)
-                if result["status"] == "unresolved" or not result["interpretations"]:
-                    issues.append(_issue("AMBIGUOUS_ANSWER", path, "Open answer needs clarification"))
-                    continue
-                for interpretation in result["interpretations"]:
-                    entry = {"participant_id": member_id, "question_id": qid, **interpretation}
-                    if interpretation["must_have"] or q["role"] == "hard":
-                        entry["status"] = "needs_confirmation"
-                        issues.append(_issue("CONFIRM_REQUIREMENT", path, "Confirm whether this is a hard requirement"))
-                        constraints.append(entry)
-                    else:
-                        preferences.append(entry)
+        constraints, preferences, informational, unclassified_answers, members = process_answers(
+            responses, roster, questions, candidates, context, semantic_provider,
+            extracted, date_assessments, response_snapshot_id, issues,
+        )
 
         has_schedule_questions = {"availability", "duration_days"} <= {q["criterion"] for q in questions}
         scenario_requests = _scenario_requests(candidates, roster, constraints, preferences, questions) if has_schedule_questions else []
         scenario_criteria = {"availability", "duration_days", "max_cost"} if has_schedule_questions else set()
-        criteria = sorted({q["criterion"] for q in questions if q["role"] in {"hard", "soft"} and q["criterion"] not in scenario_criteria} |
-                          {p["criterion"] for p in preferences if p["criterion"] not in scenario_criteria})
+        criteria = sorted({q["criterion"] for q in questions
+                           if (q["role"] == "hard" or q["role"] == "soft" and q["weight"])
+                           and q["criterion"] not in scenario_criteria} |
+                          {c["criterion"] for c in constraints if c["criterion"] not in scenario_criteria})
         for candidate in candidates:
-            known = {f["criterion"] for f in candidate["facts"]}
+            known = {f["criterion"] for f in candidate["facts"] if f["status"] != "unknown"}
             candidate["missing_criteria"] = [c for c in criteria if c not in known]
             option_id = candidate["option_id"]
-            requested = sorted({q["criterion"] for q in questions if q["role"] == "soft" and q["criterion"] not in scenario_criteria})
+            requested = sorted({q["criterion"] for q in questions if q["role"] == "soft" and q["weight"]
+                                and q["criterion"] in candidate["missing_criteria"]})
             if option_id not in suggestions and requested and semantic_provider is not None and hasattr(semantic_provider, "suggest_option_tags"):
                 suggestions[option_id] = semantic_provider.suggest_option_tags(
                     {"option_id": option_id, "title": candidate["title"], "description": candidate["description"]}, requested, context,
@@ -527,20 +399,26 @@ def preprocess_sparse(
                                            "question_assessments": assessments, "answer_assessments": extracted,
                                            "option_suggestions": suggestions, "date_assessments": date_assessments}
         artifact_id = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
-        handoff = {"context": {"schema_version": VERSION, "round_id": round_id, "option_revision": revision,
+        handoff = {"context": {"schema_version": SCHEMA_VERSION, "round_id": round_id, "option_revision": revision,
+                                "processing_version": VERSION,
+                                "policy_version": require_text(policy.get("policy_version", "generic-question-relevance-v1"), "policy.policy_version"),
                                 "option_snapshot_id": option_snapshot_id, "response_snapshot_id": response_snapshot_id,
                                 "decision_question": decision, "currency": currency, "cost_scope": context["cost_scope"],
                                 "details": context["details"],
                                 "semantic_artifact_id": artifact_id},
                    "candidates": candidates, "scenario_requests": scenario_requests,
-                   "participants": [{"participant_id": x, "response_status": members.get(x, {}).get("response_status", "incomplete")} for x in roster],
+                   "participants": [{"participant_id": x, "response_status": members.get(x, {}).get("response_status", "incomplete"),
+                                     "is_required_for_decision": True} for x in roster],
                    "constraints": constraints, "preferences": preferences, "informational_answers": informational,
                    "unclassified_answers": unclassified_answers,
-                   "scoring_model": {"questions": questions, "missing_fact_policy": "unresolved"}}
-        member_codes = {"ROSTER_MISMATCH", "INCOMPLETE_RESPONSE", "MISSING_ANSWER", "AMBIGUOUS_AVAILABILITY", "AMBIGUOUS_BUDGET", "AMBIGUOUS_DURATION", "AMBIGUOUS_ANSWER", "CONFIRM_REQUIREMENT"}
-        status = "needs_clarification" if any(i["code"] in member_codes for i in issues) else "provisional" if issues else "ready"
-        return {"status": status, "issues": issues, "algorithm_input": handoff, "semantic_evidence": frozen}
+                   "scoring_model": {"questions": questions, "missing_fact_policy": "unresolved", "group_objective": objective}}
+        handoff = compile_preparation(handoff, registry, issues)
+        issues.append(_issue("EXECUTION_ADAPTER_REQUIRED", "preparation", "Sparse meanings need a supported execution adapter before ranking"))
+        status = "needs_clarification" if any(i["code"] in MEMBER_ISSUES for i in issues) else "provisional"
+        return {"status": status, "issues": issues, "algorithm_input": None, "preparation": handoff, "semantic_evidence": frozen}
     except InputError as exc:
         return {"status": "invalid_input", "issues": [exc.as_issue()], "algorithm_input": None}
+    except ContractError as exc:
+        return {"status": "invalid_input", "issues": [_issue("INVALID_POLICY", "policy", str(exc))], "algorithm_input": None}
     except SemanticServiceError as exc:
         return {"status": "upstream_unavailable", "issues": [_issue("SEMANTIC_SERVICE_UNAVAILABLE", "semantic_provider", str(exc))], "algorithm_input": None}

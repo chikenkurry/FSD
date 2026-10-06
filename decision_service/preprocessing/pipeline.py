@@ -6,6 +6,11 @@ import hashlib
 import json
 from typing import Any
 
+from decision_service.contract import (
+    ContractError, MISSING_VALUE_POLICY, SCHEMA_VERSION,
+    group_objective, ranking_order, validate_handoff,
+)
+
 from .candidates import generate_candidates
 from .common import (
     InputError,
@@ -18,6 +23,10 @@ from .common import (
     utc_string,
 )
 from .extractors import ATTRIBUTE_PHRASES, extract_budget, extract_preference, extract_requirement
+from .normalization import (
+    execution_candidates, normalize_semantic, preference_metadata,
+    provenance, requirement_metadata, semantic_binding,
+)
 from .semantics import (
     SemanticProvider,
     SemanticServiceError,
@@ -35,7 +44,7 @@ QUESTION_KINDS = {
     "semantic_preference", "semantic_requirement",
 }
 REQUIRED_STATUSES = {"complete", "incomplete", "stale", "needs_clarification"}
-PROCESSING_VERSION = "semantic-v4"
+PROCESSING_VERSION = "semantic-v5"
 WEIGHT_POLICY_VERSION = "goal-option-relevance-v2"
 
 
@@ -127,6 +136,7 @@ def _questions(raw_questions: Any) -> list[dict]:
             "leader_weight": q.get("leader_weight"),
             "answer_format": answer_format,
             "choices": choices,
+            "semantic_binding": semantic_binding(q.get("semantic_binding"), f"{path}.semantic_binding"),
         })
     return questions
 
@@ -160,6 +170,7 @@ def _process_member(
         "budget": {"kind": "missing"},
         "required_attributes": [],
         "candidate_flags": [],
+        "answer_sources": [],
     }
     preferences = []
     semantic_answers: dict[str, str] = {}
@@ -184,7 +195,7 @@ def _process_member(
             constraint["candidate_flags"].append({
                 "candidate_id": candidate["candidate_id"],
                 "flag": flagged_activities[candidate["activity_id"]][0],
-                "source_question_id": flagged_activities[candidate["activity_id"]][1],
+                **provenance(answers[flagged_activities[candidate["activity_id"]][1]]),
             })
 
     for q in questions:
@@ -197,6 +208,8 @@ def _process_member(
                 issues.append(_issue("MISSING_ANSWER", path, "Required question was not answered"))
             continue
         value = answer.get("value")
+        if kind not in SOFT_KINDS and not kind.startswith("semantic_"):
+            constraint["answer_sources"].append(provenance(answer))
         try:
             if kind == "availability":
                 constraint["availability"]["available_intervals"] = _intervals(value, path)
@@ -207,7 +220,7 @@ def _process_member(
             elif kind == "open_requirement":
                 extracted = extract_requirement(require_text(value, path), set(q["supported_attributes"]))
                 for requirement in extracted:
-                    requirement["source_question_id"] = question_id
+                    requirement = requirement_metadata(requirement, member_id, answer)
                     existing = next((r for r in constraint["required_attributes"] if r["attribute_id"] == requirement["attribute_id"]), None)
                     if existing and existing["required_value"] != requirement["required_value"]:
                         issues.append(_issue("CONFLICTING_ANSWER", path, "Requirements conflict"))
@@ -215,7 +228,7 @@ def _process_member(
                         constraint["required_attributes"].append(requirement)
             elif kind == "open_preference":
                 for extracted in extract_preference(require_text(value, path), set(q["supported_attributes"])):
-                    preferences.append({"participant_id": member_id, "source_question_id": question_id, **extracted})
+                    preferences.append(preference_metadata({"participant_id": member_id, **extracted}, answer))
             elif kind == "activity_rating":
                 ratings = require_object(value, path)
                 unanswered = activity_ids - set(ratings) - set(flagged_activities)
@@ -226,10 +239,15 @@ def _process_member(
                         raise InputError("UNKNOWN_ACTIVITY", path, "Rating references an unknown activity")
                     if activity_id in flagged_activities:
                         issues.append(_issue("CONFLICTING_ANSWER", path, "Activity has both a rating and a flag"))
-                    rating = 2 if raw_rating == "no_preference" else require_int(raw_rating, f"{path}.{activity_id}")
+                    if raw_rating == "no_preference":
+                        preferences.append(preference_metadata({"participant_id": member_id, "activity_id": activity_id,
+                                                               "kind": "indifferent", "utility_rule": "neutral_v1"}, answer))
+                        continue
+                    rating = require_int(raw_rating, f"{path}.{activity_id}")
                     if rating > 4:
                         raise InputError("INVALID_RATING", f"{path}.{activity_id}", "Rating must be 0 to 4")
-                    preferences.append({"participant_id": member_id, "activity_id": activity_id, "rating": rating, "kind": "rating", "source_question_id": question_id})
+                    preferences.append(preference_metadata({"participant_id": member_id, "activity_id": activity_id,
+                                                           "rating": rating, "kind": "rating"}, answer))
             elif kind == "candidate_flag":
                 pass  # Flags were processed before ratings, regardless of question order.
             elif kind in {"semantic_preference", "semantic_requirement"}:
@@ -263,12 +281,13 @@ def preprocess(
     Persist returned semantic_evidence and reuse it on retries.
     """
     if isinstance(planning_snapshot, dict) and "options" in planning_snapshot and "activities" not in planning_snapshot:
-        return preprocess_sparse(planning_snapshot, response_snapshot, semantic_provider, semantic_evidence)
+        return preprocess_sparse(planning_snapshot, response_snapshot, semantic_provider, semantic_evidence, policy=policy)
     issues: list[dict] = []
     try:
         planning = require_object(planning_snapshot, "planning")
         responses = require_object(response_snapshot, "responses")
         policy = require_object({} if policy is None else policy, "policy")
+        objective = group_objective(policy.get("group_objective"))
         round_id = require_text(planning.get("round_id"), "planning.round_id")
         option_revision = require_text(planning.get("option_revision"), "planning.option_revision")
         option_snapshot_id = require_text(planning.get("option_snapshot_id"), "planning.option_snapshot_id")
@@ -388,6 +407,16 @@ def preprocess(
                 interpretation = validate_answer_assessment(response, answer_text, f"semantic.answers.{member_id}.{question['question_id']}")
                 if interpretation["status"] == "unresolved":
                     issues.append(_issue("AMBIGUOUS_ANSWER", f"responses.participants.{member_id}.answers.{question['question_id']}", "Semantic answer needs clarification"))
+                else:
+                    answer = next(a for a in response_by_id[member_id]["answers"] if a["question_id"] == question["question_id"])
+                    try:
+                        preference, requirement = normalize_semantic(question, interpretation, member_id, answer)
+                        if preference is not None:
+                            preferences.append(preference)
+                        if requirement is not None:
+                            next(c for c in constraints if c["participant_id"] == member_id)["required_attributes"].append(requirement)
+                    except InputError as exc:
+                        issues.append(exc.as_issue())
                 interpretations.append({"participant_id": member_id, "question_id": question["question_id"], "kind": question["kind"], **interpretation})
 
         if semantic_evidence is not None:
@@ -398,9 +427,6 @@ def preprocess(
                 for member_id in roster:
                     if set(saved_answers[member_id]) != expected_question_ids:
                         raise InputError("INVALID_SEMANTIC_EVIDENCE", f"semantic_evidence.answer_assessments.{member_id}", "Evidence question IDs differ from this run")
-
-        if issues:
-            return {"status": "needs_clarification", "issues": issues, "algorithm_input": None}
 
         frozen_evidence = None
         artifact_id = None
@@ -416,46 +442,54 @@ def preprocess(
             canonical = json.dumps(frozen_evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
             artifact_id = hashlib.sha256(canonical).hexdigest()
 
+        if issues:
+            return {"status": "needs_clarification", "issues": issues, "algorithm_input": None,
+                    "semantic_evidence": frozen_evidence, "semantic_interpretations": interpretations}
+
         scoring_questions = resolve_weights(questions, candidates)
         for scoring_question in scoring_questions:
             original = next(q for q in questions if q["question_id"] == scoring_question["question_id"])
+            binding = original["semantic_binding"]
+            scoring_question["criteria"] = [binding["attribute_id"]] if binding else original["supported_attributes"]
             if "semantic_criterion" in original:
                 scoring_question["criterion"] = original["semantic_criterion"]
                 scoring_question["relevance_reason"] = original.get("semantic_relevance_reason")
+        prepared_candidates, criteria = execution_candidates(candidates, questions)
         algorithm_input = {
             "context": {
+                "schema_version": SCHEMA_VERSION,
+                "activity_ids": sorted(activity_ids),
                 "round_id": round_id,
                 "option_snapshot_id": option_snapshot_id,
                 "response_snapshot_id": response_snapshot_id,
                 "timezone": timezone_name,
-                "algorithm_version": require_text(policy.get("algorithm_version", "baseline-v1"), "policy.algorithm_version"),
+                "algorithm_version": require_text(policy.get("algorithm_version", "baseline-v2"), "policy.algorithm_version"),
                 "policy_version": require_text(policy.get("policy_version", WEIGHT_POLICY_VERSION), "policy.policy_version"),
                 "processing_version": PROCESSING_VERSION,
                 "semantic_model": frozen_evidence.get("model") if frozen_evidence else None,
                 "semantic_artifact_id": artifact_id,
             },
-            "candidates": candidates,
+            "candidates": prepared_candidates,
+            "criteria": criteria,
             "participants": participants,
             "constraints": constraints,
             "preferences": preferences,
-            "semantic_interpretations": interpretations,
             "scoring_model": {
                 "questions": scoring_questions,
+                "group_objective": objective,
                 "ranking_policy": {
                     "feasibility_policy": "all_required_participants",
-                    "sort_order": ["highest_min_member_score", "highest_average_member_score", "lowest_estimated_cost", "earliest_start", "stable_candidate_id"],
+                    "sort_order": ranking_order(objective),
                 },
-                "missing_value_policy": {
-                    "missing_budget": "incomplete",
-                    "missing_rating": "incomplete",
-                    "missing_required_attribute": "unresolved",
-                    "missing_availability": "unavailable",
-                    "no_preference": "neutral",
-                },
+                "missing_value_policy": dict(MISSING_VALUE_POLICY),
             },
         }
-        return {"status": "ready", "issues": [], "algorithm_input": algorithm_input, "semantic_evidence": frozen_evidence}
+        validate_handoff(algorithm_input)
+        return {"status": "ready", "issues": [], "algorithm_input": algorithm_input,
+                "semantic_evidence": frozen_evidence, "semantic_interpretations": interpretations}
     except InputError as exc:
         return {"status": "invalid_input", "issues": [exc.as_issue()], "algorithm_input": None}
+    except ContractError as exc:
+        return {"status": "invalid_input", "issues": [_issue("INVALID_HANDOFF", "algorithm_input", str(exc))], "algorithm_input": None}
     except SemanticServiceError as exc:
         return {"status": "upstream_unavailable", "issues": [_issue("SEMANTIC_SERVICE_UNAVAILABLE", "semantic_provider", str(exc))], "algorithm_input": None}

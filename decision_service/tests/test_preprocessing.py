@@ -36,11 +36,19 @@ class PreprocessingTests(unittest.TestCase):
         self.assertEqual(weights, expected["question_weights"])
         constraints = {c["participant_id"]: c for c in value["constraints"]}
         self.assertEqual(constraints["p1"]["budget"]["max_cost_minor"], expected["p1_budget_minor"])
-        self.assertEqual(constraints["p1"]["required_attributes"], [{"attribute_id": expected["p1_required_attribute"], "required_value": "yes", "source_question_id": "q_requirement"}])
+        requirement = constraints["p1"]["required_attributes"][0]
+        self.assertEqual((requirement["attribute_id"], requirement["required_value"], requirement["confirmation_status"]),
+                         (expected["p1_required_attribute"], "yes", "confirmed"))
+        self.assertEqual(requirement["source_answer_id"], "p1-a4")
         self.assertEqual(constraints["p2"]["budget"]["kind"], expected["p2_budget_kind"])
-        self.assertIn({"participant_id": "p1", "source_question_id": "q_environment", "kind": "attribute_preference", "attribute_id": expected["p1_preferred_attribute"], "preferred_value": "yes", "utility_rule": "attribute_match_v1"}, value["preferences"])
-        self.assertIn({"participant_id": "p2", "source_question_id": "q_environment", "kind": expected["p2_environment_kind"], "utility_rule": "neutral_v1"}, value["preferences"])
-        self.assertIn({"participant_id": "p2", "activity_id": "dinner", "rating": expected["p2_dinner_rating"], "kind": "rating", "source_question_id": "q_rating"}, value["preferences"])
+        preferences = {(p["participant_id"], p["source_question_id"], p.get("activity_id")): p for p in value["preferences"]}
+        indoor = preferences[("p1", "q_environment", None)]
+        self.assertEqual((indoor["attribute_id"], indoor["preferred_value"], indoor["utility_rule"]),
+                         (expected["p1_preferred_attribute"], "yes", "attribute_match_v1"))
+        neutral = preferences[("p2", "q_environment", None)]
+        self.assertEqual((neutral["kind"], neutral["status"]), (expected["p2_environment_kind"], "explicitly_indifferent"))
+        dinner = preferences[("p2", "q_rating", "dinner")]
+        self.assertEqual((dinner["kind"], dinner["scope"], dinner["utility_rule"]), ("indifferent", "activity", "neutral_v1"))
         self.assertEqual(value["context"]["option_snapshot_id"], "options-1")
         self.assertEqual(value["context"]["response_snapshot_id"], "responses-1")
         self.assertEqual(value, fixture("expected_algorithm_input.json"))
@@ -149,7 +157,8 @@ class PreprocessingTests(unittest.TestCase):
     def test_unknown_activity_fact_is_preserved(self) -> None:
         result = preprocess(self.planning, self.responses)
         dinner = next(c for c in result["algorithm_input"]["candidates"] if c["activity_id"] == "dinner")
-        self.assertIn({"attribute_id": "vegetarian_option", "value": "unknown"}, dinner["attributes"])
+        fact = next(f for f in dinner["facts"] if f["attribute_id"] == "vegetarian_option")
+        self.assertEqual((fact["value"], fact["status"]), (None, "unknown"))
         self.assertNotIn("question_matches", result["algorithm_input"])
 
     def test_exactly_overlapping_windows_do_not_duplicate_candidates(self) -> None:
@@ -206,7 +215,9 @@ class PreprocessingTests(unittest.TestCase):
         result = preprocess(self.planning, self.responses)
         self.assertEqual(result["status"], "ready")
         flags = result["algorithm_input"]["constraints"][0]["candidate_flags"]
-        self.assertEqual(flags, [{"candidate_id": "dinner@2026-10-02T11:00:00Z", "flag": "cannot_join", "source_question_id": "q_flag"}])
+        self.assertEqual(len(flags), 1)
+        self.assertEqual((flags[0]["candidate_id"], flags[0]["flag"], flags[0]["source_answer_id"]),
+                         ("dinner@2026-10-02T11:00:00Z", "cannot_join", "p1-flag"))
 
     def test_rating_and_flag_for_same_activity_conflict(self) -> None:
         self.planning["questions"].append({"question_id": "q_flag", "label": "Any activity you cannot join?", "kind": "candidate_flag", "required": False})
@@ -260,12 +271,15 @@ class PreprocessingTests(unittest.TestCase):
         self.planning["activities"][0]["description"] = "Ramp available; five minute walk from the station."
         self.planning["activities"][1]["description"] = "Stairs only; thirty minute drive."
         self.planning["questions"].extend([
-            {"question_id": "q_access", "label": "What access do you need?", "kind": "semantic_requirement", "answer_format": "text"},
-            {"question_id": "q_travel", "label": "How would you like to travel?", "kind": "semantic_preference", "answer_format": "choice", "choices": [{"choice_id": "walk", "label": "Walkable"}, {"choice_id": "drive", "label": "Driving is fine"}]},
+            {"question_id": "q_access", "label": "What access do you need?", "kind": "semantic_requirement", "answer_format": "text",
+             "semantic_binding": {"attribute_id": "step_free_access", "values": {"ramp_required": "yes"}}},
+            {"question_id": "q_travel", "label": "How would you like to travel?", "kind": "semantic_preference", "answer_format": "choice", "choices": [{"choice_id": "walk", "label": "Walkable"}, {"choice_id": "drive", "label": "Driving is fine"}],
+             "semantic_binding": {"attribute_id": "walkable", "values": {"walkable": "yes"}}},
         ])
         for member in self.responses["participants"]:
             member["answers"].extend([
-                {"answer_id": member["participant_id"] + "-access", "question_id": "q_access", "value": "I need a ramp"},
+                {"answer_id": member["participant_id"] + "-access", "question_id": "q_access", "value": "I need a ramp",
+                 "confirmed_requirement": {"attribute_id": "step_free_access", "required_value": "yes"}},
                 {"answer_id": member["participant_id"] + "-travel", "question_id": "q_travel", "value": {"choice_id": "walk"}},
             ])
         result = preprocess(self.planning, self.responses, semantic_provider=FakeProvider())
@@ -275,7 +289,8 @@ class PreprocessingTests(unittest.TestCase):
         questions = {q["question_id"]: q for q in value["scoring_model"]["questions"]}
         self.assertEqual(questions["q_travel"]["weight_source"], "model_relevance")
         self.assertEqual(questions["q_access"]["weight"], None)
-        self.assertIn({"participant_id": "p1", "question_id": "q_travel", "kind": "semantic_preference", "status": "resolved", "criterion": "travel convenience", "value": "walkable", "meaning": "Walkable", "evidence": "Walkable"}, value["semantic_interpretations"])
+        self.assertIn({"participant_id": "p1", "question_id": "q_travel", "kind": "semantic_preference", "status": "resolved", "criterion": "travel convenience", "value": "walkable", "meaning": "Walkable", "evidence": "Walkable"}, result["semantic_interpretations"])
+        self.assertNotIn("semantic_interpretations", value)
         self.assertNotIn("question_matches", value)
         replay = preprocess(self.planning, self.responses, semantic_evidence=result["semantic_evidence"])
         self.assertEqual(replay["status"], "ready")
@@ -307,8 +322,8 @@ class PreprocessingTests(unittest.TestCase):
         value = result["algorithm_input"]
         travel = next(q for q in value["scoring_model"]["questions"] if q["question_id"] == "q_travel")
         self.assertEqual((travel["weight"], travel["weight_source"], travel["relevance"]), (1.0, "model_relevance", 0.75))
-        self.assertEqual(len(value["semantic_interpretations"]), 4)
-        access = next(i for i in value["semantic_interpretations"] if i["participant_id"] == "p1" and i["question_id"] == "q_access")
+        self.assertEqual(len(result["semantic_interpretations"]), 4)
+        access = next(i for i in result["semantic_interpretations"] if i["participant_id"] == "p1" and i["question_id"] == "q_access")
         self.assertEqual((access["value"], access["evidence"]), ("ramp_required", "I need a ramp"))
         self.assertNotIn("question_matches", value)
 

@@ -1,7 +1,7 @@
 {
   "option_snapshot_id": "options-semantic-1",
   "response_snapshot_id": "responses-semantic-1",
-  "processing_version": "semantic-v4",
+  "processing_version": "semantic-v5",
   "model": "reviewed-fixture-v1",
   "question_assessments": {
     "q_travel": {

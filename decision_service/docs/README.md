@@ -1,8 +1,23 @@
 # Decision preprocessing prototype
 
+## Evaluation
+
+See [EVALUATION.md](EVALUATION.md) for the labelled cross-domain dataset,
+rules/model evaluation commands, per-dimension reports, and evidence replay.
+
+## Generic preprocessing flow
+
+See [FLOW.md](FLOW.md) for the input/output contract, each processing step,
+a product fixture that needs no model or manual mappings, confirmation examples,
+and the generic comparison declarations your teammate needs to implement.
+
+`preparation.status: ready` means preprocessing is complete. The outer status
+stays provisional until the generic algorithm supports the packet. Member
+interpretations and evidence remain private.
+
 ## Sparse decisions (generic option path)
 
-The `sparse-v2` path accepts option names and leader-written questions for any
+The `sparse-v3` path accepts option names and leader-written questions for any
 decision. Pass `options` instead of `activities` to select it. The grad-trip
 fixture is one example:
 
@@ -20,9 +35,11 @@ decision details, such as a departure city, belong in the optional `context`
 object. The preprocessing code does not require travel details.
 Questions accept `question_id`/`label` (or `id`/`text`) and optional `choices`
 as strings or `{choice_id, label}` objects. A leader may provide `role`,
-`criterion`, and soft `relevance` explicitly. With a configured model,
-`classify_question` assesses every question against the decision goal and
-option facts. Without a model, a small domain-independent rules fallback
+`criterion`, and soft `relevance` explicitly. Supported rules handle known
+criteria and basic budget/date/duration questions first. With a configured model,
+`classify_question` assesses unresolved questions against the decision goal and
+option facts. Application code generates typed comparisons; the model cannot
+declare their types, units, or scales. Without a model, a small domain-independent rules fallback
 recognizes common availability, budget, duration, and preference wording;
 unrecognized questions remain `unclassified` and provisional; their answers
 are preserved in `unclassified_answers` without a scoring weight. Answers use the existing
@@ -43,13 +60,16 @@ fakes; no live model is exercised by the test suite.
 The same question can receive different roles in different decisions. The
 tests classify “Favourite Subject” as informational for a country trip and as
 a soft criterion for choosing a subject-themed museum exhibit. A laptop
-purchase test reaches `ready` without any date or travel fields.
+purchase test produces preparation without any date or travel fields; it stays
+provisional until an execution adapter is available.
 
-`algorithm_input.context.schema_version` is `sparse-v2`. Its option-level
+`preparation.context.schema_version` is `sparse-v3`. Its option-level
 `candidates` have `facts`, `missing_criteria`, and `tag_suggestions`. A model
 can suggest plausible tags relevant to soft questions, but they remain hypotheses and
 do not satisfy a missing fact. A supplied fact uses
-`{criterion, value, status: "confirmed"|"estimated", source, unit?, context?}`.
+`{criterion, value, status: "confirmed"|"estimated"|"unknown", source, unit?, value_type?, context?}`.
+Unknown values are null and need an explicit type. Output facts use
+`attribute_id`, `value_type`, and `unit`.
 When a decision has both availability and duration questions, `scenario_requests`
 contains each option and feasible duration with the start-date range shared by
 the group. These are compact requests for scenario-specific evidence. An evidence collector can
@@ -64,21 +84,19 @@ can contain a list of tags, for example `personal_interests: ["hiking",
 and soft weights are in `scoring_model.questions`. Constraints, preferences,
 and informational answers are separate.
 
-The sparse path returns `provisional` while source-backed option or scenario
-facts are missing, costs are only estimated, or open answers still need
-extraction. It returns
-`needs_clarification` for unusable member answers, `invalid_input` for a bad
-snapshot, and `upstream_unavailable` for a failed configured model. Unlike the
-older activity path, a provisional/clarification result retains the partial
-`algorithm_input` for review. Only a `ready` sparse result can be treated as a
-complete comparison input. The existing activity/time matcher contract is
-**not** compatible with `sparse-v2`; a generic matcher must consume the new
-schema. The preprocessing path does not retrieve live external facts or
-rank options.
+The sparse path returns `provisional` until an execution adapter is available,
+even when all supplied facts are confirmed. Missing facts and estimated costs
+produce additional issues. It returns `needs_clarification` for unusable member
+answers, `invalid_input` for bad snapshots, and `upstream_unavailable` for a
+failed model. Partial information is retained under `preparation`;
+`algorithm_input` is null. The activity/time algorithm blocks `sparse-v3` input.
+Preprocessing does not retrieve live external facts or rank sparse options.
 
 The `semantic_evidence` returned after model extraction can be saved and
 replayed with `--semantic-evidence`; replay validates the snapshot IDs and
 processing version.
+The handoff schema remains `sparse-v3`; processing now uses `sparse-v4`, so
+artifacts created by the previous processing version must be regenerated.
 
 Run from the `FSD` repository root with Python 3.10 or later. The module uses only the Python standard library.
 
@@ -128,19 +146,24 @@ Call the pure function directly when integrating:
 
 ```python
 from decision_service.preprocessing import preprocess
+from decision_service.algorithm import run_decision
 
 result = preprocess(option_snapshot, response_snapshot)
 if result["status"] == "ready":
-    recommendation = evaluate(result["algorithm_input"])
+    recommendation = run_decision(result["algorithm_input"])
 else:
     show_issues(result["issues"])
 ```
 
-`ready` means required responses have usable interpretations. Activity facts can still be explicitly `unknown`; the matcher decides how that affects feasibility or scoring. `needs_clarification` means a member answer, roster, or semantic interpretation needs attention. `invalid_input` means the snapshots, question configuration, or supplied model assessment violate the contract. `upstream_unavailable` means an optional model call failed and may be retried. Only `ready` includes `algorithm_input`.
+`ready` means required responses have executable normalized answers and the
+shared `activity-v2` contract has passed validation. Activity facts can still be explicitly `unknown`; the matcher decides how that affects feasibility or scoring. `needs_clarification` means a member answer, roster, or semantic interpretation needs attention. `invalid_input` means the snapshots, question configuration, or supplied model assessment violate the contract. `upstream_unavailable` means an optional model call failed and may be retried. Only `ready` includes `algorithm_input`.
 
-The input shape and output fields are documented in [algorithm-input-shape.md](../algorithm-input-shape.md). The fixture covers structured availability/budget/ratings and open requirements/preferences. The local extractor recognizes explicit SGD amounts, unlimited budgets, and a controlled attribute vocabulary: `vegetarian_option`, `step_free_access`, `indoor`, and `quiet`. Unrecognized or ambiguous local answers produce issues.
+The input shape and output fields are documented in [algorithm-input-shape.md](algorithm-input-shape.md). The fixture covers structured availability/budget/ratings and open requirements/preferences. The local extractor recognizes explicit SGD amounts, unlimited budgets, and a controlled attribute vocabulary: `vegetarian_option`, `step_free_access`, `indoor`, and `quiet`. Unrecognized or ambiguous local answers produce issues.
 
-For an answer outside that vocabulary, use `kind: "semantic_preference"` or `"semantic_requirement"`. It accepts `answer_format: "text"` or `"choice"`; a choice question declares `choices: [{"choice_id": "...", "label": "..."}]`, and a member answer supplies `{"choice_id": "..."}`. Add factual option `description` and/or known `attributes` for the matcher to use later. To exercise semantic extraction locally, after pulling the model run:
+For an answer outside that vocabulary, use `kind: "semantic_preference"` or `"semantic_requirement"`. It accepts `answer_format: "text"` or `"choice"`; a choice question declares `choices: [{"choice_id": "...", "label": "..."}]`, and a member answer supplies `{"choice_id": "..."}`. Declare a `semantic_binding` from supported model value labels to typed attribute
+values, and supply sourced option `attributes`. Model-derived hard requirements
+need a matching `confirmed_requirement` in the response answer. See the
+[contract examples](algorithm-input-shape.md#semantic-question-mapping). To exercise semantic extraction locally, after pulling the model run:
 
 ```sh
 docker compose -f decision_service/compose.yaml run --rm preprocessing-demo \
@@ -167,9 +190,14 @@ python3 -m decision_service.preprocessing \
   --semantic-evidence decision_service/fixtures/preprocessing/semantic_evidence.json
 ```
 
-This example includes a structured travel choice and an open ramp requirement. The saved evidence lets it run without an API key.
+This example includes a mapped travel choice, sourced accessibility facts, and
+a confirmed ramp requirement. The saved evidence lets it run without an API key.
+The algorithm excludes the inaccessible venue and scores the walkability match.
 
-The handoff contains `candidates`, normalized `constraints` and `preferences`, `semantic_interpretations`, and `scoring_model.questions` with weights. It contains no pass/fail or fit per candidate. The teammate's matcher compares each member's data against candidates, checks hard requirements, computes soft fit, and ranks feasible outcomes.
+The execution handoff contains typed candidate `facts`, a criterion registry,
+normalized `constraints` and `preferences`, and explicit scoring/group policy.
+`semantic_interpretations` and frozen model evidence are private outputs beside
+the handoff; the algorithm does not interpret them. It contains no pass/fail or fit per candidate. The integrated algorithm compares each member's data against candidates, checks hard requirements, computes soft fit, and ranks feasible outcomes.
 
 Question weights apply to soft questions only. A supplied leader weight is used for that question. With a configured model, every missing soft weight uses question relevance assessed from the decision goal and option facts. Without a model, the deterministic baseline assigns rating relevance `1` and estimates attribute relevance from known option facts. The raw values are normalized to sum to 1. Multiple extracted preferences from one question share one question weight. Hard constraints have a `null` score weight. These calculated weights estimate decision usefulness; they do not infer personal importance. The source is recorded as `leader`, `model_relevance`, or `auto_relevance`.
 

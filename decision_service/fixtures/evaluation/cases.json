@@ -1,0 +1,2499 @@
+{
+  "schema_version": "preprocessing-eval-v1",
+  "dataset_version": "2",
+  "description": "Synthetic authored development examples. Labels need team review; not a held-out benchmark or live accuracy claim.",
+  "cases": [
+    {
+      "case_id": "purchase-typed-values",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "purchase-typed-values",
+        "option_revision": "1",
+        "option_snapshot_id": "purchase-typed-values-options",
+        "decision_question": "Which laptop should our team buy?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Laptop A",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1200",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "USD",
+                "context": {
+                  "scope": "per_device_total"
+                }
+              },
+              {
+                "criterion": "battery_life",
+                "value": 10,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "hours"
+              },
+              {
+                "criterion": "usage_tags",
+                "value": [
+                  "coding",
+                  "design"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Laptop B",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1600",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "USD",
+                "context": {
+                  "scope": "per_device_total"
+                }
+              },
+              {
+                "criterion": "battery_life",
+                "value": 14,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "hours"
+              },
+              {
+                "criterion": "usage_tags",
+                "value": [
+                  "coding",
+                  "presentations"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "budget",
+            "label": "Maximum budget?"
+          },
+          {
+            "question_id": "battery",
+            "label": "Battery life preference?"
+          },
+          {
+            "question_id": "usage",
+            "label": "Usage tags preference?",
+            "answer_format": "multi_choice",
+            "choices": [
+              "Coding",
+              "Design",
+              "Presentations"
+            ]
+          }
+        ],
+        "currency": "USD",
+        "cost_scope": "per_device_total"
+      },
+      "responses": {
+        "round_id": "purchase-typed-values",
+        "option_revision": "1",
+        "response_snapshot_id": "purchase-typed-values-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "purchase-typed-values-budget",
+                "question_id": "budget",
+                "value": 1500
+              },
+              {
+                "answer_id": "purchase-typed-values-battery",
+                "question_id": "battery",
+                "value": "12 hours"
+              },
+              {
+                "answer_id": "purchase-typed-values-usage",
+                "question_id": "usage",
+                "value": [
+                  "Coding",
+                  "Design"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "budget",
+              "attribute_id": "max_cost",
+              "required_value": "1500",
+              "constraint_rule": "maximum_v1",
+              "unit": "USD",
+              "confirmation_status": "confirmed"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "battery",
+              "attribute_id": "battery_life",
+              "preferred_value": 12,
+              "polarity": "prefer",
+              "unit": "hours",
+              "utility_rule": "numeric_target_v1"
+            },
+            {
+              "source_question_id": "usage",
+              "attribute_id": "usage_tags",
+              "preferred_value": [
+                "coding",
+                "design"
+              ],
+              "polarity": "prefer",
+              "unit": null,
+              "utility_rule": "tag_overlap_v1"
+            }
+          ]
+        },
+        {
+          "dimension": "classification",
+          "path": "/preparation/scoring_model/questions",
+          "op": "contains_rows",
+          "value": [
+            {
+              "question_id": "battery",
+              "role": "soft",
+              "criterion": "battery_life"
+            }
+          ]
+        },
+        {
+          "dimension": "classification",
+          "path": "/preparation/scoring_model/questions",
+          "op": "contains_rows",
+          "value": [
+            {
+              "question_id": "budget",
+              "role": "hard",
+              "criterion": "max_cost"
+            }
+          ]
+        },
+        {
+          "dimension": "mapping",
+          "path": "/preparation/scoring_model/questions/1/mapping/comparison_rule",
+          "op": "equals",
+          "value": "numeric_target_v1"
+        },
+        {
+          "dimension": "mapping",
+          "path": "/preparation/scoring_model/questions/1/mapping/parameters/scale",
+          "op": "equals",
+          "value": 4
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions",
+          "op": "normalized_weights",
+          "value": [
+            "battery",
+            "usage"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "trip-budget-shorthand",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "trip-budget-shorthand",
+        "option_revision": "1",
+        "option_snapshot_id": "trip-budget-shorthand-options",
+        "decision_question": "Which destination should we visit?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Destination A",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "900",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "SGD",
+                "context": {
+                  "scope": "per_person_total"
+                }
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Destination B",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1800",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "SGD",
+                "context": {
+                  "scope": "per_person_total"
+                }
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "budget",
+            "label": "Maximum budget?"
+          }
+        ],
+        "currency": "SGD",
+        "cost_scope": "per_person_total"
+      },
+      "responses": {
+        "round_id": "trip-budget-shorthand",
+        "option_revision": "1",
+        "response_snapshot_id": "trip-budget-shorthand-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "trip-budget-shorthand-budget",
+                "question_id": "budget",
+                "value": "SGD 2k"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "budget",
+              "attribute_id": "max_cost",
+              "required_value": "2000",
+              "constraint_rule": "maximum_v1",
+              "unit": "SGD",
+              "confirmation_status": "confirmed"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "event-explicit-access",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "event-explicit-access",
+        "option_revision": "1",
+        "option_snapshot_id": "event-explicit-access-options",
+        "decision_question": "Which venue should host our event?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Venue A",
+            "facts": [
+              {
+                "criterion": "step_free_access",
+                "value": true,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Venue B",
+            "facts": [
+              {
+                "criterion": "step_free_access",
+                "value": false,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "access",
+            "label": "Must have step free access?",
+            "answer_format": "boolean",
+            "role": "hard",
+            "criterion": "step_free_access"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "event-explicit-access",
+        "option_revision": "1",
+        "response_snapshot_id": "event-explicit-access-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "event-explicit-access-access",
+                "question_id": "access",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "access",
+              "attribute_id": "step_free_access",
+              "required_value": true,
+              "constraint_rule": "equals_v1",
+              "unit": null,
+              "confirmation_status": "confirmed"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "mapping",
+          "path": "/preparation/scoring_model/questions/0/constraint_rule",
+          "op": "equals",
+          "value": "equals_v1"
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/0/weight",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "project-choice-formats",
+      "domain": "project",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "project-choice-formats",
+        "option_revision": "1",
+        "option_snapshot_id": "project-choice-formats-options",
+        "decision_question": "Which capstone project should we select?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Project A",
+            "facts": [
+              {
+                "criterion": "subject",
+                "value": "biology",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              },
+              {
+                "criterion": "skills",
+                "value": [
+                  "coding",
+                  "research"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Project B",
+            "facts": [
+              {
+                "criterion": "subject",
+                "value": "physics",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              },
+              {
+                "criterion": "skills",
+                "value": [
+                  "design",
+                  "research"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "subject",
+            "label": "Subject preference?",
+            "answer_format": "choice",
+            "choices": [
+              {
+                "choice_id": "bio",
+                "label": "Biology"
+              },
+              {
+                "choice_id": "phys",
+                "label": "Physics"
+              }
+            ]
+          },
+          {
+            "question_id": "skills",
+            "label": "Skills preference?",
+            "answer_format": "multi_choice",
+            "choices": [
+              "Coding",
+              "Research",
+              "Design"
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "project-choice-formats",
+        "option_revision": "1",
+        "response_snapshot_id": "project-choice-formats-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "project-choice-formats-subject",
+                "question_id": "subject",
+                "value": {
+                  "choice_id": "bio"
+                }
+              },
+              {
+                "answer_id": "project-choice-formats-skills",
+                "question_id": "skills",
+                "value": [
+                  "Coding",
+                  "Research"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "subject",
+              "attribute_id": "subject",
+              "preferred_value": "biology",
+              "polarity": "prefer",
+              "value_type": "category",
+              "utility_rule": "attribute_match_v1"
+            },
+            {
+              "source_question_id": "skills",
+              "attribute_id": "skills",
+              "preferred_value": [
+                "coding",
+                "research"
+              ],
+              "polarity": "prefer",
+              "value_type": "tag_set",
+              "utility_rule": "tag_overlap_v1"
+            }
+          ]
+        },
+        {
+          "dimension": "classification",
+          "path": "/preparation/scoring_model/questions",
+          "op": "contains_rows",
+          "value": [
+            {
+              "question_id": "subject",
+              "role": "soft",
+              "criterion": "subject"
+            }
+          ]
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions",
+          "op": "normalized_weights",
+          "value": [
+            "subject",
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "trip-schedule-missing-cost",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "note": "Country names alone do not establish cost. ISO dates and offered days are exact; costs remain unknown.",
+      "planning": {
+        "round_id": "trip-schedule-missing-cost",
+        "option_revision": "1",
+        "option_snapshot_id": "trip-schedule-missing-cost-options",
+        "decision_question": "Where should we take a holiday?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          "Destination A",
+          "Destination B"
+        ],
+        "questions": [
+          {
+            "question_id": "dates",
+            "label": "When is your availability?"
+          },
+          {
+            "question_id": "days",
+            "label": "How many days?",
+            "choices": [
+              "5 days",
+              "7 days"
+            ]
+          },
+          {
+            "question_id": "budget",
+            "label": "Budget?"
+          }
+        ],
+        "currency": "SGD",
+        "cost_scope": "per_person_total"
+      },
+      "responses": {
+        "round_id": "trip-schedule-missing-cost",
+        "option_revision": "1",
+        "response_snapshot_id": "trip-schedule-missing-cost-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "trip-schedule-missing-cost-dates",
+                "question_id": "dates",
+                "value": "2027-06-01 to 2027-06-12"
+              },
+              {
+                "answer_id": "trip-schedule-missing-cost-days",
+                "question_id": "days",
+                "value": "5 days"
+              },
+              {
+                "answer_id": "trip-schedule-missing-cost-budget",
+                "question_id": "budget",
+                "value": 1000
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_information"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "dates",
+              "attribute_id": "availability",
+              "required_value": [
+                {
+                  "start_date": "2027-06-01",
+                  "end_date": "2027-06-12"
+                }
+              ],
+              "constraint_rule": "date_overlap_v1",
+              "confirmation_status": "confirmed"
+            },
+            {
+              "source_question_id": "budget",
+              "attribute_id": "max_cost",
+              "required_value": "1000",
+              "constraint_rule": "maximum_v1",
+              "unit": "SGD",
+              "confirmation_status": "confirmed"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "days",
+              "attribute_id": "duration_days",
+              "preferred_value": 5,
+              "polarity": "prefer",
+              "unit": "days"
+            }
+          ]
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/scenario_requests",
+          "op": "rows",
+          "value": [
+            {
+              "option_id": "destination-a",
+              "duration_days": 5,
+              "earliest_start_date": "2027-06-01",
+              "latest_start_date": "2027-06-08",
+              "cost_evidence_status": "unknown"
+            },
+            {
+              "option_id": "destination-a",
+              "duration_days": 7,
+              "earliest_start_date": "2027-06-01",
+              "latest_start_date": "2027-06-06",
+              "cost_evidence_status": "unknown"
+            },
+            {
+              "option_id": "destination-b",
+              "duration_days": 5,
+              "earliest_start_date": "2027-06-01",
+              "latest_start_date": "2027-06-08",
+              "cost_evidence_status": "unknown"
+            },
+            {
+              "option_id": "destination-b",
+              "duration_days": 7,
+              "earliest_start_date": "2027-06-01",
+              "latest_start_date": "2027-06-06",
+              "cost_evidence_status": "unknown"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "purchase-explicit-indifference",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "purchase-explicit-indifference",
+        "option_revision": "1",
+        "option_snapshot_id": "purchase-explicit-indifference-options",
+        "decision_question": "Which item should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Item A",
+            "facts": [
+              {
+                "criterion": "colour",
+                "value": "red",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Item B",
+            "facts": [
+              {
+                "criterion": "colour",
+                "value": "blue",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "colour",
+            "label": "Colour preference?"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "purchase-explicit-indifference",
+        "option_revision": "1",
+        "response_snapshot_id": "purchase-explicit-indifference-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "purchase-explicit-indifference-colour",
+                "question_id": "colour",
+                "value": "Fine with anything"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "colour",
+              "attribute_id": "colour",
+              "kind": "indifferent",
+              "status": "explicitly_indifferent",
+              "utility_rule": "neutral_v1"
+            }
+          ]
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "purchase-missing-answer",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "note": "An optional blank answer is unknown, not explicit indifference.",
+      "planning": {
+        "round_id": "purchase-missing-answer",
+        "option_revision": "1",
+        "option_snapshot_id": "purchase-missing-answer-options",
+        "decision_question": "Which item should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Item A",
+            "facts": [
+              {
+                "criterion": "colour",
+                "value": "red",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Item B",
+            "facts": [
+              {
+                "criterion": "colour",
+                "value": "blue",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "colour",
+            "label": "Colour preference?",
+            "required": false
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "purchase-missing-answer",
+        "option_revision": "1",
+        "response_snapshot_id": "purchase-missing-answer-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": []
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "MISSING_ANSWER"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "purchase-unit-mismatch",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "purchase-unit-mismatch",
+        "option_revision": "1",
+        "option_snapshot_id": "purchase-unit-mismatch-options",
+        "decision_question": "Which laptop should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Laptop A",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1200",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "USD",
+                "context": {
+                  "scope": "per_device_total"
+                }
+              },
+              {
+                "criterion": "battery_life",
+                "value": 10,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "hours"
+              },
+              {
+                "criterion": "usage_tags",
+                "value": [
+                  "coding",
+                  "design"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Laptop B",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1600",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "USD",
+                "context": {
+                  "scope": "per_device_total"
+                }
+              },
+              {
+                "criterion": "battery_life",
+                "value": 14,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "hours"
+              },
+              {
+                "criterion": "usage_tags",
+                "value": [
+                  "coding",
+                  "presentations"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "battery",
+            "label": "Battery life preference?"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "purchase-unit-mismatch",
+        "option_revision": "1",
+        "response_snapshot_id": "purchase-unit-mismatch-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "purchase-unit-mismatch-battery",
+                "question_id": "battery",
+                "value": "12 minutes"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "UNIT_MISMATCH"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "purchase-unknown-fact",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "purchase-unknown-fact",
+        "option_revision": "1",
+        "option_snapshot_id": "purchase-unknown-fact-options",
+        "decision_question": "Which item should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Item A",
+            "facts": [
+              {
+                "criterion": "colour",
+                "value": null,
+                "status": "unknown",
+                "source": "synthetic evaluation fixture",
+                "value_type": "category"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Item B",
+            "facts": [
+              {
+                "criterion": "colour",
+                "value": "blue",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "colour",
+            "label": "Colour preference?",
+            "choices": [
+              "Red",
+              "Blue"
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "purchase-unknown-fact",
+        "option_revision": "1",
+        "response_snapshot_id": "purchase-unknown-fact-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "purchase-unknown-fact-colour",
+                "question_id": "colour",
+                "value": "Red"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_information"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "colour",
+              "attribute_id": "colour",
+              "preferred_value": "red",
+              "polarity": "prefer"
+            }
+          ]
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "rows",
+          "value": [
+            {
+              "option_id": "option-1",
+              "attribute_id": "colour",
+              "value_type": "category",
+              "unit": null
+            }
+          ]
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/candidates/0/facts/0/value",
+          "op": "equals",
+          "value": null
+        }
+      ]
+    },
+    {
+      "case_id": "event-vague-dates",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "note": "No year or precise dates supplied. Do not fabricate an interval.",
+      "planning": {
+        "round_id": "event-vague-dates",
+        "option_revision": "1",
+        "option_snapshot_id": "event-vague-dates-options",
+        "decision_question": "When can we hold our team event?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          "Venue A",
+          "Venue B"
+        ],
+        "questions": [
+          {
+            "question_id": "dates",
+            "label": "When is your availability?"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "event-vague-dates",
+        "option_revision": "1",
+        "response_snapshot_id": "event-vague-dates-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "event-vague-dates-dates",
+                "question_id": "dates",
+                "value": "Sometime in December"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "AMBIGUOUS_AVAILABILITY"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "trip-conflicting-budgets",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "note": "Conflicting confirmed limits currently invalidate the packet.",
+      "planning": {
+        "round_id": "trip-conflicting-budgets",
+        "option_revision": "1",
+        "option_snapshot_id": "trip-conflicting-budgets-options",
+        "decision_question": "Which destination should we visit?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Destination A",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "900",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "SGD",
+                "context": {
+                  "scope": "per_person_total"
+                }
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Destination B",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1800",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "SGD",
+                "context": {
+                  "scope": "per_person_total"
+                }
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "budget",
+            "label": "Budget?"
+          },
+          {
+            "question_id": "other",
+            "label": "Maximum spend?"
+          }
+        ],
+        "currency": "SGD",
+        "cost_scope": "per_person_total"
+      },
+      "responses": {
+        "round_id": "trip-conflicting-budgets",
+        "option_revision": "1",
+        "response_snapshot_id": "trip-conflicting-budgets-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "trip-conflicting-budgets-budget",
+                "question_id": "budget",
+                "value": 1000
+              },
+              {
+                "answer_id": "trip-conflicting-budgets-other",
+                "question_id": "other",
+                "value": 2000
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "invalid_input"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFLICTING_ANSWER"
+            }
+          ]
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        }
+      ]
+    },
+    {
+      "case_id": "event-leader-weights",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "event-leader-weights",
+        "option_revision": "1",
+        "option_snapshot_id": "event-leader-weights-options",
+        "decision_question": "Which room should we book?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Room A",
+            "facts": [
+              {
+                "criterion": "quiet",
+                "value": true,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              },
+              {
+                "criterion": "indoor",
+                "value": true,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Room B",
+            "facts": [
+              {
+                "criterion": "quiet",
+                "value": false,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              },
+              {
+                "criterion": "indoor",
+                "value": false,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "quiet",
+            "label": "Quiet preference?",
+            "role": "soft",
+            "criterion": "quiet",
+            "relevance": 0.5,
+            "leader_weight": 3
+          },
+          {
+            "question_id": "indoor",
+            "label": "Indoor preference?",
+            "role": "soft",
+            "criterion": "indoor",
+            "relevance": 0.5,
+            "leader_weight": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "event-leader-weights",
+        "option_revision": "1",
+        "response_snapshot_id": "event-leader-weights-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "event-leader-weights-quiet",
+                "question_id": "quiet",
+                "value": true
+              },
+              {
+                "answer_id": "event-leader-weights-indoor",
+                "question_id": "indoor",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "quiet",
+              "attribute_id": "quiet",
+              "preferred_value": true,
+              "polarity": "prefer"
+            },
+            {
+              "source_question_id": "indoor",
+              "attribute_id": "indoor",
+              "preferred_value": true,
+              "polarity": "prefer"
+            }
+          ]
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/0/weight",
+          "op": "approx",
+          "value": 0.75
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/1/weight",
+          "op": "approx",
+          "value": 0.25
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "purchase-runtime-paraphrase",
+      "domain": "purchase",
+      "tags": [
+        "semantic"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "purchase-runtime-paraphrase",
+        "option_revision": "1",
+        "option_snapshot_id": "purchase-runtime-paraphrase-options",
+        "decision_question": "Which laptop should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Laptop A",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1200",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "USD",
+                "context": {
+                  "scope": "per_device_total"
+                }
+              },
+              {
+                "criterion": "battery_life",
+                "value": 10,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "hours"
+              },
+              {
+                "criterion": "usage_tags",
+                "value": [
+                  "coding",
+                  "design"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Laptop B",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1600",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "USD",
+                "context": {
+                  "scope": "per_device_total"
+                }
+              },
+              {
+                "criterion": "battery_life",
+                "value": 14,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "hours"
+              },
+              {
+                "criterion": "usage_tags",
+                "value": [
+                  "coding",
+                  "presentations"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "runtime",
+            "label": "How long should it run unplugged?"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "purchase-runtime-paraphrase",
+        "option_revision": "1",
+        "response_snapshot_id": "purchase-runtime-paraphrase-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "purchase-runtime-paraphrase-runtime",
+                "question_id": "runtime",
+                "value": "12 hours"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "runtime",
+              "attribute_id": "battery_life",
+              "preferred_value": 12,
+              "polarity": "prefer",
+              "unit": "hours",
+              "utility_rule": "numeric_target_v1"
+            }
+          ]
+        },
+        {
+          "dimension": "classification",
+          "path": "/preparation/scoring_model/questions",
+          "op": "contains_rows",
+          "value": [
+            {
+              "question_id": "runtime",
+              "role": "soft",
+              "criterion": "battery_life"
+            }
+          ]
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/0/weight",
+          "op": "approx",
+          "value": 1
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "event-prefer-and-avoid",
+      "domain": "event",
+      "tags": [
+        "semantic",
+        "negation"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "event-prefer-and-avoid",
+        "option_revision": "1",
+        "option_snapshot_id": "event-prefer-and-avoid-options",
+        "decision_question": "Which venue should host our event?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Venue A",
+            "facts": [
+              {
+                "criterion": "environment",
+                "value": [
+                  "indoor",
+                  "quiet"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Venue B",
+            "facts": [
+              {
+                "criterion": "environment",
+                "value": [
+                  "outdoor",
+                  "noisy"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "environment",
+            "label": "What surroundings do you prefer?",
+            "role": "soft",
+            "criterion": "environment",
+            "relevance": 0.8
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "event-prefer-and-avoid",
+        "option_revision": "1",
+        "response_snapshot_id": "event-prefer-and-avoid-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "event-prefer-and-avoid-environment",
+                "question_id": "environment",
+                "value": "I like indoor venues but avoid noisy places."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "environment",
+              "attribute_id": "environment",
+              "preferred_value": [
+                "indoor"
+              ],
+              "polarity": "prefer"
+            },
+            {
+              "source_question_id": "environment",
+              "attribute_id": "environment",
+              "preferred_value": [
+                "noisy"
+              ],
+              "polarity": "avoid"
+            }
+          ]
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/0/aggregation",
+          "op": "equals",
+          "value": "average"
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "event-inferred-access-need",
+      "domain": "event",
+      "tags": [
+        "semantic",
+        "hard-requirement"
+      ],
+      "note": "An extracted hard requirement must await confirmation.",
+      "planning": {
+        "round_id": "event-inferred-access-need",
+        "option_revision": "1",
+        "option_snapshot_id": "event-inferred-access-need-options",
+        "decision_question": "Which venue should host our event?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Venue A",
+            "facts": [
+              {
+                "criterion": "step_free_access",
+                "value": true,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Venue B",
+            "facts": [
+              {
+                "criterion": "step_free_access",
+                "value": false,
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "access",
+            "label": "Any accessibility preferences?",
+            "role": "soft",
+            "criterion": "step_free_access",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "event-inferred-access-need",
+        "option_revision": "1",
+        "response_snapshot_id": "event-inferred-access-need-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "event-inferred-access-need-access",
+                "question_id": "access",
+                "value": "I need wheelchair access, so step-free entry is essential."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "access",
+              "attribute_id": "step_free_access",
+              "required_value": true,
+              "constraint_rule": "equals_v1",
+              "unit": null,
+              "confirmation_status": "needs_confirmation"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "access",
+              "attribute_id": "step_free_access",
+              "preferred_value": true,
+              "polarity": "prefer"
+            }
+          ]
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFIRM_REQUIREMENT"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "trip-irrelevant-subject",
+      "domain": "trip",
+      "tags": [
+        "semantic",
+        "relevance"
+      ],
+      "note": "Subject has no stated relationship to the destination choice. Informational criterion ID is not material.",
+      "planning": {
+        "round_id": "trip-irrelevant-subject",
+        "option_revision": "1",
+        "option_snapshot_id": "trip-irrelevant-subject-options",
+        "decision_question": "Which destination should we visit?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Destination A",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "900",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "SGD",
+                "context": {
+                  "scope": "per_person_total"
+                }
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Destination B",
+            "facts": [
+              {
+                "criterion": "max_cost",
+                "value": "1800",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture",
+                "unit": "SGD",
+                "context": {
+                  "scope": "per_person_total"
+                }
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "subject",
+            "label": "Favourite subject?"
+          },
+          {
+            "question_id": "budget",
+            "label": "Budget?"
+          }
+        ],
+        "currency": "SGD",
+        "cost_scope": "per_person_total"
+      },
+      "responses": {
+        "round_id": "trip-irrelevant-subject",
+        "option_revision": "1",
+        "response_snapshot_id": "trip-irrelevant-subject-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "trip-irrelevant-subject-subject",
+                "question_id": "subject",
+                "value": "Biology"
+              },
+              {
+                "answer_id": "trip-irrelevant-subject-budget",
+                "question_id": "budget",
+                "value": 2000
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "budget",
+              "attribute_id": "max_cost",
+              "required_value": "2000",
+              "constraint_rule": "maximum_v1",
+              "unit": "SGD",
+              "confirmation_status": "confirmed"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "classification",
+          "path": "/preparation/scoring_model/questions",
+          "op": "contains_rows",
+          "value": [
+            {
+              "question_id": "subject",
+              "role": "informational"
+            }
+          ]
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/0/weight",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/informational_answers",
+          "op": "rows",
+          "value": [
+            {
+              "question_id": "subject",
+              "value": "Biology"
+            }
+          ]
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "exhibit-relevant-subject",
+      "domain": "exhibit",
+      "tags": [
+        "semantic",
+        "relevance"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "exhibit-relevant-subject",
+        "option_revision": "1",
+        "option_snapshot_id": "exhibit-relevant-subject-options",
+        "decision_question": "Which subject-themed museum exhibit should we visit?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Exhibit A",
+            "facts": [
+              {
+                "criterion": "subject",
+                "value": "biology",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Exhibit B",
+            "facts": [
+              {
+                "criterion": "subject",
+                "value": "physics",
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "subject",
+            "label": "Favourite subject?"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "exhibit-relevant-subject",
+        "option_revision": "1",
+        "response_snapshot_id": "exhibit-relevant-subject-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "exhibit-relevant-subject-subject",
+                "question_id": "subject",
+                "value": "Biology"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": []
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "subject",
+              "attribute_id": "subject",
+              "preferred_value": "biology",
+              "polarity": "prefer",
+              "utility_rule": "attribute_match_v1"
+            }
+          ]
+        },
+        {
+          "dimension": "classification",
+          "path": "/preparation/scoring_model/questions",
+          "op": "contains_rows",
+          "value": [
+            {
+              "question_id": "subject",
+              "role": "soft",
+              "criterion": "subject"
+            }
+          ]
+        },
+        {
+          "dimension": "weights",
+          "path": "/preparation/scoring_model/questions/0/weight",
+          "op": "approx",
+          "value": 1
+        },
+        {
+          "dimension": "facts",
+          "path": "/preparation/fact_requests",
+          "op": "equals",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "project-hard-exclusion",
+      "domain": "project",
+      "tags": [
+        "semantic",
+        "negation",
+        "hard-requirement"
+      ],
+      "note": "",
+      "planning": {
+        "round_id": "project-hard-exclusion",
+        "option_revision": "1",
+        "option_snapshot_id": "project-hard-exclusion-options",
+        "decision_question": "Which project should our group select?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-1",
+            "title": "Project A",
+            "facts": [
+              {
+                "criterion": "tasks",
+                "value": [
+                  "coding",
+                  "research"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          },
+          {
+            "option_id": "option-2",
+            "title": "Project B",
+            "facts": [
+              {
+                "criterion": "tasks",
+                "value": [
+                  "marketing",
+                  "design"
+                ],
+                "status": "confirmed",
+                "source": "synthetic evaluation fixture"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "tasks",
+            "label": "Which tasks do you prefer?",
+            "role": "soft",
+            "criterion": "tasks",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "project-hard-exclusion",
+        "option_revision": "1",
+        "response_snapshot_id": "project-hard-exclusion-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "project-hard-exclusion-tasks",
+                "question_id": "tasks",
+                "value": "I prefer coding. I must not do marketing."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/algorithm_input",
+          "op": "equals",
+          "value": null
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "tasks",
+              "attribute_id": "tasks",
+              "required_value": [
+                "marketing"
+              ],
+              "constraint_rule": "excludes_all_v1",
+              "polarity": "avoid",
+              "confirmation_status": "needs_confirmation"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "tasks",
+              "attribute_id": "tasks",
+              "preferred_value": [
+                "coding"
+              ],
+              "polarity": "prefer"
+            },
+            {
+              "source_question_id": "tasks",
+              "attribute_id": "tasks",
+              "preferred_value": [
+                "marketing"
+              ],
+              "polarity": "avoid"
+            }
+          ]
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFIRM_REQUIREMENT"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

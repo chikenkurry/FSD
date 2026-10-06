@@ -1,0 +1,97 @@
+{
+  "round_id": "product-1",
+  "option_revision": "1",
+  "option_snapshot_id": "products-1",
+  "decision_question": "Which device should our team buy?",
+  "currency": "USD",
+  "cost_scope": "per_device_total",
+  "roster": [
+    "p1"
+  ],
+  "options": [
+    {
+      "option_id": "device-a",
+      "title": "Device A",
+      "facts": [
+        {
+          "criterion": "max_cost",
+          "value": "1200",
+          "unit": "USD",
+          "context": {
+            "scope": "per_device_total"
+          },
+          "status": "confirmed",
+          "source": "supplier quote"
+        },
+        {
+          "criterion": "battery_life",
+          "value": 12,
+          "unit": "hours",
+          "status": "confirmed",
+          "source": "supplier specification"
+        },
+        {
+          "criterion": "usage_tags",
+          "value": [
+            "coding",
+            "design"
+          ],
+          "status": "confirmed",
+          "source": "team assessment"
+        }
+      ]
+    },
+    {
+      "option_id": "device-b",
+      "title": "Device B",
+      "facts": [
+        {
+          "criterion": "max_cost",
+          "value": "1400",
+          "unit": "USD",
+          "context": {
+            "scope": "per_device_total"
+          },
+          "status": "confirmed",
+          "source": "supplier quote"
+        },
+        {
+          "criterion": "battery_life",
+          "value": 15,
+          "unit": "hours",
+          "status": "confirmed",
+          "source": "supplier specification"
+        },
+        {
+          "criterion": "usage_tags",
+          "value": [
+            "coding",
+            "presentations"
+          ],
+          "status": "confirmed",
+          "source": "team assessment"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "budget",
+      "label": "Maximum budget?"
+    },
+    {
+      "question_id": "battery",
+      "label": "How much battery life do you prefer?"
+    },
+    {
+      "question_id": "usage",
+      "label": "Usage tags preference?",
+      "answer_format": "multi_choice",
+      "choices": [
+        "Coding",
+        "Design",
+        "Presentations"
+      ]
+    }
+  ]
+}

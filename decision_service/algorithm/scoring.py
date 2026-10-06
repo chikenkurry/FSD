@@ -1,64 +1,78 @@
+"""Apply declared utilities after feasibility; missing evidence has no score."""
+
 from __future__ import annotations
 
 from typing import Any
 
+from decision_service.contract import applies, candidate_fact
+
+from .models import CandidateScore
+
+
+class UnresolvedScore(ValueError):
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
 
 def group_objective_metrics(minimum: float, average: float, scores: dict[str, float], policy: dict[str, Any]) -> tuple[float, float]:
-    """Return (group score, fairness penalty) for a validated policy.
-
-    The penalty is the population variance of member satisfaction. It is zero
-    when every required participant has the same score.
-    """
-    values = list(scores.values())
-    variance = sum((value - average) ** 2 for value in values) / len(values) if values else 0.0
-    mode = policy.get("mode", "maximin_then_average")
-    if mode == "maximin_then_average":
+    """Population variance measures disagreement among required members."""
+    variance = sum((value - average) ** 2 for value in scores.values()) / len(scores)
+    if policy["mode"] == "maximin_then_average":
         return minimum, variance
-    minimum_weight = float(policy.get("minimum_score_weight", 0.6))
-    average_weight = float(policy.get("average_score_weight", 0.4))
+    minimum_weight = policy["minimum_score_weight"]
+    average_weight = policy["average_score_weight"]
     total = minimum_weight + average_weight
-    base = (minimum_weight * minimum + average_weight * average) / total
-    return base - float(policy.get("fairness_weight", 0.0)) * variance, variance
+    base = minimum_weight / total * minimum + average_weight / total * average
+    return base - policy["fairness_weight"] * variance, variance
 
 
-def score_candidate(candidate: dict[str, Any], participants: list[dict[str, Any]], preferences: list[dict[str, Any]], questions: list[dict[str, Any]], objective: dict[str, Any] | None = None) -> tuple[float, float, float, float, dict[str, float]]:
-    weights = {q["question_id"]: q.get("weight") for q in questions}
-    required = [p for p in participants if p.get("is_required_for_decision", True)]
-    grouped: dict[str, list[dict[str, Any]]] = {p["participant_id"]: [] for p in required}
+def _rating(preference: dict, candidate: dict) -> float:
+    return preference["rating"] / 4
+
+
+def _neutral(preference: dict, candidate: dict) -> float:
+    return 0.5
+
+
+def _attribute_match(preference: dict, candidate: dict) -> float:
+    fact = candidate_fact(candidate, preference["attribute_id"])
+    if fact is None or fact["status"] == "unknown":
+        raise UnresolvedScore("MISSING_SOFT_OPTION_FACT")
+    return 1.0 if fact["value"] == preference["preferred_value"] else 0.0
+
+
+UTILITIES = {"rating_v1": _rating, "attribute_match_v1": _attribute_match, "neutral_v1": _neutral}
+
+
+def score_candidate(
+    candidate: dict,
+    participants: list[dict],
+    preferences: list[dict],
+    questions: list[dict],
+    objective: dict,
+) -> CandidateScore:
+    active_questions = [q for q in questions if not q["is_hard_constraint"] and q["weight"] > 0]
+    grouped = {}
     for preference in preferences:
-        if preference["participant_id"] in grouped:
-            grouped[preference["participant_id"]].append(preference)
-    scores: dict[str, float] = {}
-    for participant in required:
-        by_question: dict[str, list[float]] = {}
-        for preference in grouped[participant["participant_id"]]:
-            fit = _fit(preference, candidate)
-            if fit is not None:
-                by_question.setdefault(preference["source_question_id"], []).append(fit)
+        if applies(preference, candidate):
+            key = (preference["participant_id"], preference["source_question_id"])
+            grouped.setdefault(key, []).append(preference)
+    scores = {}
+    for participant in participants:
+        if not participant["is_required_for_decision"]:
+            continue
+        member_id = participant["participant_id"]
         total = 0.0
-        for question_id, fits in by_question.items():
-            weight = weights.get(question_id)
-            if weight is not None:
-                total += float(weight) * (sum(fits) / len(fits))
-        scores[participant["participant_id"]] = round(total, 12)
-    values = list(scores.values())
-    minimum = min(values) if values else 0.0
-    average = sum(values) / len(values) if values else 0.0
-    group_score, fairness_penalty = group_objective_metrics(minimum, average, scores, objective or {})
-    return minimum, average, group_score, fairness_penalty, scores
-
-
-def _fit(preference: dict[str, Any], candidate: dict[str, Any]) -> float | None:
-    if preference.get("kind") == "indifferent":
-        return 0.5
-    if preference.get("kind") == "rating":
-        target = preference.get("candidate_id") or preference.get("activity_id")
-        if target not in {candidate.get("candidate_id"), candidate.get("activity_id")}:
-            return None
-        return preference["rating"] / 4
-    if preference.get("kind") == "attribute_preference":
-        actual = next((a.get("value") for a in candidate.get("attributes", []) if a.get("attribute_id") == preference.get("attribute_id")), "unknown")
-        if actual == "unknown":
-            return None
-        return 1.0 if actual == preference.get("preferred_value") else 0.0
-    return None
+        for question in active_questions:
+            answers = grouped.get((member_id, question["question_id"]), [])
+            if not answers:
+                raise UnresolvedScore("MISSING_SOFT_ANSWER")
+            fits = [UTILITIES[answer["utility_rule"]](answer, candidate) for answer in answers]
+            utility = fits[0] if question["aggregation"] == "direct" else sum(fits) / len(fits)
+            total += question["weight"] * utility
+        scores[member_id] = round(total, 12)
+    minimum = min(scores.values())
+    average = sum(scores.values()) / len(scores)
+    group_score, fairness_penalty = group_objective_metrics(minimum, average, scores, objective)
+    return CandidateScore(candidate, minimum, average, group_score, fairness_penalty)

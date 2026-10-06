@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -23,7 +23,15 @@ class CandidateResult:
     candidate_id: str
     feasibility: Feasibility
     explanation_codes: tuple[str, ...] = ()
-    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class CandidateScore:
+    candidate: dict[str, Any]
+    minimum: float
+    average: float
+    group_score: float
+    fairness_penalty: float
 
 
 @dataclass(frozen=True)

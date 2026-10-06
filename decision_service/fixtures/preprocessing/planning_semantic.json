@@ -7,17 +7,34 @@
   "plan_description": "Choose an accessible activity after work",
   "timezone": "Asia/Singapore",
   "currency": "SGD",
-  "roster": ["p1", "p2"],
+  "roster": [
+    "p1",
+    "p2"
+  ],
   "activities": [
     {
       "activity_id": "cafe",
-      "title": "Café",
+      "title": "Caf\u00e9",
       "description": "Ramp available; five minute walk from the station.",
       "duration_minutes": 120,
       "estimated_cost_minor": 2500,
       "currency": "SGD",
-      "windows": [{"start_at": "2026-10-02T19:00:00+08:00", "end_at": "2026-10-02T21:00:00+08:00"}],
-      "attributes": []
+      "windows": [
+        {
+          "start_at": "2026-10-02T19:00:00+08:00",
+          "end_at": "2026-10-02T21:00:00+08:00"
+        }
+      ],
+      "attributes": [
+        {
+          "attribute_id": "step_free_access",
+          "value": "yes"
+        },
+        {
+          "attribute_id": "walkable",
+          "value": "yes"
+        }
+      ]
     },
     {
       "activity_id": "dinner",
@@ -26,14 +43,70 @@
       "duration_minutes": 120,
       "estimated_cost_minor": 3500,
       "currency": "SGD",
-      "windows": [{"start_at": "2026-10-02T19:00:00+08:00", "end_at": "2026-10-02T21:00:00+08:00"}],
-      "attributes": []
+      "windows": [
+        {
+          "start_at": "2026-10-02T19:00:00+08:00",
+          "end_at": "2026-10-02T21:00:00+08:00"
+        }
+      ],
+      "attributes": [
+        {
+          "attribute_id": "step_free_access",
+          "value": "no"
+        },
+        {
+          "attribute_id": "walkable",
+          "value": "no"
+        }
+      ]
     }
   ],
   "questions": [
-    {"question_id": "q_availability", "label": "When are you free?", "kind": "availability"},
-    {"question_id": "q_budget", "label": "Maximum spend in SGD?", "kind": "budget"},
-    {"question_id": "q_travel", "label": "How would you like to travel?", "kind": "semantic_preference", "answer_format": "choice", "choices": [{"choice_id": "walk", "label": "Walkable"}, {"choice_id": "drive", "label": "Driving is fine"}]},
-    {"question_id": "q_access", "label": "What access do you need?", "kind": "semantic_requirement", "answer_format": "text"}
+    {
+      "question_id": "q_availability",
+      "label": "When are you free?",
+      "kind": "availability"
+    },
+    {
+      "question_id": "q_budget",
+      "label": "Maximum spend in SGD?",
+      "kind": "budget"
+    },
+    {
+      "question_id": "q_travel",
+      "label": "How would you like to travel?",
+      "kind": "semantic_preference",
+      "answer_format": "choice",
+      "choices": [
+        {
+          "choice_id": "walk",
+          "label": "Walkable"
+        },
+        {
+          "choice_id": "drive",
+          "label": "Driving is fine"
+        }
+      ],
+      "semantic_binding": {
+        "attribute_id": "walkable",
+        "values": {
+          "walkable": "yes",
+          "drive": "no",
+          "indifferent": null
+        }
+      }
+    },
+    {
+      "question_id": "q_access",
+      "label": "What access do you need?",
+      "kind": "semantic_requirement",
+      "answer_format": "text",
+      "semantic_binding": {
+        "attribute_id": "step_free_access",
+        "values": {
+          "ramp_required": "yes"
+        }
+      }
+    }
   ]
 }

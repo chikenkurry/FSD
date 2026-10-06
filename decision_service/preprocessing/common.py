@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Collection
 
 
 class InputError(ValueError):
@@ -41,7 +41,7 @@ def require_int(value: Any, path: str, *, minimum: int = 0) -> int:
     return value
 
 
-def require_in(value: Any, options: set[str], path: str) -> str:
+def require_in(value: Any, options: Collection[str], path: str) -> str:
     if not isinstance(value, str) or value not in options:
         raise InputError("INVALID_VALUE", path, f"Expected one of {sorted(options)}")
     return value

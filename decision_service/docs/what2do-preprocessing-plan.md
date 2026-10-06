@@ -1,5 +1,8 @@
 # What2Do: your Decision Service preprocessing plan
 
+This document records the initial implementation plan. The current executable
+interface and behavior are documented in [Decision Service contracts](algorithm-input-shape.md).
+
 ## 1. Your goal
 
 Build the part of Decision Service that converts structured answers and open-text answers into a validated input for your teammate's matching algorithm.
@@ -276,6 +279,6 @@ Start with the smallest useful demonstration: two activities, two members, one s
 
 ## References
 
-- [Existing architecture and service contracts](what2do-architecture.md)
-- [Existing project plan and decision policy](what2do-project-plan.md)
+- [Existing architecture and service contracts](../../../what2do-architecture.md)
+- [Existing project plan and decision policy](../../what2do-project-plan.md)
 - Updated scope supplied in this conversation: structured and open questions, semantic extraction, optional leader question weights, and calculated defaults.

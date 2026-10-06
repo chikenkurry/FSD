@@ -1,10 +1,31 @@
+"""Stable ordering using the validated objective and tie breakers."""
+
 from __future__ import annotations
 
-from typing import Any
+from decision_service.contract import timestamp
 
-from .models import RankedCandidate
+from .models import CandidateScore, RankedCandidate
 
 
-def rank_candidates(scored: list[tuple[dict[str, Any], float, float, float, float]]) -> tuple[RankedCandidate, ...]:
-    ordered = sorted(scored, key=lambda x: (-x[3], -x[1], -x[2], x[0].get("estimated_cost_minor") if x[0].get("estimated_cost_minor") is not None else float("inf"), x[0]["start_at"], x[0]["candidate_id"]))
-    return tuple(RankedCandidate(c[0]["candidate_id"], i, round(c[1], 12), round(c[2], 12), round(c[3], 12), round(c[4], 12), c[0].get("estimated_cost_minor"), c[0]["start_at"]) for i, c in enumerate(ordered, 1))
+def rank_candidates(scored: list[CandidateScore], sort_order: list[str]) -> tuple[RankedCandidate, ...]:
+    keys = {
+        "highest_group_score": lambda row: -row.group_score,
+        "highest_min_member_score": lambda row: -row.minimum,
+        "highest_average_member_score": lambda row: -row.average,
+        "lowest_estimated_cost": lambda row: (
+            row.candidate["estimated_cost_minor"]
+            if row.candidate["estimated_cost_minor"] is not None else float("inf")
+        ),
+        "earliest_start": lambda row: timestamp(row.candidate["start_at"]),
+        "stable_candidate_id": lambda row: row.candidate["candidate_id"],
+    }
+    ordered = sorted(scored, key=lambda row: tuple(keys[field](row) for field in sort_order))
+    return tuple(
+        RankedCandidate(
+            row.candidate["candidate_id"], rank,
+            round(row.minimum, 12), round(row.average, 12),
+            round(row.group_score, 12), round(row.fairness_penalty, 12),
+            row.candidate["estimated_cost_minor"], row.candidate["start_at"],
+        )
+        for rank, row in enumerate(ordered, 1)
+    )

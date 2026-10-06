@@ -31,8 +31,8 @@ def option_relevance(question: dict, candidates: list[dict]) -> float:
     for attribute_id in question["supported_attributes"]:
         values = []
         for activity in activities.values():
-            fact = next((a["value"] for a in activity["attributes"] if a["attribute_id"] == attribute_id), "unknown")
-            if fact != "unknown":
+            fact = next((a["value"] for a in activity["attributes"] if a["attribute_id"] == attribute_id), None)
+            if fact is not None:
                 values.append(fact)
         coverage = len(values) / len(activities)
         distinction = 1.0 if len(set(values)) > 1 else 0.0
@@ -54,7 +54,7 @@ def resolve_weights(questions: list[dict], candidates: list[dict]) -> list[dict]
     leader_values = []
     for q in supplied:
         value = q["leader_weight"]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        if type(value) not in {int, float} or not 0 <= value <= 1e308:
             raise InputError("INVALID_WEIGHT", f"planning.questions.{q['question_id']}.leader_weight", "Weight must be finite and nonnegative")
         leader_values.append(float(value))
     leader_scale = max(1.0, *leader_values) if leader_values else 1.0
@@ -92,6 +92,8 @@ def resolve_weights(questions: list[dict], candidates: list[dict]) -> list[dict]
             "weight_source": sources.get(q["question_id"]),
             "relevance": relevances.get(q["question_id"], q.get("semantic_relevance") if q["kind"] == "semantic_requirement" else None),
             "aggregation": "average" if q["kind"] in {"open_preference", "semantic_preference"} else "direct",
+            "utility_rule": ("rating_v1" if q["kind"] == "activity_rating" else "attribute_match_v1") if q["kind"] in SOFT_KINDS else None,
+            "missing_value_policy": "unresolved" if q["kind"] in SOFT_KINDS else None,
             "is_hard_constraint": q["kind"] not in SOFT_KINDS,
         }
         for q in questions

@@ -1,0 +1,285 @@
+{
+  "context": {
+    "schema_version": "sparse-v3",
+    "round_id": "product-1",
+    "option_revision": "1",
+    "processing_version": "sparse-v4",
+    "policy_version": "generic-question-relevance-v1",
+    "option_snapshot_id": "products-1",
+    "response_snapshot_id": "product-responses-1",
+    "decision_question": "Which device should our team buy?",
+    "currency": "USD",
+    "cost_scope": "per_device_total",
+    "details": {},
+    "semantic_artifact_id": null
+  },
+  "candidates": [
+    {
+      "candidate_id": "device-a",
+      "option_id": "device-a",
+      "title": "Device A",
+      "description": "",
+      "facts": [
+        {
+          "attribute_id": "max_cost",
+          "value_type": "decimal",
+          "unit": "USD",
+          "value": "1200",
+          "status": "confirmed",
+          "source": "supplier quote",
+          "context": {
+            "scope": "per_device_total"
+          }
+        },
+        {
+          "attribute_id": "battery_life",
+          "value_type": "number",
+          "unit": "hours",
+          "value": 12,
+          "status": "confirmed",
+          "source": "supplier specification",
+          "context": {}
+        },
+        {
+          "attribute_id": "usage_tags",
+          "value_type": "tag_set",
+          "unit": null,
+          "value": [
+            "coding",
+            "design"
+          ],
+          "status": "confirmed",
+          "source": "team assessment",
+          "context": {}
+        }
+      ],
+      "missing_criteria": [],
+      "tag_suggestions": []
+    },
+    {
+      "candidate_id": "device-b",
+      "option_id": "device-b",
+      "title": "Device B",
+      "description": "",
+      "facts": [
+        {
+          "attribute_id": "max_cost",
+          "value_type": "decimal",
+          "unit": "USD",
+          "value": "1400",
+          "status": "confirmed",
+          "source": "supplier quote",
+          "context": {
+            "scope": "per_device_total"
+          }
+        },
+        {
+          "attribute_id": "battery_life",
+          "value_type": "number",
+          "unit": "hours",
+          "value": 15,
+          "status": "confirmed",
+          "source": "supplier specification",
+          "context": {}
+        },
+        {
+          "attribute_id": "usage_tags",
+          "value_type": "tag_set",
+          "unit": null,
+          "value": [
+            "coding",
+            "presentations"
+          ],
+          "status": "confirmed",
+          "source": "team assessment",
+          "context": {}
+        }
+      ],
+      "missing_criteria": [],
+      "tag_suggestions": []
+    }
+  ],
+  "scenario_requests": [],
+  "participants": [
+    {
+      "participant_id": "p1",
+      "response_status": "complete",
+      "is_required_for_decision": true
+    }
+  ],
+  "constraints": [
+    {
+      "participant_id": "p1",
+      "source_question_id": "budget",
+      "source_answer_id": "p1-budget",
+      "source_type": "member_response",
+      "evidence": "1500",
+      "attribute_id": "max_cost",
+      "kind": "attribute_requirement",
+      "value_type": "decimal",
+      "unit": "USD",
+      "scope": "all",
+      "status": "confirmed",
+      "polarity": "prefer",
+      "required_value": "1500",
+      "constraint_rule": "maximum_v1",
+      "confirmation_status": "confirmed"
+    }
+  ],
+  "preferences": [
+    {
+      "participant_id": "p1",
+      "source_question_id": "battery",
+      "source_answer_id": "p1-battery",
+      "source_type": "member_response",
+      "evidence": "12 hours",
+      "attribute_id": "battery_life",
+      "kind": "attribute_preference",
+      "value_type": "number",
+      "unit": "hours",
+      "scope": "all",
+      "status": "confirmed",
+      "polarity": "prefer",
+      "preferred_value": 12.0,
+      "utility_rule": "numeric_target_v1"
+    },
+    {
+      "participant_id": "p1",
+      "source_question_id": "usage",
+      "source_answer_id": "p1-usage",
+      "source_type": "member_response",
+      "evidence": "[\"Coding\", \"Design\"]",
+      "attribute_id": "usage_tags",
+      "kind": "attribute_preference",
+      "value_type": "tag_set",
+      "unit": null,
+      "scope": "all",
+      "status": "confirmed",
+      "polarity": "prefer",
+      "preferred_value": [
+        "coding",
+        "design"
+      ],
+      "utility_rule": "tag_overlap_v1"
+    }
+  ],
+  "informational_answers": [],
+  "unclassified_answers": [],
+  "scoring_model": {
+    "questions": [
+      {
+        "question_id": "budget",
+        "label": "Maximum budget?",
+        "choices": {},
+        "role": "hard",
+        "criterion": "max_cost",
+        "relevance": 0.0,
+        "reason": "A maximum spend is a feasibility limit",
+        "inference_source": "rules",
+        "required": true,
+        "answer_format": "text",
+        "mapping": {
+          "status": "resolved",
+          "attribute_id": "max_cost",
+          "value_type": "decimal",
+          "unit": "USD",
+          "comparison_rule": "maximum_v1",
+          "parameters": {}
+        },
+        "weight": null,
+        "weight_source": null,
+        "is_hard_constraint": true,
+        "aggregation": "direct",
+        "utility_rule": null,
+        "constraint_rule": "maximum_v1",
+        "missing_value_policy": "unresolved"
+      },
+      {
+        "question_id": "battery",
+        "label": "How much battery life do you prefer?",
+        "choices": {},
+        "role": "soft",
+        "criterion": "battery_life",
+        "relevance": 0.5,
+        "reason": "Question names a supplied fact criterion",
+        "inference_source": "rules",
+        "required": true,
+        "answer_format": "text",
+        "mapping": {
+          "status": "resolved",
+          "attribute_id": "battery_life",
+          "value_type": "number",
+          "unit": "hours",
+          "comparison_rule": "numeric_target_v1",
+          "parameters": {
+            "scale": 3.0
+          }
+        },
+        "weight": 0.5,
+        "weight_source": "rules",
+        "is_hard_constraint": false,
+        "aggregation": "direct",
+        "utility_rule": "numeric_target_v1",
+        "constraint_rule": null,
+        "missing_value_policy": "unresolved"
+      },
+      {
+        "question_id": "usage",
+        "label": "Usage tags preference?",
+        "choices": {
+          "coding": "Coding",
+          "design": "Design",
+          "presentations": "Presentations"
+        },
+        "role": "soft",
+        "criterion": "usage_tags",
+        "relevance": 0.5,
+        "reason": "Question names a supplied fact criterion",
+        "inference_source": "rules",
+        "required": true,
+        "answer_format": "multi_choice",
+        "mapping": {
+          "status": "resolved",
+          "attribute_id": "usage_tags",
+          "value_type": "tag_set",
+          "unit": null,
+          "comparison_rule": "tag_overlap_v1",
+          "parameters": {}
+        },
+        "weight": 0.5,
+        "weight_source": "rules",
+        "is_hard_constraint": false,
+        "aggregation": "average",
+        "utility_rule": "tag_overlap_v1",
+        "constraint_rule": null,
+        "missing_value_policy": "unresolved"
+      }
+    ],
+    "missing_fact_policy": "unresolved",
+    "group_objective": {
+      "mode": "maximin_then_average",
+      "minimum_score_weight": 0.6,
+      "average_score_weight": 0.4,
+      "fairness_weight": 0.0
+    }
+  },
+  "criteria": [
+    {
+      "attribute_id": "battery_life",
+      "value_type": "number",
+      "unit": "hours"
+    },
+    {
+      "attribute_id": "max_cost",
+      "value_type": "decimal",
+      "unit": "USD"
+    },
+    {
+      "attribute_id": "usage_tags",
+      "value_type": "tag_set",
+      "unit": null
+    }
+  ],
+  "fact_requests": [],
+  "status": "ready"
+}

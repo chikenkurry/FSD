@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from decision_service.contract import ContractError, FACT_STATUSES, VALUE_TYPES, validate_value
+
 from .common import (
     InputError,
     require_in,
@@ -47,6 +49,10 @@ def generate_candidates(
         if cost is not None:
             require_int(cost, f"{path}.estimated_cost_minor")
         currency = require_text(activity.get("currency"), f"{path}.currency").upper()
+        cost_status = require_in(activity.get("cost_status", "unknown" if cost is None else "confirmed"), FACT_STATUSES, f"{path}.cost_status")
+        if (cost is None) != (cost_status == "unknown"):
+            raise InputError("INVALID_FACT", path, "Unknown cost must be null; known cost needs a value")
+        cost_source = require_text(activity.get("cost_source", "planning_service"), f"{path}.cost_source")
         attrs = []
         attr_ids: set[str] = set()
         for xi, raw_attr in enumerate(require_list(activity.get("attributes", []), f"{path}.attributes")):
@@ -56,7 +62,24 @@ def generate_candidates(
             if attr_id in attr_ids:
                 raise InputError("DUPLICATE_ID", f"{attr_path}.attribute_id", "Duplicate attribute ID")
             attr_ids.add(attr_id)
-            attrs.append({"attribute_id": attr_id, "value": require_in(attr.get("value"), {"yes", "no", "unknown"}, f"{attr_path}.value")})
+            if attr_id == "estimated_cost":
+                raise InputError("DUPLICATE_ID", attr_path, "Cost has a dedicated planning field")
+            value = attr.get("value")
+            legacy_unknown = value == "unknown" and "value_type" not in attr
+            status = require_in(attr.get("status", "unknown" if value is None or legacy_unknown else "confirmed"), FACT_STATUSES, f"{attr_path}.status")
+            fact = {"attribute_id": attr_id, "value": None if legacy_unknown else value,
+                    "value_type": require_in(attr.get("value_type", "category"), VALUE_TYPES, f"{attr_path}.value_type"),
+                    "unit": require_text(attr["unit"], f"{attr_path}.unit") if attr.get("unit") is not None else None,
+                    "status": status, "source": require_text(attr.get("source", "planning_service"), f"{attr_path}.source")}
+            try:
+                if status == "unknown":
+                    if fact["value"] is not None:
+                        raise ContractError("Unknown facts must have a null value")
+                else:
+                    validate_value(fact["value"], fact, attr_path)
+            except ContractError as exc:
+                raise InputError("INVALID_FACT", attr_path, str(exc)) from exc
+            attrs.append(fact)
 
         for wi, raw_window in enumerate(require_list(activity.get("windows"), f"{path}.windows")):
             window_path = f"{path}.windows[{wi}]"
@@ -93,6 +116,8 @@ def generate_candidates(
                             "estimated_cost_minor": cost,
                             "currency": currency,
                             "attributes": attrs,
+                            "cost_status": cost_status,
+                            "cost_source": cost_source,
                         })
                         if len(candidates) > 10000:
                             raise InputError("LIMIT_EXCEEDED", "planning.activities", "Too many candidates")
