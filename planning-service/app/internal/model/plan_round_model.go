@@ -14,3 +14,7 @@ type PlanRound struct {
 	IsActive    bool       `gorm:"type:boolean;not null;default:true" json:"is_active"`
 	CreatedAt   time.Time  `gorm:"type:timestamptz;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 }
+
+func (PlanRound) TableName() string {
+	return "plan_rounds"
+}

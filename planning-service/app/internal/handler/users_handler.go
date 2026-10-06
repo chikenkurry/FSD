@@ -45,12 +45,12 @@ func NewUserHandler(repo *repository.UserRepository) *UserHandler {
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid JSON payload")
+		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
 	if req.Username == "" {
-		writeError(w, http.StatusBadRequest, "username is required")
+		WriteError(w, http.StatusBadRequest, "username is required")
 		return
 	}
 
@@ -60,14 +60,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.Create(r.Context(), user); err != nil {
 		if errors.Is(err, repository.ErrUsernameDuplicate) {
-			writeError(w, http.StatusConflict, "Username is already taken")
+			WriteError(w, http.StatusConflict, "Username is already taken")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Failed to create user")
+		WriteError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, UserResponse{
+	WriteJSONResponse(w, http.StatusCreated, UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
 	})
@@ -78,21 +78,21 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	userID, err := uuid.Parse(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid UUID format")
+		WriteError(w, http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 
 	user, err := h.repo.GetByIDWithRelations(r.Context(), userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			writeError(w, http.StatusNotFound, "User not found")
+			WriteError(w, http.StatusNotFound, "User not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Failed to fetch user")
+		WriteError(w, http.StatusInternalServerError, "Failed to fetch user")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, UserDetailResponse{
+	WriteJSONResponse(w, http.StatusOK, UserDetailResponse{
 		ID:           user.ID,
 		Username:     user.Username,
 		CreatedPlans: len(user.CreatedPlans),
@@ -114,7 +114,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, total, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to fetch users")
+		WriteError(w, http.StatusInternalServerError, "Failed to fetch users")
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
 		"data":   responseList,
 		"total":  total,
 		"limit":  limit,
@@ -139,18 +139,18 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	userID, err := uuid.Parse(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid UUID format")
+		WriteError(w, http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 
 	var req UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid JSON payload")
+		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
 	if req.Username == "" {
-		writeError(w, http.StatusBadRequest, "username is required")
+		WriteError(w, http.StatusBadRequest, "username is required")
 		return
 	}
 
@@ -161,14 +161,14 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.Update(r.Context(), user); err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			writeError(w, http.StatusNotFound, "User not found")
+			WriteError(w, http.StatusNotFound, "User not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Failed to update user")
+		WriteError(w, http.StatusInternalServerError, "Failed to update user")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, UserResponse{
+	WriteJSONResponse(w, http.StatusOK, UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
 	})
@@ -179,29 +179,18 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	userID, err := uuid.Parse(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid UUID format")
+		WriteError(w, http.StatusBadRequest, "Invalid UUID format")
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), userID); err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			writeError(w, http.StatusNotFound, "User not found")
+			WriteError(w, http.StatusNotFound, "User not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Failed to delete user")
+		WriteError(w, http.StatusInternalServerError, "Failed to delete user")
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// Helper utilities
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
 }

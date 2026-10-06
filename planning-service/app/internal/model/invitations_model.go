@@ -24,3 +24,7 @@ type Invitation struct {
 	ExpiresAt time.Time        `gorm:"type:timestamptz;not null" json:"expires_at"`
 	CreatedAt time.Time        `gorm:"type:timestamptz;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 }
+
+func (Invitation) TableName() string {
+	return "invitations"
+}

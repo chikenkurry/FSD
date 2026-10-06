@@ -20,4 +20,10 @@ type PlanMember struct {
 	DisplayName string     `gorm:"type:varchar(100);not null" json:"display_name"`
 	Role        MemberRole `gorm:"type:varchar(50);default:'MEMBER';not null" json:"role"`
 	JoinedAt    time.Time  `gorm:"type:timestamptz;not null;default:CURRENT_TIMESTAMP" json:"joined_at"`
+
+	User *User `gorm:"foreignKey:UserID;references:ID" json:"user,omitempty"`
+}
+
+func (PlanMember) TableName() string {
+	return "plan_members"
 }

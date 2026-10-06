@@ -35,3 +35,7 @@ type Plan struct {
 	ProposedActivities []ProposedActivity   `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"proposed_activities,omitempty"`
 	ConfirmedSelection *ConfirmedSelection  `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"confirmed_selection,omitempty"`
 }
+
+func (Plan) TableName() string {
+	return "plans"
+}

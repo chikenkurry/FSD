@@ -12,3 +12,7 @@ type User struct {
 	CreatedPlans []Plan       `gorm:"foreignKey:CreatedByUserID" json:"created_plans,omitempty"`
 	Memberships  []PlanMember `gorm:"foreignKey:UserID" json:"memberships,omitempty"`
 }
+
+func (User) TableName() string {
+	return "users"
+}

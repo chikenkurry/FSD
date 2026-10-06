@@ -23,3 +23,7 @@ type ConfirmedSelection struct {
 	// Relationships
 	SelectedActivity *ProposedActivity `gorm:"foreignKey:SelectedActivityID;constraint:OnDelete:SET NULL" json:"selected_activity,omitempty"`
 }
+
+func (ConfirmedSelection) TableName() string {
+	return "confirmed_selections"
+}

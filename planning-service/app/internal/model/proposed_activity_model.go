@@ -16,3 +16,7 @@ type ProposedActivity struct {
 	Metadata          []byte    `gorm:"type:jsonb;not null;default:'{}'" json:"metadata"`
 	CreatedAt         time.Time `gorm:"type:timestamptz;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 }
+
+func (ProposedActivity) TableName() string {
+	return "proposed_activities"
+}
