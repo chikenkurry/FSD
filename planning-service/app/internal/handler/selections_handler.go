@@ -31,7 +31,7 @@ type CreateConfirmedSelectionRequest struct {
 	ConfirmedByUserID   uuid.UUID       `json:"confirmed_by_user_id"`
 }
 
-// POST /v1/plans/{plan_id}/confirmed-selection
+// POST /v1/confirmed-selection/plans/{plan_id}
 func (h *ConfirmedSelectionHandler) CreateConfirmedSelection(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(r.PathValue("plan_id"))
 	if err != nil {
@@ -77,7 +77,7 @@ func (h *ConfirmedSelectionHandler) CreateConfirmedSelection(w http.ResponseWrit
 	WriteJSONResponse(w, http.StatusCreated, selection)
 }
 
-// GET /v1/plans/{plan_id}/confirmed-selection
+// GET /v1/confirmed-selection/plans/{plan_id}
 func (h *ConfirmedSelectionHandler) GetConfirmedSelectionByPlan(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(r.PathValue("plan_id"))
 	if err != nil {

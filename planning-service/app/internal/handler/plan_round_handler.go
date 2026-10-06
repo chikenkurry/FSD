@@ -29,7 +29,7 @@ type UpdatePlanRoundRequest struct {
 	IsActive   *bool      `json:"is_active,omitempty"`
 }
 
-// POST /v1/plans/{plan_id}/rounds - Create a round for a plan
+// POST /v1/rounds/plans/{plan_id} - Create a round for a plan
 func (h *PlanRoundHandler) CreateRound(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(r.PathValue("plan_id"))
 	if err != nil {
@@ -62,7 +62,7 @@ func (h *PlanRoundHandler) CreateRound(w http.ResponseWriter, r *http.Request) {
 	WriteJSONResponse(w, http.StatusCreated, round)
 }
 
-// GET /v1/plans/{plan_id}/rounds - List all rounds for a plan
+// GET /v1/rounds/plans/{plan_id} - List all rounds for a plan
 func (h *PlanRoundHandler) ListRoundsByPlan(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(r.PathValue("plan_id"))
 	if err != nil {
@@ -151,7 +151,7 @@ func (h *PlanRoundHandler) UpdateRound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, round)
+	WriteJSONResponse(w, http.StatusOK, updatedRound)
 }
 
 // DELETE /v1/rounds/{id} - Delete a round

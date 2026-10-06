@@ -47,7 +47,7 @@ type ProposedActivityResponse struct {
 	CreatedAt        time.Time  	 `json:"created_at"`
 }
 
-// POST /v1/plans/{plan_id}/activities - Add activity to a plan
+// POST /v1/proposed_activity/plans/{plan_id} - Add activity to a plan
 func (h *ProposedActivityHandler) CreateActivity(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(r.PathValue("plan_id"))
 	if err != nil {
@@ -98,7 +98,7 @@ func (h *ProposedActivityHandler) CreateActivity(w http.ResponseWriter, r *http.
 	WriteJSONResponse(w, http.StatusCreated, activity)
 }
 
-// GET /v1/plans/{plan_id}/activities - List activities for a plan
+// GET /v1/proposed_activity/plans/{plan_id} - List activities for a plan
 func (h *ProposedActivityHandler) ListActivitiesByPlan(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(r.PathValue("plan_id"))
 	if err != nil {
@@ -115,7 +115,7 @@ func (h *ProposedActivityHandler) ListActivitiesByPlan(w http.ResponseWriter, r 
 	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{"data":  activities})
 }
 
-// GET /v1/activities/{id} - Get an activity by ID
+// GET /v1/proposed_activity/{id} - Get an activity by ID
 func (h *ProposedActivityHandler) GetActivityByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -138,7 +138,7 @@ func (h *ProposedActivityHandler) GetActivityByID(w http.ResponseWriter, r *http
 	WriteJSONResponse(w, http.StatusOK, activity)
 }
 
-// PATCH /v1/activities/{id} - Update an activity
+// PATCH /v1/proposed_activity/{id} - Update an activity
 func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -206,10 +206,10 @@ func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, activity)
+	WriteJSONResponse(w, http.StatusOK, updatedActivity)
 }
 
-// DELETE /v1/activities/{id} - Delete an activity
+// DELETE /v1/proposed_activity/{id} - Delete an activity
 func (h *ProposedActivityHandler) DeleteActivity(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
