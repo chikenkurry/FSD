@@ -65,6 +65,15 @@ func main() {
 	planMemberRepo := repository.NewPlanMemberRepository(db)
 	planMemberHandler := handler.NewPlanMemberHandler(planMemberRepo)
 
+	proposedActivityRepo := respository.NewProposedActivityRepository(db)
+	proposedActivityHandler := handler.NewProposedActivityHandler(proposedActivityRepo)
+
+	planRoundRepo := repository.NewPlanRoundRepository(db)
+	planRoundHandler := handler.NewPlanRoundHandler(planRoundRepo)
+
+	selectionRepo := repository.NewConfirmedSelectionHandler(db)
+	selectionHandler := handler.NewConfirmedSelectionHandler(selectionRepo)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", GetHealth)
@@ -88,6 +97,23 @@ func main() {
 	mux.HandleFunc("DELETE /v1/members/{id}", planMemberHandler.RemoveMember)
 	mux.HandleFunc("DELETE /v1/plans/{plan_id}/members/{user_id}", planMemberHandler.RemoveMemberByPlanAndUser)
 
+	// proposed activity CRUD methods
+	mux.HandleFunc("POST /v1/plans/{plan_id}/activities", proposedActivityHandler.CreateActivity)
+	mux.HandleFunc("GET /v1/plans/{plan_id}/activities", proposedActivityHandler.ListActivitiesByPlan)
+	mux.HandleFunc("GET /v1/activities/{id}", proposedActivityHandler.GetActivityByID)
+	mux.HandleFunc("PATCH /v1/activities/{id}", proposedActivityHandler.UpdateActivity)
+	mux.HandleFunc("DELETE /v1/activities/{id}", proposedActivityHandler.DeleteActivity)
+
+	// round CRUD methods
+	mux.HandleFunc("POST /v1/plans/{plan_id}/rounds", planRoundHandler.CreateRound)
+	mux.HandleFunc("GET /v1/plans/{plan_id}/rounds", planRoundHandler.ListRoundsByPlan)
+	mux.HandleFunc("GET /v1/rounds/{id}", planRoundHandler.GetRoundByID)
+	mux.HandleFunc("PATCH /v1/rounds/{id}", planRoundHandler.UpdateRound)
+	mux.HandleFunc("DELETE /v1/rounds/{id}", planRoundHandler.DeleteRound)
+
+	// selection CRUD methods
+	mux.HandleFunc("POST /v1/plans/{plan_id}/confirmed-selection", selectionHandler.CreateConfirmedSelection)
+	mux.HandleFunc("GET /v1/plans/{plan_id}/confirmed-selection", selectionHandler.GetConfirmedSelectionByPlan)
 
 	// start Server
 	log.Println("Planning Service running on :8080...")
