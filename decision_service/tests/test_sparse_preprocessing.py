@@ -59,7 +59,7 @@ class SparsePreprocessingTests(unittest.TestCase):
         result = preprocess(self.planning, self.responses, semantic_provider=FakeProvider())
         self.assertEqual(result["status"], "provisional")
         value = result["preparation"]
-        self.assertEqual(value["context"]["schema_version"], "sparse-v3")
+        self.assertEqual(value["context"]["schema_version"], "sparse-v4")
         self.assertEqual([c["title"] for c in value["candidates"]], self.planning["options"])
         self.assertEqual(value["candidates"][0]["facts"], [])
         self.assertEqual(value["candidates"][0]["tag_suggestions"][0]["status"], "hypothesis")
@@ -116,7 +116,7 @@ class SparsePreprocessingTests(unittest.TestCase):
         self.assertEqual(result["status"], "invalid_input")
 
     def test_unrecognized_question_uses_model_classification(self):
-        self.planning["questions"].append({"question_id": "q7", "label": "How important is comfort?"})
+        self.planning["questions"].append({"question_id": "q7", "label": "What comfort do you seek?"})
         for member in self.responses["participants"]:
             member["answers"].append({"question_id": "q7", "value": "Comfortable hotels"})
         result = preprocess(self.planning, self.responses, semantic_provider=FakeProvider())

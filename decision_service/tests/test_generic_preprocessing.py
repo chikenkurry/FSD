@@ -412,7 +412,7 @@ class GenericPreprocessingTests(unittest.TestCase):
         self.planning["questions"][1]["label"] = "How important is battery life?"
         result = self.process()
         question = result["preparation"]["scoring_model"]["questions"][1]
-        self.assertEqual(question["role"], "unclassified")
+        self.assertEqual(question["role"], "importance")
         self.assertNotEqual(result["preparation"]["status"], "ready")
 
     def test_conflicting_budget_answers_are_rejected(self):

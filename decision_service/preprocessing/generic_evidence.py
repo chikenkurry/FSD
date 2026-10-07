@@ -46,3 +46,10 @@ def scoped_interpretation(item: dict, answer_text: str, role: str, path: str) ->
     if not REQUIREMENT.search(clause):
         raise InputError("AMBIGUOUS_ANSWER", path, "Hard requirement needs explicit wording in its own clause")
     return {**result, "evidence": clause}
+
+def answer_provenance(answer: dict, member_id: str, snapshot_id: str, source_type: str, evidence: str) -> dict:
+    return {
+        "participant_id": member_id, "source_question_id": answer["question_id"],
+        "source_answer_id": answer.get("answer_id") or f"{snapshot_id}:{member_id}:{answer['question_id']}",
+        "source_type": source_type, "evidence": evidence,
+    }

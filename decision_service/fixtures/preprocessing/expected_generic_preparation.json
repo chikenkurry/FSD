@@ -1,9 +1,9 @@
 {
   "context": {
-    "schema_version": "sparse-v3",
+    "schema_version": "sparse-v4",
     "round_id": "product-1",
     "option_revision": "1",
-    "processing_version": "sparse-v4",
+    "processing_version": "sparse-v6",
     "policy_version": "generic-question-relevance-v1",
     "option_snapshot_id": "products-1",
     "response_snapshot_id": "product-responses-1",
@@ -141,7 +141,10 @@
       "status": "confirmed",
       "polarity": "prefer",
       "preferred_value": 12.0,
-      "utility_rule": "numeric_target_v1"
+      "utility_rule": "numeric_target_v1",
+      "utility_parameters": {
+        "scale": 3.0
+      }
     },
     {
       "participant_id": "p1",
@@ -160,11 +163,36 @@
         "coding",
         "design"
       ],
-      "utility_rule": "tag_overlap_v1"
+      "utility_rule": "tag_overlap_v1",
+      "utility_parameters": {}
     }
   ],
   "informational_answers": [],
   "unclassified_answers": [],
+  "canonicalization": {
+    "policy_version": "scoped-labels-v1",
+    "declarations": {},
+    "records": [
+      {
+        "kind": "value",
+        "path": "responses.participants.p1.answers.usage",
+        "attribute_id": "usage_tags",
+        "original": "Coding",
+        "canonical": "coding",
+        "source_type": "format",
+        "status": "mapped"
+      },
+      {
+        "kind": "value",
+        "path": "responses.participants.p1.answers.usage",
+        "attribute_id": "usage_tags",
+        "original": "Design",
+        "canonical": "design",
+        "source_type": "format",
+        "status": "mapped"
+      }
+    ]
+  },
   "scoring_model": {
     "questions": [
       {
@@ -261,8 +289,33 @@
       "minimum_score_weight": 0.6,
       "average_score_weight": 0.4,
       "fairness_weight": 0.0
-    }
+    },
+    "member_weights": [
+      {
+        "participant_id": "p1",
+        "source_question_id": "battery",
+        "attribute_id": "battery_life",
+        "base_weight": 0.5,
+        "importance_multiplier": 1,
+        "importance_source": "default",
+        "effective_weight": 0.5,
+        "status": "resolved"
+      },
+      {
+        "participant_id": "p1",
+        "source_question_id": "usage",
+        "attribute_id": "usage_tags",
+        "base_weight": 0.5,
+        "importance_multiplier": 1,
+        "importance_source": "default",
+        "effective_weight": 0.5,
+        "status": "resolved"
+      }
+    ],
+    "member_weight_policy": "question_share_times_importance_v1",
+    "ordinal_importance_policy": "longest_path_tiers_v1"
   },
+  "importance": [],
   "criteria": [
     {
       "attribute_id": "battery_life",

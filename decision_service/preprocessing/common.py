@@ -62,3 +62,6 @@ def utc_string(value: datetime) -> str:
     from datetime import timezone
 
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+def issue(code: str, path: str, message: str) -> dict:
+    return {"code": code, "path": path, "message": message}

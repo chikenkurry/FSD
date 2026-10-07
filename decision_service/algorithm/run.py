@@ -14,7 +14,7 @@ from .scoring import UnresolvedScore, score_candidate
 def run_decision(algorithm_input: dict[str, Any], run_id: str = "local-run") -> DecisionResult:
     if (isinstance(algorithm_input, dict)
             and isinstance(algorithm_input.get("context"), dict)
-            and algorithm_input["context"].get("schema_version") in ("sparse-v2", "sparse-v3")):
+            and algorithm_input["context"].get("schema_version") in ("sparse-v2", "sparse-v3", "sparse-v4")):
         return DecisionResult(Status.BLOCKED, run_id, "baseline-v2", "unknown", (), (), issues=("SPARSE_HANDOFF_NOT_SUPPORTED",))
     try:
         validate_handoff(algorithm_input)

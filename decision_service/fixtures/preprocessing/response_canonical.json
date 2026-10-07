@@ -1,0 +1,31 @@
+{
+  "round_id": "purchase-declared-aliases",
+  "option_revision": "1",
+  "response_snapshot_id": "purchase-declared-aliases-responses",
+  "participants": [
+    {
+      "participant_id": "p1",
+      "response_status": "complete",
+      "answers": [
+        {
+          "answer_id": "purchase-declared-aliases-p1-budget",
+          "question_id": "budget",
+          "value": 1500
+        },
+        {
+          "answer_id": "purchase-declared-aliases-p1-battery",
+          "question_id": "battery",
+          "value": "12 hours"
+        },
+        {
+          "answer_id": "purchase-declared-aliases-p1-usage",
+          "question_id": "usage",
+          "value": [
+            "Programming",
+            "Design"
+          ]
+        }
+      ]
+    }
+  ]
+}

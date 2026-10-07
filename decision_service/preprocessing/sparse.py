@@ -17,17 +17,19 @@ from decimal import Decimal, InvalidOperation
 from decision_service.contract import ContractError, group_objective
 
 from .common import InputError, require_in, require_list, require_object, require_text
-from .generic_mapping import fact_registry, local_question, model_question_role, resolve_mapping
+from .canonicalization import Canonicalizer
+from .generic_mapping import TYPES, fact_registry, local_question, model_question_role, resolve_mapping
 from .generic_preparation import MEMBER_ISSUES, compile_preparation
 from .generic_answers import _duration, process_answers
+from .member_importance import importance_question
 from .semantics import (
     SemanticProvider, SemanticServiceError,
     validate_sparse_option_suggestions, validate_sparse_question_assessment,
 )
 
 
-SCHEMA_VERSION = "sparse-v3"
-VERSION = "sparse-v4"
+SCHEMA_VERSION = "sparse-v4"
+VERSION = "sparse-v6"
 
 
 def _issue(code: str, path: str, message: str) -> dict:
@@ -161,7 +163,20 @@ def _scenario_requests(candidates: list[dict], roster: list[str], constraints: l
     for q in questions:
         if q["criterion"] == "duration_days":
             durations.update(parsed["days"] for label in q["choices"].values() if (parsed := _duration(label)) and parsed["kind"] == "preferred")
-    durations.update(p["value"]["days"] for p in preferences if p["criterion"] == "duration_days" and p["value"]["kind"] == "preferred")
+    for preference in preferences:
+        if preference["criterion"] != "duration_days":
+            continue
+        value = preference["value"]
+        if isinstance(value, dict) and value.get("kind") == "preferred":
+            durations.add(value["days"])
+        elif type(value) in {int, float} and int(value) == value and 1 <= value <= 365:
+            durations.add(int(value))
+        elif preference.get("intent") == "range" and value.get("lower") is not None and value.get("upper") is not None:
+            if 1 <= value["lower"] <= value["upper"] <= 365:
+                first, last = math.ceil(value["lower"]), math.floor(value["upper"])
+                first += int(not value["lower_inclusive"] and first == value["lower"])
+                last -= int(not value["upper_inclusive"] and last == value["upper"])
+                durations.update(range(first, last + 1))
     result = []
     for candidate in candidates:
         for days in sorted(durations):
@@ -249,6 +264,16 @@ def preprocess_sparse(
         candidates = _options(planning.get("options"))
         _check_option_cost_facts(candidates, currency, context["cost_scope"])
         registry = fact_registry(candidates)
+        for raw in require_list(planning.get("criteria", []), "planning.criteria"):
+            raw = require_object(raw, "planning.criteria")
+            aid = require_text(raw.get("attribute_id"), "planning.criteria.attribute_id")
+            definition = {"attribute_id": aid, "value_type": require_in(raw.get("value_type"), TYPES, "planning.criteria.value_type"),
+                          "unit": raw.get("unit")}
+            if definition["unit"] is not None:
+                require_text(definition["unit"], "planning.criteria.unit")
+            if aid in registry and registry[aid] != definition:
+                raise InputError("CONFLICTING_FACT_TYPE", "planning.criteria", "Criterion declaration differs from supplied facts")
+            registry[aid] = definition
         context["criteria"] = list(registry.values())
         context["options"] = [{"option_id": c["option_id"], "title": c["title"], "description": c["description"],
                                "facts": c["facts"]} for c in candidates]
@@ -266,8 +291,22 @@ def preprocess_sparse(
             extracted = require_object(semantic_evidence.get("answer_assessments"), "semantic_evidence.answer_assessments")
             suggestions = require_object(semantic_evidence.get("option_suggestions", {}), "semantic_evidence.option_suggestions")
             date_assessments = require_object(semantic_evidence.get("date_assessments", {}), "semantic_evidence.date_assessments")
+            canonical_assessments = require_object(semantic_evidence.get("canonical_assessments", {}), "semantic_evidence.canonical_assessments")
         else:
             assessments, extracted, suggestions, date_assessments = {}, {}, {}, {}
+            canonical_assessments = {}
+
+        canonicalizer = Canonicalizer(planning.get("canonicalization", {}), registry, semantic_provider,
+                                      canonical_assessments, replay=semantic_evidence is not None,
+                                      model_enabled=semantic_evidence.get("canonicalization_enabled") if semantic_evidence is not None else None,
+                                      decision_question=decision)
+        if semantic_evidence is not None and semantic_evidence.get("canonicalization_declarations", {}) != canonicalizer.declarations:
+            raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence.canonicalization_declarations", "Frozen aliases differ from this plan")
+        canonicalizer.prepare_facts(candidates)
+        registry = {aid: definition for aid, definition in registry.items() if aid in canonicalizer.target_ids}
+        canonicalizer.registry = registry
+        context["criteria"] = list(registry.values())
+        context["canonicalization"] = canonicalizer.declarations
 
         questions = []
         ids = set()
@@ -280,7 +319,8 @@ def preprocess_sparse(
             ids.add(qid)
             label = require_text(item.get("label", item.get("text")), f"{path}.label")
             choices = _choices(item.get("choices"), f"{path}.choices")
-            local = local_question(label, registry) or _local_question(label)
+            canonical_label = canonicalizer.question_label(label)
+            local = importance_question(canonical_label, registry) or local_question(canonical_label, registry) or _local_question(canonical_label)
             # The general preference fallback cannot identify a specific attribute.
             # Let a provider resolve that meaning when one is available.
             trusted_local = local if local and local["criterion"] != "preferences" else None
@@ -311,6 +351,18 @@ def preprocess_sparse(
                     inferred = {"role": "unclassified", "criterion": "unclassified", "relevance": 0.0, "reason": "Question role needs review"}
                     issues.append(_issue("UNKNOWN_QUESTION_ROLE", path, "Question needs classification"))
                     source = "unclassified"
+            if inferred["role"] not in {"informational", "importance", "unclassified"} or inferred["criterion"] in registry:
+                try:
+                    aid, model_canonical = canonicalizer.criterion(inferred["criterion"], path)
+                    inferred = {**inferred, "criterion": aid}
+                except InputError as exc:
+                    if exc.code != "AMBIGUOUS_CANONICAL_LABEL":
+                        raise
+                    issues.append(exc.as_issue())
+                    inferred = {**inferred, "role": "unclassified", "criterion": "unclassified", "relevance": 0.0}
+                    model_canonical = False
+            else:
+                model_canonical = False
             weight = item.get("leader_weight")
             if weight is not None and (type(weight) not in {int, float} or not 0 <= weight <= 1e308):
                 raise InputError("INVALID_WEIGHT", f"{path}.leader_weight", "Weight must be finite and nonnegative")
@@ -323,9 +375,12 @@ def preprocess_sparse(
             if type(questions[-1]["required"]) is not bool:
                 raise InputError("INVALID_TYPE", f"{path}.required", "Expected true or false")
             question = questions[-1]
+            if model_canonical:
+                question["canonicalization_source"] = "semantic_model"
             question["answer_format"] = require_in(item.get("answer_format", "choice" if choices else "text"),
                                                   {"text", "choice", "multi_choice", "number", "boolean", "date_intervals"}, f"{path}.answer_format")
             question["mapping"] = resolve_mapping(question, registry, candidates, context, item.get("mapping"))
+            canonicalizer.register_choices(question)
             if question["mapping"]["status"] == "unresolved" and question["role"] != "unclassified":
                 issues.append(_issue("UNRESOLVED_QUESTION_MAPPING", path, "Define a supported comparison or numeric scale for this question"))
         soft = [q for q in questions if q["role"] == "soft"]
@@ -341,24 +396,35 @@ def preprocess_sparse(
             q["weight_source"] = ("leader" if q["leader_weight"] is not None else q["inference_source"]) if q["role"] == "soft" else None
             del q["leader_weight"]
 
-        constraints, preferences, informational, unclassified_answers, members = process_answers(
+        constraints, preferences, informational, unclassified_answers, members, importance_entries = process_answers(
             responses, roster, questions, candidates, context, semantic_provider,
-            extracted, date_assessments, response_snapshot_id, issues,
+            extracted, date_assessments, response_snapshot_id, issues, registry, canonicalizer,
         )
+        meanings = constraints + preferences
+        answered_questions = {entry["question_id"] for entry in meanings}
+        question_weights = {q["question_id"]: q["weight"] for q in questions}
+        active_preferences = [entry for entry in preferences if question_weights[entry["question_id"]]]
+        for i, q in enumerate(questions):
+            entries = [entry for entry in meanings if entry["question_id"] == q["question_id"]]
+            if entries and all(entry.get("mapping", q["mapping"])["status"] == "resolved" for entry in entries):
+                issues[:] = [issue for issue in issues if not (issue["code"] == "UNRESOLVED_QUESTION_MAPPING"
+                              and issue["path"] == f"planning.questions[{i}]")]
 
         has_schedule_questions = {"availability", "duration_days"} <= {q["criterion"] for q in questions}
         scenario_requests = _scenario_requests(candidates, roster, constraints, preferences, questions) if has_schedule_questions else []
         scenario_criteria = {"availability", "duration_days", "max_cost"} if has_schedule_questions else set()
         criteria = sorted({q["criterion"] for q in questions
-                           if (q["role"] == "hard" or q["role"] == "soft" and q["weight"])
+                           if q["question_id"] not in answered_questions and (q["role"] == "hard" or q["role"] == "soft" and q["weight"])
                            and q["criterion"] not in scenario_criteria} |
-                          {c["criterion"] for c in constraints if c["criterion"] not in scenario_criteria})
+                          {entry["criterion"] for entry in constraints + active_preferences if entry["criterion"] not in scenario_criteria})
         for candidate in candidates:
             known = {f["criterion"] for f in candidate["facts"] if f["status"] != "unknown"}
             candidate["missing_criteria"] = [c for c in criteria if c not in known]
             option_id = candidate["option_id"]
-            requested = sorted({q["criterion"] for q in questions if q["role"] == "soft" and q["weight"]
-                                and q["criterion"] in candidate["missing_criteria"]})
+            requested = sorted({entry["criterion"] for entry in active_preferences if entry["criterion"] in candidate["missing_criteria"]}
+                               | {q["criterion"] for q in questions if q["role"] == "soft" and q["weight"]
+                                  and q["question_id"] not in answered_questions and q["criterion"] in candidate["missing_criteria"]})
+            requested = [aid for aid in requested if registry.get(aid, {}).get("value_type") in {"category", "tag_set"}]
             if option_id not in suggestions and requested and semantic_provider is not None and hasattr(semantic_provider, "suggest_option_tags"):
                 suggestions[option_id] = semantic_provider.suggest_option_tags(
                     {"option_id": option_id, "title": candidate["title"], "description": candidate["description"]}, requested, context,
@@ -378,9 +444,10 @@ def preprocess_sparse(
             raise InputError("UNMATCHED_SCENARIO_COST", "planning.scenario_costs", "Cost evidence does not match a feasible scenario request")
         if has_schedule_questions and not scenario_requests:
             issues.append(_issue("NO_SCHEDULE_SCENARIO", "responses.participants", "No shared date window fits a declared duration"))
-        if any(q["criterion"] == "max_cost" for q in questions) and currency is None:
+        uses_cost = any(q["criterion"] == "max_cost" for q in questions) or any(entry["criterion"] == "max_cost" for entry in meanings)
+        if uses_cost and currency is None:
             issues.append(_issue("MISSING_CURRENCY", "planning.currency", "Specify the budget currency"))
-        if any(q["criterion"] == "max_cost" for q in questions) and context["cost_scope"] is None:
+        if uses_cost and context["cost_scope"] is None:
             issues.append(_issue("MISSING_COST_SCOPE", "planning.cost_scope", "Define what the budget includes and whom it covers"))
         if any(candidate["missing_criteria"] for candidate in candidates):
             issues.append(_issue("MISSING_OPTION_FACTS", "planning.options", "Option criteria need sourced facts before confirmation"))
@@ -393,11 +460,14 @@ def preprocess_sparse(
                 issues.append(_issue("ESTIMATED_SCENARIO_COST", "planning.scenario_costs", "Estimated costs require confirmation before a hard budget check"))
 
         frozen = None
-        if assessments or extracted or suggestions or date_assessments or semantic_evidence is not None:
+        if assessments or extracted or suggestions or date_assessments or canonical_assessments or semantic_evidence is not None:
             frozen = semantic_evidence or {"option_snapshot_id": option_snapshot_id, "response_snapshot_id": response_snapshot_id,
                                            "processing_version": VERSION, "model": getattr(semantic_provider, "model", None),
                                            "question_assessments": assessments, "answer_assessments": extracted,
-                                           "option_suggestions": suggestions, "date_assessments": date_assessments}
+                                           "option_suggestions": suggestions, "date_assessments": date_assessments,
+                                           "canonical_assessments": canonical_assessments,
+                                           "canonicalization_enabled": canonicalizer.model_enabled,
+                                           "canonicalization_declarations": canonicalizer.declarations}
         artifact_id = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
         handoff = {"context": {"schema_version": SCHEMA_VERSION, "round_id": round_id, "option_revision": revision,
                                 "processing_version": VERSION,
@@ -410,7 +480,8 @@ def preprocess_sparse(
                    "participants": [{"participant_id": x, "response_status": members.get(x, {}).get("response_status", "incomplete"),
                                      "is_required_for_decision": True} for x in roster],
                    "constraints": constraints, "preferences": preferences, "informational_answers": informational,
-                   "unclassified_answers": unclassified_answers,
+                   "unclassified_answers": unclassified_answers, "importance_entries": importance_entries,
+                   "canonicalization": canonicalizer.packet(),
                    "scoring_model": {"questions": questions, "missing_fact_policy": "unresolved", "group_objective": objective}}
         handoff = compile_preparation(handoff, registry, issues)
         issues.append(_issue("EXECUTION_ADAPTER_REQUIRED", "preparation", "Sparse meanings need a supported execution adapter before ranking"))

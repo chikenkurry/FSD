@@ -292,7 +292,7 @@ class AlgorithmTests(unittest.TestCase):
         self.assertEqual(result.ranked_candidates[0].min_member_score, 0.5)
 
     def test_sparse_schema_is_blocked_before_activity_validation(self):
-        for schema in ("sparse-v2", "sparse-v3"):
+        for schema in ("sparse-v2", "sparse-v3", "sparse-v4"):
             with self.subTest(schema=schema):
                 result = run_decision({"context": {"schema_version": schema}, "candidates": [{"option_id": "x"}]})
                 self.assertEqual(result.status.value, "blocked")
