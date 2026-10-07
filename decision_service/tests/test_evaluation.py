@@ -34,16 +34,16 @@ class EvaluationTests(unittest.TestCase):
 
     def test_structured_corpus_runs_across_domains_without_model(self):
         report = evaluate(self.dataset, tags=("structured",))
-        self.assertEqual(report["cases"]["passed"], 12)
-        self.assertEqual(report["cases"]["total"], 12)
+        self.assertEqual(report["cases"]["passed"], 22)
+        self.assertEqual(report["cases"]["total"], 22)
         self.assertEqual(report["operational_errors"], 0)
         self.assertEqual(set(report["by_domain"]), {"purchase", "trip", "event", "project"})
         self.assertEqual(report["assertions"]["accuracy"], 1)
 
     def test_rules_failures_on_semantic_cases_are_visible(self):
         report = evaluate(self.dataset, tags=("semantic",))
-        self.assertEqual(report["cases"]["total"], 6)
-        self.assertLess(report["cases"]["passed"], 6)
+        self.assertEqual(report["cases"]["total"], 12)
+        self.assertLess(report["cases"]["passed"], 12)
         self.assertEqual(report["operational_errors"], 0)
         self.assertTrue(any(case["failures"] for case in report["results"]))
         self.assertIn("classification", report["by_dimension"])
@@ -214,6 +214,37 @@ class EvaluationTests(unittest.TestCase):
             replay = evaluate(dataset, evidence_dir=path)
             self.assertEqual(replay["cases"], live["cases"])
             self.assertIsNone(replay["results"][0]["evidence_model"])
+
+    def test_canonicalization_calls_are_recorded_and_replay_uses_frozen_labels(self):
+        class Provider:
+            model = "canonical-evaluation"
+
+            def canonicalize_sparse_label(self, payload):
+                return {"status": "equivalent", "target": "coding", "reason": "A scoped synonym"}
+
+        with tempfile.TemporaryDirectory() as directory:
+            dataset = self.one_case("purchase-model-tag-synonym")
+            report = evaluate(dataset, semantic_provider=Provider(), save_evidence_dir=Path(directory))
+            self.assertEqual(report["cases"]["passed"], 1)
+            call = report["results"][0]["model_calls"][0]
+            self.assertEqual(call["method"], "canonicalize_sparse_label")
+            self.assertEqual(call["subject"]["kind"], "value")
+            self.assertEqual(call["response"]["target"], "coding")
+            replay = evaluate(dataset, evidence_dir=Path(directory))
+            self.assertEqual(replay["cases"]["passed"], 1)
+
+    def test_declared_alias_case_replays_after_rules_only_hybrid_run(self):
+        class Provider:
+            model = "must-not-be-called"
+
+            def classify_question(self, *args):
+                raise AssertionError("Declared aliases should be handled by rules")
+
+        with tempfile.TemporaryDirectory() as directory:
+            dataset = self.one_case("purchase-declared-aliases")
+            report = evaluate(dataset, semantic_provider=Provider(), save_evidence_dir=Path(directory))
+            self.assertEqual(report["cases"]["passed"], 1)
+            self.assertEqual(evaluate(dataset, evidence_dir=Path(directory))["cases"]["passed"], 1)
 
     def test_cli_exit_codes_distinguish_success_failures_and_bad_configuration(self):
         for args, expected in ((["--tag", "structured"], 0), ([], 1), (["--tag", "not-a-tag"], 2)):

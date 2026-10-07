@@ -26,7 +26,7 @@ OPERATORS = {"equals", "approx", "rows", "contains_rows", "absent_rows", "normal
 class _RecordingProvider:
     """Record accepted and rejected model replies without API transport secrets."""
 
-    METHODS = {"classify_question", "extract_sparse_answer", "extract_sparse_dates", "suggest_option_tags"}
+    METHODS = {"classify_question", "extract_sparse_answer", "extract_sparse_dates", "suggest_option_tags", "canonicalize_sparse_label"}
 
     def __init__(self, provider):
         self.provider = provider
@@ -39,7 +39,7 @@ class _RecordingProvider:
 
         def record(*args, **kwargs):
             call = {"method": name, "subject": {
-                key: args[0][key] for key in ("question_id", "label", "option_id") if key in args[0]
+                key: args[0][key] for key in ("question_id", "label", "option_id", "kind", "criterion") if key in args[0]
             }}
             started = perf_counter()
             self.calls.append(call)
@@ -211,7 +211,7 @@ def _normalized_weights(questions: list, expected: list[str]) -> bool:
             weights.append(weight)
             if weight > 0:
                 active.add(qid)
-        elif role not in {"hard", "informational", "unclassified"} or weight is not None:
+        elif role not in {"hard", "informational", "importance", "unclassified"} or weight is not None:
             return False
     return active == set(expected) and math.isclose(sum(weights), 1, rel_tol=0, abs_tol=1e-9)
 
@@ -267,7 +267,9 @@ def evaluate(dataset: dict, *, semantic_provider=None, evidence_dir: Path | None
                             "response_snapshot_id": case["responses"].get("response_snapshot_id"),
                             "processing_version": SPARSE_PROCESSING_VERSION, "model": None,
                             "question_assessments": {}, "answer_assessments": {},
-                            "option_suggestions": {}, "date_assessments": {}}
+                            "option_suggestions": {}, "date_assessments": {},
+                            "canonical_assessments": {}, "canonicalization_enabled": False,
+                            "canonicalization_declarations": copy.deepcopy(case["planning"].get("canonicalization", {}))}
             if save_evidence_dir is not None and artifact is not None:
                 destination = save_evidence_dir / f"{case['case_id']}.json"
                 destination.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
