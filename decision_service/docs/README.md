@@ -15,9 +15,18 @@ and the generic comparison declarations your teammate needs to implement.
 stays provisional until the generic algorithm supports the packet. Member
 interpretations and evidence remain private.
 
+Generic preprocessing supports multiple criteria from one answer, numeric
+targets/directions/ranges, and member importance separate from question relevance.
+Per-member effective weights are exported under `scoring_model.member_weights`.
+See [numeric intent and member importance](FLOW.md#numeric-intent-and-member-importance)
+for the input formats, policies, and algorithm requirements.
+Scoped criterion/tag aliases and optional model synonym assessment are documented
+under [canonicalization](FLOW.md#criterion-and-tag-canonicalization). Facts keep
+their source/status; model assessments do not confirm option facts.
+
 ## Sparse decisions (generic option path)
 
-The `sparse-v3` path accepts option names and leader-written questions for any
+The `sparse-v4` path accepts option names and leader-written questions for any
 decision. Pass `options` instead of `activities` to select it. The grad-trip
 fixture is one example:
 
@@ -63,7 +72,7 @@ a soft criterion for choosing a subject-themed museum exhibit. A laptop
 purchase test produces preparation without any date or travel fields; it stays
 provisional until an execution adapter is available.
 
-`preparation.context.schema_version` is `sparse-v3`. Its option-level
+`preparation.context.schema_version` is `sparse-v4`. Its option-level
 `candidates` have `facts`, `missing_criteria`, and `tag_suggestions`. A model
 can suggest plausible tags relevant to soft questions, but they remain hypotheses and
 do not satisfy a missing fact. A supplied fact uses
@@ -89,13 +98,13 @@ even when all supplied facts are confirmed. Missing facts and estimated costs
 produce additional issues. It returns `needs_clarification` for unusable member
 answers, `invalid_input` for bad snapshots, and `upstream_unavailable` for a
 failed model. Partial information is retained under `preparation`;
-`algorithm_input` is null. The activity/time algorithm blocks `sparse-v3` input.
+`algorithm_input` is null. The activity/time algorithm blocks `sparse-v4` input.
 Preprocessing does not retrieve live external facts or rank sparse options.
 
 The `semantic_evidence` returned after model extraction can be saved and
 replayed with `--semantic-evidence`; replay validates the snapshot IDs and
 processing version.
-The handoff schema remains `sparse-v3`; processing now uses `sparse-v4`, so
+The handoff schema is `sparse-v4`; processing now uses `sparse-v6`, so
 artifacts created by the previous processing version must be regenerated.
 
 Run from the `FSD` repository root with Python 3.10 or later. The module uses only the Python standard library.

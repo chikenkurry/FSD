@@ -220,12 +220,12 @@ candidate inventory returns `no_feasible_candidate`.
 
 ## Sparse preparation
 
-Planning with `options` instead of `activities` selects `sparse-v3`. It accepts
+Planning with `options` instead of `activities` selects `sparse-v4`. It accepts
 leader-written questions, option names/descriptions/sourced facts, and member
 answers. It produces criterion classifications, normalized budgets/durations,
 interpreted preferences, missing criteria, hypothetical tags, and scenario
 requests when availability and duration are supplied.
-The processing version is `sparse-v4`, separate from the handoff schema.
+The processing version is `sparse-v6`, separate from the handoff schema.
 Supported rules run before semantic classification; comparison declarations
 are generated in code from supplied facts and validated question roles.
 
@@ -237,8 +237,35 @@ provenance, and typed fact requests. Facts determine criterion types; the model
 cannot change their units or invent numeric scales. Member answers are excluded
 from question weighting. Negative preferences carry explicit `polarity`.
 
+The `sparse-v4` handoff allows multiple criteria in one answer. Each preference
+declares its own utility rule and parameters, including numeric target,
+maximize/minimize, and acceptable range. Hard numeric constraints preserve
+strictness and inclusive/exclusive range endpoints. Multiple interpreted hard
+values can be confirmed using `confirmed_requirements: [...]`.
+
+`importance` contains grounded member multipliers or criterion orderings with
+provenance. `scoring_model.questions[].weight` remains plan relevance;
+`scoring_model.member_weights` contains each member's question/criterion base
+share, importance multiplier, effective weight, and resolution status.
+The generic adapter must average multiple utilities for the same
+question/criterion pair, then apply that pair's effective weight. Applying the
+question weight again would double-count it. Cyclic or conflicting importance
+declarations produce unresolved weights and clarification.
+
+The versioned policies and proposed utility formulas are documented in
+[Preprocessing flow](FLOW.md#numeric-intent-and-member-importance). These features
+apply to generic preparation; the activity execution contract remains unchanged.
+
+The generic packet also includes `canonicalization` with the `scoped-labels-v1`
+policy, declared aliases, and original/canonical label records. Criterion IDs and
+text values already use the canonical representation; the algorithm should use
+the declared comparisons directly. Model synonym decisions are interpretations,
+and any resulting hard meaning still requires confirmation. See
+[Criterion and tag canonicalization](FLOW.md#criterion-and-tag-canonicalization)
+for configuration, trace fields, and replay behavior.
+
 The outer result remains `provisional` with `EXECUTION_ADAPTER_REQUIRED` until
-the generic algorithm implements this packet. Passing `sparse-v2` or `sparse-v3`
+the generic algorithm implements this packet. Passing `sparse-v2`, `sparse-v3`, or `sparse-v4`
 directly to the current algorithm returns `blocked` with
 `SPARSE_HANDOFF_NOT_SUPPORTED` before activity validation. The generic and
 activity comparison declarations are separate contracts; new numeric/tag rules
