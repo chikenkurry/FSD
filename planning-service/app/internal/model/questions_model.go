@@ -44,3 +44,14 @@ type Question struct {
 	Plan *Plan `gorm:"foreignKey:PlanID;references:ID;constraint:OnDelete:CASCADE" json:"-"`
 }
 
+type QuestionPreset struct {
+	ID          uuid.UUID    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	Category    PlanCategory `gorm:"type:varchar(50);not null;" json:"category"`
+	Title       string       `gorm:"type:varchar(255);not null" json:"title"`              // e.g. "Locations to visit"
+	Type        QuestionType `gorm:"type:varchar(50);not null" json:"type"`                // e.g. "LOCATION", "BUDGET"
+	Description string       `gorm:"type:text" json:"description,omitempty"`
+	IsRequired  bool         `gorm:"type:boolean;default:false" json:"is_required"`
+	SortOrder   int          `gorm:"type:integer;default:0" json:"sort_order"`
+	Options     datatypes.JSON `gorm:"type:jsonb" json:"options,omitempty"`
+}
+

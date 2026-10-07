@@ -2,9 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
-	"errors"
 
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
@@ -14,25 +14,27 @@ import (
 
 // for incoming create request
 type CreatePlanRequest struct {
-	Title           string     `json:"title"`
-	Description     *string    `json:"description,omitempty"`
-	OrganiserID     uuid.UUID  `json:"organiser_id"`
-	TimeWindowStart *time.Time `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time `json:"time_window_end,omitempty"`
-	OrganiserName   string     `json:"organiser_name"`
+	Title           string             `json:"title"`
+	Description     *string            `json:"description,omitempty"`
+	Category        model.PlanCategory `json:"plan_category"`
+	OrganiserID     uuid.UUID          `json:"organiser_id"`
+	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
+	OrganiserName   string             `json:"organiser_name"`
 }
 
 // for responding
 type PlanResponse struct {
-	ID              uuid.UUID       `json:"id"`
-	Title           string          `json:"title"`
-	Description     *string         `json:"description,omitempty"`
-	Status          model.PlanState `json:"status"`
-	CreatedByUserID uuid.UUID       `json:"created_by_user_id"`
-	TimeWindowStart *time.Time      `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time      `json:"time_window_end,omitempty"`
-	CreatedAt       time.Time       `json:"created_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	ID              uuid.UUID          `json:"id"`
+	Title           string             `json:"title"`
+	Description     *string            `json:"description,omitempty"`
+	Category        model.PlanCategory `json:"plan_category"`
+	Status          model.PlanState    `json:"status"`
+	CreatedByUserID uuid.UUID          `json:"created_by_user_id"`
+	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
 
 	// Relational details (included when loaded)
 	MembersCount            int `json:"members_count,omitempty"`
@@ -61,12 +63,6 @@ func NewPlanHandler(repo *repository.PlanRepository) *PlanHandler {
 	return &PlanHandler{repo: repo}
 }
 
-func (h *PlanHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
-	result := JsonResponse{Status: "okay", Message: "service be alive"}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
-}
-
 // POST /v1/plans
 func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 	var req CreatePlanRequest
@@ -80,9 +76,15 @@ func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !req.Category.IsValidCategory() {
+		WriteError(w, http.StatusBadRequest, "invalid category")
+		return
+	}
+
 	plan := &model.Plan{
 		Title:           req.Title,
 		Description:     req.Description,
+		Category:        req.Category,
 		Status:          model.PlanStateDraft,
 		CreatedByUserID: req.OrganiserID,
 		TimeWindowStart: req.TimeWindowStart,

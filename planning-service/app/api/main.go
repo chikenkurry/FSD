@@ -10,6 +10,7 @@ import (
 	"planning-service/app/internal/handler"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
+	"planning-service/app/internal/database"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -41,10 +42,12 @@ func main() {
 	log.Println("Successfully connected to PostgreSQL database!")
 	_ = db
 
+	// run migrations
 	err = db.AutoMigrate(
 		&model.User{},
 		&model.Plan{},
 		&model.Question{},
+		&model.QuestionPreset{},
 		&model.PlanRound{},
 		&model.PlanMember{},
 		&model.ProposedActivity{},
@@ -54,6 +57,11 @@ func main() {
 		log.Fatalf("AutoMigrate failed: %v", err)
 	}
 	log.Println("Database migration completed for all tables!")
+
+	// seed preset templates
+	if err := database.SeedQuestionPresets(db); err != nil {
+		log.Printf("WarningL failed to seed presets: %v", err)
+	}
 
 	// Initialize layers
 	planRepo := repository.NewPlanRepository(db)
