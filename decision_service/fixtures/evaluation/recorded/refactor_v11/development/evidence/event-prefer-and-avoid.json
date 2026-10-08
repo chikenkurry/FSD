@@ -1,0 +1,41 @@
+{
+  "option_snapshot_id": "event-prefer-and-avoid-options",
+  "response_snapshot_id": "event-prefer-and-avoid-responses",
+  "processing_version": "sparse-v11",
+  "model": "recorded:qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "environment": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "environment",
+            "evidence": "I like indoor venues",
+            "intent": "match",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "indoor"
+          },
+          {
+            "criterion": "environment",
+            "evidence": "avoid noisy places",
+            "intent": "match",
+            "must_have": true,
+            "polarity": "avoid",
+            "value": "noisy"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {},
+  "scenario_policy": {
+    "max_requests": 10000
+  }
+}

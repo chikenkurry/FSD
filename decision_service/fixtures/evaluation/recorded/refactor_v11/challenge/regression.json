@@ -1,0 +1,2272 @@
+{
+  "processing_version": "sparse-v11",
+  "mode": "recorded_response_regression",
+  "source": "Previously recorded sparse-v10 model replies; no live inference in this run.",
+  "cases": {
+    "passed": 24,
+    "total": 24
+  },
+  "assertions": {
+    "passed": 78,
+    "total": 78
+  },
+  "operational_errors": 0,
+  "case_reports": [
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "d468874b5fc66c9063be22062987d01299abd16381854872957e5bf9b484c2d0",
+      "evaluated_at": "2026-10-08T01:56:11.383190+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-ideal-load",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "155e923f508cfe9d9c651c96b7251cfb8a3ff3c054222d95211162b0a3f32a75",
+      "evaluated_at": "2026-10-08T01:56:11.383869+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "printer": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "printer-minimum-output",
+          "domain": "printer",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "2313f09f48b2518ce3d12e8dcf279cb811454bebb4638c971863e491341db20f",
+      "evaluated_at": "2026-10-08T01:56:11.384429+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "venue": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "venue-upper-noise",
+          "domain": "venue",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "d0ac31c6e807805532af0d76a3349b68fdef2f96366b6c0620065298c4117d24",
+      "evaluated_at": "2026-10-08T01:56:11.384971+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "server": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "server-higher-memory",
+          "domain": "server",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "f2229d984bbe69cc6aa9d582e8c7e858d35858ef316c4955c49a2f0da16a3991",
+      "evaluated_at": "2026-10-08T01:56:11.385501+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "printer": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "printer-lower-noise",
+          "domain": "printer",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "8136135d0964d88615aad2baf6cc3d834e7ecf543938c0f0a0ebb57759dc0b01",
+      "evaluated_at": "2026-10-08T01:56:11.386099+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-load-range",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "bb0a4054d4d22928919b4549d64a798a7843d880b2af68699f42250d1fc7e2c0",
+      "evaluated_at": "2026-10-08T01:56:11.386675+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-ambiguous-number",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "AMBIGUOUS_NUMERIC_INTENT",
+              "path": "responses.participants.p1.answers.preference",
+              "message": "Specify an ideal target, minimum/maximum, range, or higher/lower direction; a bare number does not establish intent"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "995158ed1c26d42f67ffdc234cc1e7ac2e94c438c69f5d8be0d8013eb9b344ab",
+      "evaluated_at": "2026-10-08T01:56:11.387154+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-ambiguous-unit-text",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "AMBIGUOUS_NUMERIC_INTENT",
+              "path": "responses.participants.p1.answers.preference",
+              "message": "Specify an ideal target, minimum/maximum, range, or higher/lower direction; a bare number does not establish intent"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "1523ade0a84bcee80339accd315e37cf0b79ff1ec1524878ea389e6c472a22b5",
+      "evaluated_at": "2026-10-08T01:56:11.387583+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-declared-target",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "9c5ff05b13b74d3f2fe885ba1d5c97f5b64c4b8b89a6ab70a9cf77000ff2fb4a",
+      "evaluated_at": "2026-10-08T01:56:11.387963+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-declared-soft-minimum",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "fd72443f11a383001f4e8a828327559c9e87efa41fd3551d8824d759f0254a67",
+      "evaluated_at": "2026-10-08T01:56:11.388363+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-declared-hard-minimum",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "cbf8302be2b38e89ffea65075e850f29cd42a7f2f0cce5d7de20eb8a13664269",
+      "evaluated_at": "2026-10-08T01:56:11.389109+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-tags-contradictory",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFLICTING_ANSWER",
+              "path": "responses.participants.p1.constraints.handling_tags",
+              "message": "Tags are both required and excluded: cooling; review questions: preference"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "347a60f8565dda39b00c888b6d668cd13dc5dda067966f9747ffcaeda2feb5fb",
+      "evaluated_at": "2026-10-08T01:56:11.389609+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 2,
+        "total": 2,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-tags-compatible",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "canonicalize_sparse_label",
+              "subject": {
+                "label": "fragile",
+                "kind": "value",
+                "criterion": {
+                  "attribute_id": "handling_tags",
+                  "value_type": "tag_set",
+                  "unit": null
+                }
+              },
+              "response": {
+                "reason": "The label 'fragile' refers to items that require careful handling to avoid damage. Among the targets, 'cooling' relates to temperature control, which is not directly equivalent to fragile handling. 'stackable' refers to physical arrangement, not handling sensitivity. Neither 'cooling' nor 'stackable' captures the concept of fragile items requiring gentle handling. Therefore, no target is equivalent to 'fragile' in the context of handling tags. The intended meaning\u2014sensitivity to physical impact\u2014is not matched by either option.",
+                "status": "distinct",
+                "target": null
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 2,
+            "total": 2,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "78515ebe80f8b757f1e696bf7b2fadd90c74a08c6c3bf612293a288fc3bd6e03",
+      "evaluated_at": "2026-10-08T01:56:11.390107+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-distinct-required-sets",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "31b695d3cbd02020fae6dfe91f6a67ebf3f0038f6b27786c68aa2b32b7a49610",
+      "evaluated_at": "2026-10-08T01:56:11.390595+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "venue": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "venue-compatible-caps",
+          "domain": "venue",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "acd16ff41baf9c7c476446cb2d8177e1500ee12087edf5caf4c191be4fedb8f2",
+      "evaluated_at": "2026-10-08T01:56:11.391149+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "venue": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "venue-compatible-floor-cap",
+          "domain": "venue",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "1a1079f9aea192a02dc82703c3d84b360558eb9180eccb221722a13a8f5c9bde",
+      "evaluated_at": "2026-10-08T01:56:11.391652+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "venue": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "venue-touching-inclusive",
+          "domain": "venue",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "2c7d44a4848600e114f0772228a4dec5ec89f0103ee86a230b0db22b8dd435d5",
+      "evaluated_at": "2026-10-08T01:56:11.392126+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "venue": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "venue-touching-exclusive",
+          "domain": "venue",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFLICTING_ANSWER",
+              "path": "responses.participants.p1.constraints.guest_capacity",
+              "message": "Numeric requirements have no overlapping values; review questions: preference, second"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "8f5091e4199153d7b54775069ea2992976d7f06818fa9312e4b1dc19197df88b",
+      "evaluated_at": "2026-10-08T01:56:11.392667+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "venue": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "venue-impossible-floor-cap",
+          "domain": "venue",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFLICTING_ANSWER",
+              "path": "responses.participants.p1.constraints.guest_capacity",
+              "message": "Numeric requirements have no overlapping values; review questions: preference, second"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "8147ee9693e7d966512cf187278724674a1f0eb003ea86ed6121d3ba5759cdc3",
+      "evaluated_at": "2026-10-08T01:56:11.393121+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-compound-bounds",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "48487423f6c1c4a706727fa72f6389da88bd6ed48d73c9af0c4f6e146916c4ef",
+      "evaluated_at": "2026-10-08T01:56:11.393568+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "printer": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "printer-natural-quiet-direction",
+          "domain": "printer",
+          "tags": [
+            "challenge",
+            "semantic"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "preference",
+                "label": "noise level preference?",
+                "criterion": "noise_level"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "noise_level",
+                    "evidence": "The less noise it makes, the better.",
+                    "intent": "minimize",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "lower dB value (less noise)"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "802f260c6b5f9d40b966f95987960f3c87799198901d4e0551b897341c743807",
+      "evaluated_at": "2026-10-08T01:56:11.394176+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-natural-capacity-direction",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "semantic"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "preference",
+                "label": "load capacity preference?",
+                "criterion": "load_capacity"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "load_capacity",
+                    "evidence": "I would favour whichever can carry the heavier load.",
+                    "intent": "maximize",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "heavier load (in kg, greater value preferred)"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "23141223557a28523bba2b343789d3eabf208fc7a2ca6062540888384d1ff42b",
+      "evaluated_at": "2026-10-08T01:56:11.394763+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-natural-required-tag",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "semantic"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFIRM_REQUIREMENT",
+              "path": "responses.participants.p1.answers.preference",
+              "message": "Confirm the interpreted criterion, rule, value, and unit"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "preference",
+                "label": "handling tags preference?",
+                "criterion": "handling_tags"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "handling_tags",
+                    "evidence": "Our shipments need cooling.",
+                    "intent": "match",
+                    "must_have": true,
+                    "polarity": "prefer",
+                    "value": "cooling"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "challenge-1",
+      "dataset_sha256": "3953b03d699b080158cbc828c498a235dbc59eaa2a72f70beb1e03db786ff2e5",
+      "evaluated_at": "2026-10-08T01:56:11.395347+00:00",
+      "label_provenance": {
+        "author": "Codex",
+        "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+        "independent_review": "pending",
+        "reviewer": null
+      },
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "warehouse": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "warehouse-natural-excluded-tag",
+          "domain": "warehouse",
+          "tags": [
+            "challenge",
+            "semantic"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFIRM_REQUIREMENT",
+              "path": "responses.participants.p1.answers.preference",
+              "message": "Confirm the interpreted criterion, rule, value, and unit"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "preference",
+                "label": "handling tags preference?",
+                "criterion": "handling_tags"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "handling_tags",
+                    "evidence": "Our shipments must not use cooling.",
+                    "intent": "match",
+                    "must_have": true,
+                    "polarity": "avoid",
+                    "value": "cooling"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    }
+  ]
+}

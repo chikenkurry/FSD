@@ -1,0 +1,17 @@
+{
+  "option_snapshot_id": "purchase-unknown-fact-options",
+  "response_snapshot_id": "purchase-unknown-fact-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {
+    "option-1": {
+      "suggestions": []
+    }
+  },
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

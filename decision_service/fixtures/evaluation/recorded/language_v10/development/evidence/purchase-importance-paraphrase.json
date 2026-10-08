@@ -1,0 +1,44 @@
+{
+  "option_snapshot_id": "purchase-importance-paraphrase-options-intent-v2",
+  "response_snapshot_id": "purchase-importance-paraphrase-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "importance": {
+        "importance_relations": [
+          {
+            "evidence": "Battery runtime takes priority over finish colour for me.",
+            "higher_criterion": "battery_life",
+            "lower_criterion": "colour"
+          }
+        ],
+        "interpretations": [
+          {
+            "criterion": "battery_life",
+            "evidence": "Battery runtime takes priority over finish colour for me.",
+            "intent": "match",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "priority"
+          },
+          {
+            "criterion": "colour",
+            "evidence": "Battery runtime takes priority over finish colour for me.",
+            "intent": "match",
+            "must_have": false,
+            "polarity": "avoid",
+            "value": "priority"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

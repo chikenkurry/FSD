@@ -1,0 +1,1461 @@
+{
+  "schema_version": "preprocessing-eval-report-v1",
+  "dataset_version": "5",
+  "dataset_sha256": "13aaba2d9b1c592470f4780429b96ad7bd00bcc1ca32d82ef51f2fae37202429",
+  "evaluated_at": "2026-10-08T01:17:37.101692+00:00",
+  "label_provenance": null,
+  "mode": "live",
+  "model": "qwen3:4b-instruct",
+  "selected_tags": [],
+  "duration_seconds": 131.47,
+  "cases": {
+    "passed": 34,
+    "total": 34,
+    "accuracy": 1.0
+  },
+  "assertions": {
+    "passed": 185,
+    "total": 185,
+    "accuracy": 1.0,
+    "missing_paths": 0,
+    "value_mismatches": 0
+  },
+  "operational_errors": 0,
+  "by_dimension": {
+    "clarification": {
+      "passed": 8,
+      "total": 8,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "classification": {
+      "passed": 10,
+      "total": 10,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "constraints": {
+      "passed": 24,
+      "total": 24,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "extraction": {
+      "passed": 37,
+      "total": 37,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "facts": {
+      "passed": 21,
+      "total": 21,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "mapping": {
+      "passed": 3,
+      "total": 3,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "status": {
+      "passed": 62,
+      "total": 62,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "weights": {
+      "passed": 20,
+      "total": 20,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    }
+  },
+  "by_domain": {
+    "event": {
+      "passed": 51,
+      "total": 51,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "exhibit": {
+      "passed": 7,
+      "total": 7,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "project": {
+      "passed": 30,
+      "total": 30,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "purchase": {
+      "passed": 72,
+      "total": 72,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "trip": {
+      "passed": 25,
+      "total": 25,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    }
+  },
+  "results": [
+    {
+      "case_id": "purchase-typed-values",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.002,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 10,
+        "total": 10,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-budget-shorthand",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-explicit-access",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-choice-formats",
+      "domain": "project",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-schedule-missing-cost",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "MISSING_SCENARIO_COST",
+          "path": "planning.options",
+          "message": "Sourced costs are needed for the proposed dates and durations"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-explicit-indifference",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-missing-answer",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "MISSING_ANSWER",
+          "path": "responses.participants.p1.answers.colour",
+          "message": "An active soft question needs a normalized answer or explicit indifference"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-unit-mismatch",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "UNIT_MISMATCH",
+          "path": "responses.participants.p1.answers.battery",
+          "message": "Answer unit differs from the criterion unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-unknown-fact",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 1.49,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "MISSING_OPTION_FACTS",
+          "path": "planning.options",
+          "message": "Option criteria need sourced facts before confirmation"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "suggest_option_tags",
+          "subject": {
+            "option_id": "option-1"
+          },
+          "response": {
+            "suggestions": []
+          },
+          "duration_seconds": 1.488
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-vague-dates",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_AVAILABILITY",
+          "path": "responses.participants.p1.answers.dates",
+          "message": "Provide exact dates or date intervals"
+        },
+        {
+          "code": "MISSING_OPTION_FACTS",
+          "path": "planning.options",
+          "message": "Option criteria need sourced facts before confirmation"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-compatible-budgets",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.002,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-leader-weights",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-runtime-paraphrase",
+      "domain": "purchase",
+      "tags": [
+        "semantic"
+      ],
+      "passed": true,
+      "duration_seconds": 6.697,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "classify_question",
+          "subject": {
+            "question_id": "runtime",
+            "label": "How long should it run unplugged?"
+          },
+          "response": {
+            "criterion": "battery_life",
+            "reason": "The question 'How long should it run unplugged?' directly relates to battery life, which is a measured attribute in the context. Battery life is expressed in hours and is explicitly provided for both options. This is a soft preference as it reflects user expectation for runtime without power, and the criterion 'battery_life' is already defined in the context.",
+            "relevance": 0.75,
+            "role": "soft"
+          },
+          "duration_seconds": 6.693
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-prefer-and-avoid",
+      "domain": "event",
+      "tags": [
+        "semantic",
+        "negation"
+      ],
+      "passed": true,
+      "duration_seconds": 10.71,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "environment",
+            "label": "What surroundings do you prefer?",
+            "criterion": "environment"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "environment",
+                "evidence": "I like indoor venues",
+                "intent": "match",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "indoor"
+              },
+              {
+                "criterion": "environment",
+                "evidence": "avoid noisy places",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "avoid",
+                "value": "noisy"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 10.708
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-inferred-access-need",
+      "domain": "event",
+      "tags": [
+        "semantic",
+        "hard-requirement"
+      ],
+      "passed": true,
+      "duration_seconds": 7.796,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.access",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "access",
+            "label": "Any accessibility preferences?",
+            "criterion": "step_free_access"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "step_free_access",
+                "evidence": "I need wheelchair access, so step-free entry is essential.",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "prefer",
+                "value": "true"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 7.79
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-irrelevant-subject",
+      "domain": "trip",
+      "tags": [
+        "semantic",
+        "relevance"
+      ],
+      "passed": true,
+      "duration_seconds": 3.441,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "classify_question",
+          "subject": {
+            "question_id": "subject",
+            "label": "Favourite subject?"
+          },
+          "response": {
+            "criterion": "max_cost",
+            "reason": "The decision is about choosing a destination based on cost, and the options provide explicit values for max_cost per person. The question about favourite subject is irrelevant to the decision goal.",
+            "relevance": 0,
+            "role": "informational"
+          },
+          "duration_seconds": 3.439
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 8,
+        "total": 8,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "exhibit-relevant-subject",
+      "domain": "exhibit",
+      "tags": [
+        "semantic",
+        "relevance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-hard-exclusion",
+      "domain": "project",
+      "tags": [
+        "semantic",
+        "negation",
+        "hard-requirement"
+      ],
+      "passed": true,
+      "duration_seconds": 6.996,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.tasks",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "tasks",
+            "label": "Which tasks do you prefer?",
+            "criterion": "tasks"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "tasks",
+                "evidence": "I prefer coding",
+                "intent": "match",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "coding"
+              },
+              {
+                "criterion": "tasks",
+                "evidence": "I must not do marketing",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "avoid",
+                "value": "marketing"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 6.995
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-compound-structured",
+      "domain": "event",
+      "tags": [
+        "structured",
+        "compound"
+      ],
+      "passed": true,
+      "duration_seconds": 0.002,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-compound-text",
+      "domain": "event",
+      "tags": [
+        "semantic",
+        "compound",
+        "hard-requirement"
+      ],
+      "passed": true,
+      "duration_seconds": 12.274,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.preferences",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.preferences",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preferences",
+            "label": "Any personal preferences?",
+            "criterion": "preferences"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "quiet",
+                "evidence": "I prefer somewhere quiet",
+                "intent": "match",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "true"
+              },
+              {
+                "criterion": "max_cost",
+                "evidence": "I must spend under $50",
+                "intent": "less_than",
+                "must_have": true,
+                "polarity": "avoid",
+                "value": "50.00 USD"
+              },
+              {
+                "criterion": "step_free_access",
+                "evidence": "I need step-free access",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "prefer",
+                "value": "true"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 12.273
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-numeric-direction",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 0.002,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-numeric-range",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-strict-budget",
+      "domain": "event",
+      "tags": [
+        "structured",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-member-importance",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-importance-paraphrase",
+      "domain": "purchase",
+      "tags": [
+        "semantic",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 50.376,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "importance",
+            "label": "Which criteria matter most?",
+            "criterion": "importance"
+          },
+          "response": {
+            "importance_relations": [
+              {
+                "evidence": "Battery runtime takes priority over finish colour for me.",
+                "higher_criterion": "battery_life",
+                "lower_criterion": "colour"
+              }
+            ],
+            "interpretations": [],
+            "status": "resolved"
+          },
+          "duration_seconds": 50.372
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-ordinal-importance",
+      "domain": "project",
+      "tags": [
+        "structured",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.002,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-cyclic-importance",
+      "domain": "project",
+      "tags": [
+        "structured",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFLICTING_IMPORTANCE",
+          "path": "responses.participants.p1",
+          "message": "Importance comparisons form a cycle"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-compound-directions",
+      "domain": "project",
+      "tags": [
+        "semantic",
+        "compound",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 11.028,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preferences",
+            "label": "Any personal preferences?",
+            "criterion": "preferences"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "impact",
+                "evidence": "greater impact",
+                "intent": "maximize",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "greater impact"
+              },
+              {
+                "criterion": "duration_weeks",
+                "evidence": "shorter timeline",
+                "intent": "minimize",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "shorter timeline"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 11.024
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-declared-aliases",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-declared-activity-alias",
+      "domain": "trip",
+      "tags": [
+        "structured",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-distinct-language-symbols",
+      "domain": "project",
+      "tags": [
+        "structured",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-model-tag-synonym",
+      "domain": "purchase",
+      "tags": [
+        "semantic",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 6.23,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "canonicalize_sparse_label",
+          "subject": {
+            "label": "programming",
+            "kind": "value",
+            "criterion": {
+              "attribute_id": "usage_tags",
+              "value_type": "tag_set",
+              "unit": null
+            }
+          },
+          "response": {
+            "reason": "The label 'programming' refers to the activity of writing code, which is most closely aligned with 'coding' in the context of device usage. 'Design' and 'presentations' are distinct activities\u2014design involves creating visual or structural elements, and presentations involve delivering content\u2014neither of which is equivalent to programming. Therefore, 'coding' is the only target that shares a practical, common-sense meaning with 'programming' in the context of device usage. Replacing 'programming' with 'coding' preserves the intended preference of using a device for code creation.",
+            "status": "equivalent",
+            "target": "coding"
+          },
+          "duration_seconds": 6.227
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-model-criterion-synonym",
+      "domain": "purchase",
+      "tags": [
+        "semantic",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 6.656,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "canonicalize_sparse_label",
+          "subject": {
+            "label": "unplugged_runtime",
+            "kind": "criterion",
+            "criterion": null
+          },
+          "response": {
+            "reason": "The label 'unplugged_runtime' refers to how long a device can operate without being plugged in, which is directly measured by battery life in hours. The target 'battery_life' with unit 'hours' captures this concept in a practical, common usage context. Although 'unplugged_runtime' is a more specific phrasing, in everyday language, 'battery life' is the standard term used to describe runtime without power. Replacing 'unplugged_runtime' with 'battery_life' preserves the intended preference\u2014how long a device lasts on its own power\u2014without introducing ambiguity or a broader/narrower conceptual difference. Thus, they are equivalent in this decision.",
+            "status": "equivalent",
+            "target": "battery_life"
+          },
+          "duration_seconds": 6.654
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-related-food-is-distinct",
+      "domain": "event",
+      "tags": [
+        "semantic",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 7.752,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "canonicalize_sparse_label",
+          "subject": {
+            "label": "vegan",
+            "kind": "value",
+            "criterion": {
+              "attribute_id": "food",
+              "value_type": "tag_set",
+              "unit": null
+            }
+          },
+          "response": {
+            "reason": "The label 'vegan' refers to food that does not include any animal products, such as meat, dairy, or eggs. The target 'vegetarian' includes plant-based foods but may still contain animal products like dairy or eggs, which are not excluded in vegan diets. Therefore, 'vegetarian' is not equivalent to 'vegan' because it allows for animal-derived ingredients. 'Seafood' is an animal product and directly contradicts vegan principles. Thus, neither target is a meaningful synonym or equivalent to 'vegan' in this context. The label 'vegan' has a clear meaning, but no provided target matches it in scope or definition. As a result, there is no equivalent target.",
+            "status": "distinct",
+            "target": null
+          },
+          "duration_seconds": 7.751
+        }
+      ],
+      "processing_version": "sparse-v9",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    }
+  ]
+}

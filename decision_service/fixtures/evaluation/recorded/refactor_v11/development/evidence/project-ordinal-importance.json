@@ -1,0 +1,13 @@
+{
+  "option_snapshot_id": "project-ordinal-importance-options",
+  "response_snapshot_id": "project-ordinal-importance-responses",
+  "processing_version": "sparse-v11",
+  "model": null,
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": false,
+  "canonicalization_declarations": {}
+}

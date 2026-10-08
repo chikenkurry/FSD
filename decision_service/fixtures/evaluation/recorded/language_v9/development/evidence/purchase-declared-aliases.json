@@ -1,0 +1,30 @@
+{
+  "option_snapshot_id": "purchase-declared-aliases-options-intent-v2",
+  "response_snapshot_id": "purchase-declared-aliases-responses",
+  "processing_version": "sparse-v9",
+  "model": null,
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": false,
+  "canonicalization_declarations": {
+    "criteria": {
+      "battery_life": [
+        "runtime"
+      ],
+      "usage_tags": [
+        "work interests"
+      ]
+    },
+    "values": {
+      "usage_tags": {
+        "coding": [
+          "programming",
+          "software development"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "option_snapshot_id": "hardware-comparative-mass-options",
+  "response_snapshot_id": "hardware-comparative-mass-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preference": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "mass",
+            "evidence": "I would rather pick a lighter model.",
+            "intent": "minimize",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "lighter model (less mass in grams)"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

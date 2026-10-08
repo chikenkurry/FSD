@@ -1,0 +1,799 @@
+{
+  "schema_version": "preprocessing-eval-report-v1",
+  "dataset_version": "5",
+  "dataset_sha256": "13aaba2d9b1c592470f4780429b96ad7bd00bcc1ca32d82ef51f2fae37202429",
+  "evaluated_at": "2026-10-08T01:19:06.965389+00:00",
+  "label_provenance": null,
+  "mode": "rules",
+  "model": null,
+  "selected_tags": [
+    "structured"
+  ],
+  "duration_seconds": 0.02,
+  "cases": {
+    "passed": 22,
+    "total": 22,
+    "accuracy": 1.0
+  },
+  "assertions": {
+    "passed": 116,
+    "total": 116,
+    "accuracy": 1.0,
+    "missing_paths": 0,
+    "value_mismatches": 0
+  },
+  "operational_errors": 0,
+  "by_dimension": {
+    "clarification": {
+      "passed": 5,
+      "total": 5,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "classification": {
+      "passed": 5,
+      "total": 5,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "constraints": {
+      "passed": 16,
+      "total": 16,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "extraction": {
+      "passed": 20,
+      "total": 20,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "facts": {
+      "passed": 13,
+      "total": 13,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "mapping": {
+      "passed": 3,
+      "total": 3,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "status": {
+      "passed": 41,
+      "total": 41,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "weights": {
+      "passed": 13,
+      "total": 13,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    }
+  },
+  "by_domain": {
+    "event": {
+      "passed": 29,
+      "total": 29,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "project": {
+      "passed": 20,
+      "total": 20,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "purchase": {
+      "passed": 50,
+      "total": 50,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "trip": {
+      "passed": 17,
+      "total": 17,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    }
+  },
+  "results": [
+    {
+      "case_id": "purchase-typed-values",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.004,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 10,
+        "total": 10,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-budget-shorthand",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-explicit-access",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-choice-formats",
+      "domain": "project",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-schedule-missing-cost",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.002,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "MISSING_SCENARIO_COST",
+          "path": "planning.options",
+          "message": "Sourced costs are needed for the proposed dates and durations"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-explicit-indifference",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-missing-answer",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "MISSING_ANSWER",
+          "path": "responses.participants.p1.answers.colour",
+          "message": "An active soft question needs a normalized answer or explicit indifference"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-unit-mismatch",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "UNIT_MISMATCH",
+          "path": "responses.participants.p1.answers.battery",
+          "message": "Answer unit differs from the criterion unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-unknown-fact",
+      "domain": "purchase",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "MISSING_OPTION_FACTS",
+          "path": "planning.options",
+          "message": "Option criteria need sourced facts before confirmation"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-vague-dates",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_AVAILABILITY",
+          "path": "responses.participants.p1.answers.dates",
+          "message": "Provide exact dates or date intervals"
+        },
+        {
+          "code": "MISSING_OPTION_FACTS",
+          "path": "planning.options",
+          "message": "Option criteria need sourced facts before confirmation"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-compatible-budgets",
+      "domain": "trip",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-leader-weights",
+      "domain": "event",
+      "tags": [
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-compound-structured",
+      "domain": "event",
+      "tags": [
+        "structured",
+        "compound"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-numeric-direction",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-numeric-range",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "event-strict-budget",
+      "domain": "event",
+      "tags": [
+        "structured",
+        "numeric-intent"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-member-importance",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-ordinal-importance",
+      "domain": "project",
+      "tags": [
+        "structured",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-cyclic-importance",
+      "domain": "project",
+      "tags": [
+        "structured",
+        "importance"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFLICTING_IMPORTANCE",
+          "path": "responses.participants.p1",
+          "message": "Importance comparisons form a cycle"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "purchase-declared-aliases",
+      "domain": "purchase",
+      "tags": [
+        "structured",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "trip-declared-activity-alias",
+      "domain": "trip",
+      "tags": [
+        "structured",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "project-distinct-language-symbols",
+      "domain": "project",
+      "tags": [
+        "structured",
+        "canonicalization"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v9",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    }
+  ]
+}

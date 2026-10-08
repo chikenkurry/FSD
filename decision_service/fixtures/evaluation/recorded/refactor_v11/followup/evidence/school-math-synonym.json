@@ -1,0 +1,22 @@
+{
+  "option_snapshot_id": "school-math-synonym-options",
+  "response_snapshot_id": "school-math-synonym-responses",
+  "processing_version": "sparse-v11",
+  "model": "recorded:qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "2654528a3c0d5f58025d01906ae6199c5dc783067a283cb09ec7e516490536e6": {
+      "reason": "The label 'math' is a common shorthand for 'mathematics' in educational contexts. In the decision question about a school subject, 'math' and 'mathematics' refer to the same domain of study. Replacing 'math' with 'mathematics' preserves the intended preference of covering a school subject in mathematics. 'Physics' is a distinct subject and not equivalent to 'math'. Therefore, 'mathematics' is the equivalent target.",
+      "status": "equivalent",
+      "target": "mathematics"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {},
+  "scenario_policy": {
+    "max_requests": 10000
+  }
+}

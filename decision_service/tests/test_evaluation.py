@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from decision_service.evaluation import evaluate, load_dataset
 from decision_service.evaluation.runner import check_assertion, validate_dataset
+from decision_service.tests.recorded_provider import RecordedSparseProvider
 
 
 ROOT = Path(__file__).parents[2]
@@ -47,6 +48,50 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(report["operational_errors"], 0)
         self.assertTrue(any(case["failures"] for case in report["results"]))
         self.assertIn("classification", report["by_dimension"])
+
+    def test_challenge_labels_preserve_pending_review_and_structured_results(self):
+        dataset = load_dataset(DATASET.with_name("processing_challenge.json"))
+        report = evaluate(dataset, tags=("structured",))
+        self.assertEqual(report["cases"], {"passed": 20, "total": 20, "accuracy": 1})
+        self.assertEqual(report["label_provenance"], dataset["label_provenance"])
+        self.assertEqual(report["label_provenance"]["independent_review"], "pending")
+
+    def test_review_metadata_cannot_claim_completion_without_a_reviewer(self):
+        dataset = self.one_case()
+        dataset["label_provenance"] = {"author": "test", "method": "authored expectations",
+                                        "independent_review": "complete", "reviewer": None}
+        with self.assertRaises(ValueError):
+            validate_dataset(dataset)
+        dataset["label_provenance"]["independent_review"] = []
+        with self.assertRaises(ValueError):
+            validate_dataset(dataset)
+
+    def test_historical_challenge_evidence_is_rejected_after_processing_version_change(self):
+        dataset = load_dataset(DATASET.with_name("processing_challenge.json"))
+        report = evaluate(dataset, evidence_dir=DATASET.parent / "recorded" / "processing_challenge_v1" / "evidence")
+        self.assertEqual(report["cases"]["passed"], 0)
+        self.assertEqual(report["cases"]["total"], 24)
+        self.assertEqual(report["operational_errors"], 0)
+        self.assertTrue(all(c["issues"][0]["code"] == "STALE_SEMANTIC_EVIDENCE" for c in report["results"]))
+        self.assertTrue(all(not c["model_calls"] for c in report["results"]))
+
+    def test_recorded_predictions_preserve_results_after_refactoring(self):
+        root = DATASET.parent / "recorded" / "language_v10"
+        for name, path, passed, total in (
+            ("development", DATASET, 34, 34),
+            ("challenge", DATASET.with_name("processing_challenge.json"), 24, 24),
+            ("followup", DATASET.with_name("language_followup.json"), 8, 10),
+        ):
+            with self.subTest(dataset=name):
+                dataset = load_dataset(path)
+                reports = []
+                for case in dataset["cases"]:
+                    evidence = json.loads((root / name / "evidence" / (case["case_id"] + ".json")).read_text())
+                    provider = RecordedSparseProvider(evidence, case["responses"])
+                    report = evaluate({**dataset, "cases": [case]}, semantic_provider=provider)
+                    self.assertEqual(report["operational_errors"], 0, report["results"])
+                    reports.extend(report["results"])
+                self.assertEqual((sum(c["passed"] for c in reports), len(reports)), (passed, total))
 
     def test_extra_hard_constraint_or_missing_preference_fails_exact_rows(self):
         check = check_assertion({"rows": [{"criterion": "budget"}, {"criterion": "access"}]},

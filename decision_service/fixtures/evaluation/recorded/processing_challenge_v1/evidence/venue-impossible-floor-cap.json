@@ -1,0 +1,13 @@
+{
+  "option_snapshot_id": "venue-impossible-floor-cap-options",
+  "response_snapshot_id": "venue-impossible-floor-cap-responses",
+  "processing_version": "sparse-v7",
+  "model": null,
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": false,
+  "canonicalization_declarations": {}
+}

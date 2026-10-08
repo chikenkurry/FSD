@@ -1,0 +1,30 @@
+{
+  "option_snapshot_id": "event-inferred-access-need-options",
+  "response_snapshot_id": "event-inferred-access-need-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "access": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "step_free_access",
+            "evidence": "I need wheelchair access, so step-free entry is essential.",
+            "intent": "match",
+            "must_have": true,
+            "polarity": "prefer",
+            "value": "true"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

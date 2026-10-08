@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "warehouse-tags-compatible-options",
+  "response_snapshot_id": "warehouse-tags-compatible-responses",
+  "processing_version": "sparse-v7",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "aac595d248521c8ced355f01c167014329c71a88c339f4ef331b68fce0a968da": {
+      "reason": "The label 'fragile' does not match either 'cooling' or 'stackable' in meaning. 'Fragile' refers to the physical vulnerability of items, which is not the same as requiring cooling (a temperature condition) or being stackable (a physical arrangement property). There is no clear synonymic or contextual equivalence between 'fragile' and either target. Therefore, the label 'fragile' is distinct from both 'cooling' and 'stackable' in the context of warehouse handling tags.",
+      "status": "distinct",
+      "target": null
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

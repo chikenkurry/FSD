@@ -1,0 +1,38 @@
+{
+  "option_snapshot_id": "project-hard-exclusion-options",
+  "response_snapshot_id": "project-hard-exclusion-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "tasks": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "tasks",
+            "evidence": "I prefer coding",
+            "intent": "match",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "coding"
+          },
+          {
+            "criterion": "tasks",
+            "evidence": "I must not do marketing",
+            "intent": "match",
+            "must_have": true,
+            "polarity": "avoid",
+            "value": "marketing"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

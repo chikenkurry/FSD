@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "meal-vegan-distinct-options",
+  "response_snapshot_id": "meal-vegan-distinct-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "52c2237b9695c4f10313a9e219a3ea37ae915d7f1900cc48be907fea184fa0a9": {
+      "reason": "The label 'vegan' specifies a diet that excludes all animal products, including dairy and eggs. The target 'vegetarian' includes dairy and eggs, so it is not equivalent to vegan. The target 'omnivore' includes meat and animal products, which is also not equivalent. There is no target that matches the meaning of 'vegan' in terms of dietary exclusion. Therefore, no target is equivalent to 'vegan' in this context.",
+      "status": "distinct",
+      "target": null
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

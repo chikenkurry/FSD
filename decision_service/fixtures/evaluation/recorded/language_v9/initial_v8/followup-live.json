@@ -1,0 +1,871 @@
+{
+  "schema_version": "preprocessing-eval-report-v1",
+  "dataset_version": "language-followup-1",
+  "dataset_sha256": "06f6eb87686c04e015422da25b77f2ea84e178e9d5ec58c75b200c521cf6344f",
+  "evaluated_at": "2026-10-08T01:14:00.226966+00:00",
+  "label_provenance": {
+    "author": "Codex",
+    "method": "Expected meanings written from new inputs before executing this set; no labels derived from outputs.",
+    "independent_review": "pending",
+    "reviewer": null
+  },
+  "mode": "live",
+  "model": "qwen3:4b-instruct",
+  "selected_tags": [],
+  "duration_seconds": 59.692,
+  "cases": {
+    "passed": 5,
+    "total": 10,
+    "accuracy": 0.5
+  },
+  "assertions": {
+    "passed": 15,
+    "total": 24,
+    "accuracy": 0.625,
+    "missing_paths": 2,
+    "value_mismatches": 7
+  },
+  "operational_errors": 0,
+  "by_dimension": {
+    "clarification": {
+      "passed": 1,
+      "total": 1,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "constraints": {
+      "passed": 4,
+      "total": 4,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "extraction": {
+      "passed": 4,
+      "total": 9,
+      "accuracy": 0.4444444444444444,
+      "missing_paths": 1,
+      "value_mismatches": 4
+    },
+    "status": {
+      "passed": 6,
+      "total": 10,
+      "accuracy": 0.6,
+      "missing_paths": 1,
+      "value_mismatches": 3
+    }
+  },
+  "by_domain": {
+    "Which activity should we choose?": {
+      "passed": 0,
+      "total": 2,
+      "accuracy": 0.0,
+      "missing_paths": 2,
+      "value_mismatches": 0
+    },
+    "Which course package should we select?": {
+      "passed": 3,
+      "total": 3,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "Which meal should we serve?": {
+      "passed": 2,
+      "total": 2,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "Which movie should our club watch?": {
+      "passed": 2,
+      "total": 2,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "Which portable unit should we buy?": {
+      "passed": 2,
+      "total": 3,
+      "accuracy": 0.6666666666666666,
+      "missing_paths": 0,
+      "value_mismatches": 1
+    },
+    "Which school subject should our group project cover?": {
+      "passed": 0,
+      "total": 2,
+      "accuracy": 0.0,
+      "missing_paths": 0,
+      "value_mismatches": 2
+    },
+    "Which sensor should we buy?": {
+      "passed": 3,
+      "total": 3,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "Which service counter should we use?": {
+      "passed": 3,
+      "total": 3,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "Which vehicle should we rent?": {
+      "passed": 0,
+      "total": 2,
+      "accuracy": 0.0,
+      "missing_paths": 0,
+      "value_mismatches": 2
+    },
+    "Which venue should we use?": {
+      "passed": 0,
+      "total": 2,
+      "accuracy": 0.0,
+      "missing_paths": 0,
+      "value_mismatches": 2
+    }
+  },
+  "results": [
+    {
+      "case_id": "transport-bicycle-synonym",
+      "domain": "Which vehicle should we rent?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": false,
+      "duration_seconds": 6.047,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_ANSWER",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Hard requirement needs explicit wording in its own clause"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "vehicle type preference?",
+            "criterion": "vehicle_type"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "vehicle_type",
+                "evidence": "Bicycle",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "prefer",
+                "value": "bicycle"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 6.045
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 0,
+        "total": 2,
+        "accuracy": 0.0,
+        "missing_paths": 0,
+        "value_mismatches": 2
+      },
+      "failures": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "ready",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "missing_rows": [
+            {
+              "attribute_id": "vehicle_type",
+              "preferred_value": "bike",
+              "source_type": "semantic_model"
+            }
+          ],
+          "unexpected_rows": [],
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "vehicle_type",
+              "preferred_value": "bike",
+              "source_type": "semantic_model"
+            }
+          ],
+          "actual": []
+        }
+      ]
+    },
+    {
+      "case_id": "watch-film-synonym",
+      "domain": "Which movie should our club watch?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": true,
+      "duration_seconds": 7.008,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "canonicalize_sparse_label",
+          "subject": {
+            "label": "film",
+            "kind": "value",
+            "criterion": {
+              "attribute_id": "format_tags",
+              "value_type": "tag_set",
+              "unit": null
+            }
+          },
+          "response": {
+            "reason": "The label 'film' refers to a single, standalone movie, as opposed to a series of episodes or films. Among the targets, 'movie' is a direct synonym for 'film' in common usage, as both refer to a single cinematic work. 'series' refers to a sequence of related films or episodes, which is a broader and distinct concept. Therefore, 'movie' is the only target that preserves the intended meaning of a single film in the context of choosing a movie to watch. Replacing 'film' with 'movie' maintains the preference for a single, standalone movie, while 'series' would imply a sequence, which is not equivalent.",
+            "status": "equivalent",
+            "target": "movie"
+          },
+          "duration_seconds": 7.004
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 2,
+        "total": 2,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "school-math-synonym",
+      "domain": "Which school subject should our group project cover?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": false,
+      "duration_seconds": 5.14,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_ANSWER",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Hard requirement needs explicit wording in its own clause"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "subject preference?",
+            "criterion": "subject"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "subject",
+                "evidence": "Math",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "prefer",
+                "value": "Math"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 5.138
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 0,
+        "total": 2,
+        "accuracy": 0.0,
+        "missing_paths": 0,
+        "value_mismatches": 2
+      },
+      "failures": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "ready",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "missing_rows": [
+            {
+              "attribute_id": "subject",
+              "preferred_value": "mathematics",
+              "source_type": "semantic_model"
+            }
+          ],
+          "unexpected_rows": [],
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "subject",
+              "preferred_value": "mathematics",
+              "source_type": "semantic_model"
+            }
+          ],
+          "actual": []
+        }
+      ]
+    },
+    {
+      "case_id": "meal-vegan-distinct",
+      "domain": "Which meal should we serve?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": true,
+      "duration_seconds": 4.296,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "canonicalize_sparse_label",
+          "subject": {
+            "label": "vegan",
+            "kind": "value",
+            "criterion": {
+              "attribute_id": "diet_tags",
+              "value_type": "tag_set",
+              "unit": null
+            }
+          },
+          "response": {
+            "reason": "The label 'vegan' specifies a diet that excludes all animal products, including dairy and eggs. The target 'vegetarian' includes dairy and eggs, so it is not equivalent to vegan. The target 'omnivore' includes meat and animal products, which is also not equivalent. There is no target that matches the meaning of 'vegan' in terms of dietary exclusion. Therefore, no target is equivalent to 'vegan' in this context.",
+            "status": "distinct",
+            "target": null
+          },
+          "duration_seconds": 4.294
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 2,
+        "total": 2,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "outdoors-specific-activity",
+      "domain": "Which activity should we choose?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": false,
+      "duration_seconds": 3.627,
+      "result_status": "invalid_input",
+      "error": null,
+      "issues": [
+        {
+          "code": "INVALID_SEMANTIC_RESULT",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Distinct or unresolved labels must have a null target"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "canonicalize_sparse_label",
+          "subject": {
+            "label": "hiking",
+            "kind": "value",
+            "criterion": {
+              "attribute_id": "activity_tags",
+              "value_type": "tag_set",
+              "unit": null
+            }
+          },
+          "response": {
+            "reason": "The label 'hiking' is a specific type of outdoor activity. Among the targets, 'outdoor activities' is a broader category that includes hiking. 'Indoor activities' is not equivalent because hiking cannot occur indoors. Therefore, 'hiking' is most directly and practically equivalent to 'outdoor activities' in the context of activity types.",
+            "status": "unresolved",
+            "target": "outdoor activities"
+          },
+          "duration_seconds": 3.627
+        }
+      ],
+      "processing_version": null,
+      "evidence_model": null,
+      "metrics": {
+        "passed": 0,
+        "total": 2,
+        "accuracy": 0.0,
+        "missing_paths": 2,
+        "value_mismatches": 0
+      },
+      "failures": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "ready",
+          "missing_path": true
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "activity_tags",
+              "preferred_value": [
+                "hiking"
+              ],
+              "source_type": "member_response"
+            }
+          ],
+          "missing_path": true
+        }
+      ]
+    },
+    {
+      "case_id": "venue-opposite-atmosphere",
+      "domain": "Which venue should we use?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": false,
+      "duration_seconds": 5.572,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_ANSWER",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Hard requirement needs explicit wording in its own clause"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "atmosphere preference?",
+            "criterion": "atmosphere"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "atmosphere",
+                "evidence": "noisy",
+                "intent": "match",
+                "must_have": true,
+                "polarity": "prefer",
+                "value": "noisy"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 5.569
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 0,
+        "total": 2,
+        "accuracy": 0.0,
+        "missing_paths": 0,
+        "value_mismatches": 2
+      },
+      "failures": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "ready",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "missing_rows": [
+            {
+              "attribute_id": "atmosphere",
+              "preferred_value": "noisy",
+              "source_type": "member_response"
+            }
+          ],
+          "unexpected_rows": [],
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "atmosphere",
+              "preferred_value": "noisy",
+              "source_type": "member_response"
+            }
+          ],
+          "actual": []
+        }
+      ]
+    },
+    {
+      "case_id": "sensor-comparative-rate",
+      "domain": "Which sensor should we buy?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": true,
+      "duration_seconds": 6.456,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "sampling rate preference?",
+            "criterion": "sampling_rate"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "sampling_rate",
+                "evidence": "I prefer the higher sampling rate.",
+                "intent": "maximize",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "higher sampling rate"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 6.453
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "queue-comparative-time",
+      "domain": "Which service counter should we use?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": true,
+      "duration_seconds": 6.634,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "waiting time preference?",
+            "criterion": "waiting_time"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "waiting_time",
+                "evidence": "Shorter waiting time would be better.",
+                "intent": "maximize",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "shorter"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 6.632
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "hardware-comparative-mass",
+      "domain": "Which portable unit should we buy?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": false,
+      "duration_seconds": 7.709,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "mass preference?",
+            "criterion": "mass"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "mass",
+                "evidence": "I would rather pick a lighter model.",
+                "intent": "maximize",
+                "must_have": false,
+                "polarity": "prefer",
+                "value": "lighter model (less mass in grams)"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 7.705
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 2,
+        "total": 3,
+        "accuracy": 0.6666666666666666,
+        "missing_paths": 0,
+        "value_mismatches": 1
+      },
+      "failures": [
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "missing_rows": [
+            {
+              "attribute_id": "mass",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "unexpected_rows": [
+            {
+              "participant_id": "p1",
+              "source_question_id": "preference",
+              "source_answer_id": "hardware-comparative-mass-responses:p1:preference",
+              "source_type": "semantic_model",
+              "evidence": "I would rather pick a lighter model",
+              "attribute_id": "mass",
+              "kind": "attribute_preference",
+              "value_type": "number",
+              "unit": "grams",
+              "scope": "all",
+              "status": "estimated",
+              "polarity": "prefer",
+              "numeric_intent": "maximize",
+              "intent_source": "semantic_model",
+              "preferred_value": null,
+              "utility_rule": "numeric_maximize_v1",
+              "utility_parameters": {
+                "lower_bound": 200,
+                "upper_bound": 600
+              },
+              "direction": "maximize"
+            }
+          ],
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "mass",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "actual": [
+            {
+              "participant_id": "p1",
+              "source_question_id": "preference",
+              "source_answer_id": "hardware-comparative-mass-responses:p1:preference",
+              "source_type": "semantic_model",
+              "evidence": "I would rather pick a lighter model",
+              "attribute_id": "mass",
+              "kind": "attribute_preference",
+              "value_type": "number",
+              "unit": "grams",
+              "scope": "all",
+              "status": "estimated",
+              "polarity": "prefer",
+              "numeric_intent": "maximize",
+              "intent_source": "semantic_model",
+              "preferred_value": null,
+              "utility_rule": "numeric_maximize_v1",
+              "utility_parameters": {
+                "lower_bound": 200,
+                "upper_bound": 600
+              },
+              "direction": "maximize"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "course-genuine-minimum",
+      "domain": "Which course package should we select?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "passed": true,
+      "duration_seconds": 7.203,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [
+        {
+          "method": "extract_sparse_answer",
+          "subject": {
+            "question_id": "preference",
+            "label": "credits preference?",
+            "criterion": "credits"
+          },
+          "response": {
+            "importance_relations": [],
+            "interpretations": [
+              {
+                "criterion": "credits",
+                "evidence": "I need at least 15 credits.",
+                "intent": "minimum",
+                "must_have": true,
+                "polarity": "prefer",
+                "value": "15 credits"
+              }
+            ],
+            "status": "resolved"
+          },
+          "duration_seconds": 7.201
+        }
+      ],
+      "processing_version": "sparse-v8",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    }
+  ]
+}

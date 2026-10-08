@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "venue-opposite-atmosphere-options",
+  "response_snapshot_id": "venue-opposite-atmosphere-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "5a49c035a5d550501c85d2b48909937843a80b61468b9b36d3fe287fe31e856d": {
+      "reason": "The label 'noisy' describes a high level of sound or disturbance in an atmosphere. Among the targets, 'busy' implies a lively, active environment that often includes loud sounds, while 'quiet' implies low sound and calmness. 'Noisy' is most closely aligned with 'busy' in terms of practical, everyday usage in venue atmosphere\u2014both suggest a vibrant, dynamic setting with elevated sound levels. 'Quiet' is the opposite in meaning. Therefore, 'noisy' is equivalent to 'busy' in this context.",
+      "status": "equivalent",
+      "target": "busy"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

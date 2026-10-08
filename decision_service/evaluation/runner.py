@@ -72,6 +72,15 @@ def validate_dataset(dataset: dict) -> None:
         raise ValueError("Dataset must use preprocessing-eval-v1")
     if not isinstance(dataset.get("dataset_version"), str) or not dataset["dataset_version"].strip():
         raise ValueError("Dataset version must be a nonempty string")
+    provenance = dataset.get("label_provenance")
+    if provenance is not None:
+        if (not isinstance(provenance, dict) or set(provenance) != {"author", "method", "independent_review", "reviewer"}
+                or not isinstance(provenance["author"], str) or not provenance["author"].strip()
+                or not isinstance(provenance["method"], str) or not provenance["method"].strip()
+                or not isinstance(provenance["independent_review"], str) or provenance["independent_review"] not in {"pending", "complete"}
+                or provenance["reviewer"] is not None and not isinstance(provenance["reviewer"], str)
+                or provenance["independent_review"] == "complete" and not (provenance["reviewer"] or "").strip()):
+            raise ValueError("Label provenance must identify authorship and independent review status/reviewer")
     cases = dataset.get("cases")
     if not isinstance(cases, list) or not cases:
         raise ValueError("Dataset needs at least one case")
@@ -298,6 +307,7 @@ def evaluate(dataset: dict, *, semantic_provider=None, evidence_dir: Path | None
     return {
         "schema_version": "preprocessing-eval-report-v1", "dataset_version": dataset.get("dataset_version"),
         "dataset_sha256": dataset_hash, "evaluated_at": evaluated_at,
+        "label_provenance": copy.deepcopy(dataset.get("label_provenance")),
         "mode": "replay" if evidence_dir else "live" if semantic_provider else "rules",
         "model": getattr(semantic_provider, "model", None), "selected_tags": list(tags),
         "duration_seconds": round(perf_counter() - started, 3),

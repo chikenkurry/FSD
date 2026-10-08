@@ -1,0 +1,33 @@
+{
+  "option_snapshot_id": "course-genuine-minimum-options",
+  "response_snapshot_id": "course-genuine-minimum-responses",
+  "processing_version": "sparse-v11",
+  "model": "recorded:qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preference": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "credits",
+            "evidence": "I need at least 15 credits.",
+            "intent": "minimum",
+            "must_have": true,
+            "polarity": "prefer",
+            "value": "15 credits"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {},
+  "scenario_policy": {
+    "max_requests": 10000
+  }
+}

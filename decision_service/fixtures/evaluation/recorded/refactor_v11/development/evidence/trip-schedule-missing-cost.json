@@ -1,0 +1,13 @@
+{
+  "option_snapshot_id": "trip-schedule-missing-cost-options-intent-v2",
+  "response_snapshot_id": "trip-schedule-missing-cost-responses",
+  "processing_version": "sparse-v11",
+  "model": null,
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": false,
+  "canonicalization_declarations": {}
+}

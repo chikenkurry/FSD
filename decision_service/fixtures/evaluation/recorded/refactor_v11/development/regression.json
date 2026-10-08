@@ -1,0 +1,3639 @@
+{
+  "processing_version": "sparse-v11",
+  "mode": "recorded_response_regression",
+  "source": "Previously recorded sparse-v10 model replies; no live inference in this run.",
+  "cases": {
+    "passed": 34,
+    "total": 34
+  },
+  "assertions": {
+    "passed": 185,
+    "total": 185
+  },
+  "operational_errors": 0,
+  "case_reports": [
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "f994e9e8470951fcf3bde122ff720c4eb134049f5cf98126cc9b4e5ac5e0f7d6",
+      "evaluated_at": "2026-10-08T01:56:11.354351+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.002,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 10,
+        "total": 10,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "mapping": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 10,
+          "total": 10,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-typed-values",
+          "domain": "purchase",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.002,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 10,
+            "total": 10,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "cf6b380fedfdb973de5b1d3afe8ef51af0c909d668912227ea596213a59628de",
+      "evaluated_at": "2026-10-08T01:56:11.357090+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "trip": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "trip-budget-shorthand",
+          "domain": "trip",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "fb7ab25d862d09fd58e3f048af2dc59cdca298e87bd2bd4682a3251079b199bb",
+      "evaluated_at": "2026-10-08T01:56:11.357795+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "mapping": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 7,
+          "total": 7,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-explicit-access",
+          "domain": "event",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "f6c110b9f9805a2c3576cd3de1e16fadf321d5b65e9e13235f21ccc0f78a9afe",
+      "evaluated_at": "2026-10-08T01:56:11.358424+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "project": {
+          "passed": 7,
+          "total": 7,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "project-choice-formats",
+          "domain": "project",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "abbaa8881af87fc389b8833ad6413bde5fed9c27db2dc7e754eb275b5df5291f",
+      "evaluated_at": "2026-10-08T01:56:11.359163+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "trip": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "trip-schedule-missing-cost",
+          "domain": "trip",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "MISSING_SCENARIO_COST",
+              "path": "planning.options",
+              "message": "Sourced costs are needed for the proposed dates and durations"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "16881eabeeef7543f29caf4070b57376ed6fc12e38205f113ca4c41e5925b17d",
+      "evaluated_at": "2026-10-08T01:56:11.360124+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-explicit-indifference",
+          "domain": "purchase",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "633548d58b5b5198f7a0e2028f2a76a27afe9c653ee11cb72dddedbbae0e4319",
+      "evaluated_at": "2026-10-08T01:56:11.360698+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-missing-answer",
+          "domain": "purchase",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "MISSING_ANSWER",
+              "path": "responses.participants.p1.answers.colour",
+              "message": "An active soft question needs a normalized answer or explicit indifference"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "456e3a279e7239c23d4b9cc83cc0b6bccc076d3e4feaf4bf2f94770003e49faa",
+      "evaluated_at": "2026-10-08T01:56:11.361481+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-unit-mismatch",
+          "domain": "purchase",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "UNIT_MISMATCH",
+              "path": "responses.participants.p1.answers.battery",
+              "message": "Answer unit differs from the criterion unit"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "e5db9a5e0a2177bbad42a7636e6945345908fc965499e845df176c19a6f9e9d0",
+      "evaluated_at": "2026-10-08T01:56:11.362057+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 6,
+          "total": 6,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-unknown-fact",
+          "domain": "purchase",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "MISSING_OPTION_FACTS",
+              "path": "planning.options",
+              "message": "Option criteria need sourced facts before confirmation"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "suggest_option_tags",
+              "subject": {
+                "option_id": "option-1"
+              },
+              "response": {
+                "suggestions": []
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "c867ab78a3b42f620536c864724c049c28f523a42d080d65d14780ddb9b23f25",
+      "evaluated_at": "2026-10-08T01:56:11.362534+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-vague-dates",
+          "domain": "event",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "AMBIGUOUS_AVAILABILITY",
+              "path": "responses.participants.p1.answers.dates",
+              "message": "Provide exact dates or date intervals"
+            },
+            {
+              "code": "MISSING_OPTION_FACTS",
+              "path": "planning.options",
+              "message": "Option criteria need sourced facts before confirmation"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "95103753ffa295a4822befa2cf533503a9bc3ecb2555e327abdffd3c0d35cd2c",
+      "evaluated_at": "2026-10-08T01:56:11.362970+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "trip": {
+          "passed": 3,
+          "total": 3,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "trip-compatible-budgets",
+          "domain": "trip",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "3819ea8c6928db91b32d75f3b84a2e6b4dd14d34735742231f5ab423f86f07ad",
+      "evaluated_at": "2026-10-08T01:56:11.363589+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 7,
+          "total": 7,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-leader-weights",
+          "domain": "event",
+          "tags": [
+            "structured"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "58736b565cb072e47b7dfdd9f84c159d10ebafde9e3e346278b5969c8ba272e7",
+      "evaluated_at": "2026-10-08T01:56:11.364287+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 7,
+          "total": 7,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-runtime-paraphrase",
+          "domain": "purchase",
+          "tags": [
+            "semantic"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "classify_question",
+              "subject": {
+                "question_id": "runtime",
+                "label": "How long should it run unplugged?"
+              },
+              "response": {
+                "criterion": "battery_life",
+                "reason": "The question 'How long should it run unplugged?' directly relates to battery life, which is a measured attribute in the context. Battery life is expressed in hours and is explicitly provided for both options. This is a soft preference as it reflects user expectation for runtime without power, and the criterion 'battery_life' is already defined in the context.",
+                "relevance": 0.75,
+                "role": "soft"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "8524bae31efec9782e54bdf30c37829c8670eb429118de2b3a583b6862e93524",
+      "evaluated_at": "2026-10-08T01:56:11.364879+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 6,
+          "total": 6,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-prefer-and-avoid",
+          "domain": "event",
+          "tags": [
+            "semantic",
+            "negation"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "environment",
+                "label": "What surroundings do you prefer?",
+                "criterion": "environment"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "environment",
+                    "evidence": "I like indoor venues",
+                    "intent": "match",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "indoor"
+                  },
+                  {
+                    "criterion": "environment",
+                    "evidence": "avoid noisy places",
+                    "intent": "match",
+                    "must_have": true,
+                    "polarity": "avoid",
+                    "value": "noisy"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "6b45a438572a17d50f550d772d438dbe7a51dfdf49385b7e0dc1fa7a5de8fbf6",
+      "evaluated_at": "2026-10-08T01:56:11.365616+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-inferred-access-need",
+          "domain": "event",
+          "tags": [
+            "semantic",
+            "hard-requirement"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFIRM_REQUIREMENT",
+              "path": "responses.participants.p1.answers.access",
+              "message": "Confirm the interpreted criterion, rule, value, and unit"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "access",
+                "label": "Any accessibility preferences?",
+                "criterion": "step_free_access"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "step_free_access",
+                    "evidence": "I need wheelchair access, so step-free entry is essential.",
+                    "intent": "match",
+                    "must_have": true,
+                    "polarity": "prefer",
+                    "value": "true"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "05fbd76028ed12287bc18e542a0d9c80839ef01eb3f36ff31c3cd96a5f683fe7",
+      "evaluated_at": "2026-10-08T01:56:11.366303+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 8,
+        "total": 8,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "trip": {
+          "passed": 8,
+          "total": 8,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "trip-irrelevant-subject",
+          "domain": "trip",
+          "tags": [
+            "semantic",
+            "relevance"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "classify_question",
+              "subject": {
+                "question_id": "subject",
+                "label": "Favourite subject?"
+              },
+              "response": {
+                "criterion": "max_cost",
+                "reason": "The decision is about choosing a destination based on cost, and the options provide explicit values for max_cost per person. The question about favourite subject is irrelevant to the decision goal.",
+                "relevance": 0,
+                "role": "informational"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 8,
+            "total": 8,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "0a9ecb576083977fe8d39a02e32c49f2638f39b3d6e74846ba110f7090ceae46",
+      "evaluated_at": "2026-10-08T01:56:11.366894+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "exhibit": {
+          "passed": 7,
+          "total": 7,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "exhibit-relevant-subject",
+          "domain": "exhibit",
+          "tags": [
+            "semantic",
+            "relevance"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "171876fc1766ff1dc7ad99ea4d97329fad8e3914e79dcf23efa2a2b87e5e7d9b",
+      "evaluated_at": "2026-10-08T01:56:11.367654+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "project": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "project-hard-exclusion",
+          "domain": "project",
+          "tags": [
+            "semantic",
+            "negation",
+            "hard-requirement"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFIRM_REQUIREMENT",
+              "path": "responses.participants.p1.answers.tasks",
+              "message": "Confirm the interpreted criterion, rule, value, and unit"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "tasks",
+                "label": "Which tasks do you prefer?",
+                "criterion": "tasks"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "tasks",
+                    "evidence": "I prefer coding",
+                    "intent": "match",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "coding"
+                  },
+                  {
+                    "criterion": "tasks",
+                    "evidence": "I must not do marketing",
+                    "intent": "match",
+                    "must_have": true,
+                    "polarity": "avoid",
+                    "value": "marketing"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "d221c438dce5fe096be6c2fa247e845d7d3d0d943d0debb542ebeb0b0e2f3940",
+      "evaluated_at": "2026-10-08T01:56:11.368392+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 6,
+          "total": 6,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-compound-structured",
+          "domain": "event",
+          "tags": [
+            "structured",
+            "compound"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "328fbd9a6516a418556a966c29eb3392f1195736344f77f100484a439d538e08",
+      "evaluated_at": "2026-10-08T01:56:11.369123+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 7,
+        "total": 7,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 7,
+          "total": 7,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-compound-text",
+          "domain": "event",
+          "tags": [
+            "semantic",
+            "compound",
+            "hard-requirement"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFIRM_REQUIREMENT",
+              "path": "responses.participants.p1.answers.preferences",
+              "message": "Confirm the interpreted criterion, rule, value, and unit"
+            },
+            {
+              "code": "CONFIRM_REQUIREMENT",
+              "path": "responses.participants.p1.answers.preferences",
+              "message": "Confirm the interpreted criterion, rule, value, and unit"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "preferences",
+                "label": "Any personal preferences?",
+                "criterion": "preferences"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "quiet",
+                    "evidence": "I prefer somewhere quiet",
+                    "intent": "match",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "true"
+                  },
+                  {
+                    "criterion": "max_cost",
+                    "evidence": "I must spend under $50",
+                    "intent": "less_than",
+                    "must_have": true,
+                    "polarity": "avoid",
+                    "value": "50.00 USD"
+                  },
+                  {
+                    "criterion": "step_free_access",
+                    "evidence": "I need step-free access",
+                    "intent": "match",
+                    "must_have": true,
+                    "polarity": "prefer",
+                    "value": "true"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "ac1f175bd1c1ff33dd6203ac79af375dddb22cbdb2ef363157573afce933fdd6",
+      "evaluated_at": "2026-10-08T01:56:11.370083+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-numeric-direction",
+          "domain": "purchase",
+          "tags": [
+            "structured",
+            "numeric-intent"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "c9f1c5d5505241014c53472b1a9690efef641c9a2c9397b47945bad33dc2ec7c",
+      "evaluated_at": "2026-10-08T01:56:11.370660+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-numeric-range",
+          "domain": "purchase",
+          "tags": [
+            "structured",
+            "numeric-intent"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "8c56be8325743fa1c57cbc295bc054c148c57eb47ddce22aeb94ab34d82f080a",
+      "evaluated_at": "2026-10-08T01:56:11.371182+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-strict-budget",
+          "domain": "event",
+          "tags": [
+            "structured",
+            "numeric-intent"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "4722d8ca052931a51007ccd0351674b7096254b6a62aca24fffb5d4603bfda25",
+      "evaluated_at": "2026-10-08T01:56:11.371759+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-member-importance",
+          "domain": "purchase",
+          "tags": [
+            "structured",
+            "importance"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "3b42e2a05cb1580c0a09190bb79614afb0f3ee4ce091f3daaf9a8bf0dbd7f81e",
+      "evaluated_at": "2026-10-08T01:56:11.372571+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 6,
+          "total": 6,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-importance-paraphrase",
+          "domain": "purchase",
+          "tags": [
+            "semantic",
+            "importance"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "importance",
+                "label": "Which criteria matter most?",
+                "criterion": "importance"
+              },
+              "response": {
+                "importance_relations": [
+                  {
+                    "evidence": "Battery runtime takes priority over finish colour for me.",
+                    "higher_criterion": "battery_life",
+                    "lower_criterion": "colour"
+                  }
+                ],
+                "interpretations": [
+                  {
+                    "criterion": "battery_life",
+                    "evidence": "Battery runtime takes priority over finish colour for me.",
+                    "intent": "match",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "priority"
+                  },
+                  {
+                    "criterion": "colour",
+                    "evidence": "Battery runtime takes priority over finish colour for me.",
+                    "intent": "match",
+                    "must_have": false,
+                    "polarity": "avoid",
+                    "value": "priority"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "f65643781df33596dc8b08e9237d90aa1f1312bb17e6ce85c0a517a0f51c790a",
+      "evaluated_at": "2026-10-08T01:56:11.373376+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "project": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "project-ordinal-importance",
+          "domain": "project",
+          "tags": [
+            "structured",
+            "importance"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "065b40dd3188f45c0efc3dbe391fa74b8f8ddd382f5e29cc293afe3b6abd9b4a",
+      "evaluated_at": "2026-10-08T01:56:11.374022+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "clarification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "project": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "project-cyclic-importance",
+          "domain": "project",
+          "tags": [
+            "structured",
+            "importance"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "needs_clarification",
+          "error": null,
+          "issues": [
+            {
+              "code": "CONFLICTING_IMPORTANCE",
+              "path": "responses.participants.p1",
+              "message": "Importance comparisons form a cycle"
+            },
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "eca8f54ddd2c6e167ae31188ab508977fcca3c42b7baad064ee29041d14129ae",
+      "evaluated_at": "2026-10-08T01:56:11.374650+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "constraints": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "project": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "project-compound-directions",
+          "domain": "project",
+          "tags": [
+            "semantic",
+            "compound",
+            "numeric-intent"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "extract_sparse_answer",
+              "subject": {
+                "question_id": "preferences",
+                "label": "Any personal preferences?",
+                "criterion": "preferences"
+              },
+              "response": {
+                "importance_relations": [],
+                "interpretations": [
+                  {
+                    "criterion": "impact",
+                    "evidence": "greater impact",
+                    "intent": "maximize",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "greater impact"
+                  },
+                  {
+                    "criterion": "duration_weeks",
+                    "evidence": "shorter timeline",
+                    "intent": "minimize",
+                    "must_have": false,
+                    "polarity": "prefer",
+                    "value": "shorter timeline"
+                  }
+                ],
+                "status": "resolved"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "12311dd70ec736ec02b7ec6f366fcd33c5d9eed244c585ba2de1da70a78ad04b",
+      "evaluated_at": "2026-10-08T01:56:11.376387+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 6,
+        "total": 6,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 6,
+          "total": 6,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-declared-aliases",
+          "domain": "purchase",
+          "tags": [
+            "structured",
+            "canonicalization"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 6,
+            "total": 6,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "0bc16be6de1518b35a99ab37cd43f8e5bcf5a9a1748753c565beda31e529ebd1",
+      "evaluated_at": "2026-10-08T01:56:11.377492+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "trip": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "trip-declared-activity-alias",
+          "domain": "trip",
+          "tags": [
+            "structured",
+            "canonicalization"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "074ac0bc9756af5d7eecf8a05091c1bfbd137f3cacf143d1ec6202976fc74568",
+      "evaluated_at": "2026-10-08T01:56:11.378104+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:rules",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "weights": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "project": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "project-distinct-language-symbols",
+          "domain": "project",
+          "tags": [
+            "structured",
+            "canonicalization"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [],
+          "processing_version": "sparse-v11",
+          "evidence_model": null,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "8b342b3e0046e2194d4e579d0a5ea3ba20f1921e09bf4ce7616c89ea7bfa2489",
+      "evaluated_at": "2026-10-08T01:56:11.378618+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-model-tag-synonym",
+          "domain": "purchase",
+          "tags": [
+            "semantic",
+            "canonicalization"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "canonicalize_sparse_label",
+              "subject": {
+                "label": "programming",
+                "kind": "value",
+                "criterion": {
+                  "attribute_id": "usage_tags",
+                  "value_type": "tag_set",
+                  "unit": null
+                }
+              },
+              "response": {
+                "reason": "The label 'programming' refers to the activity of writing code, which is most closely aligned with 'coding' in the context of device usage. 'Design' and 'presentations' are distinct activities\u2014design involves creating visual or structural elements, and presentations involve delivering content\u2014neither of which is equivalent to programming. Therefore, 'coding' is the only target that shares a practical, common-sense meaning with 'programming' in the context of device usage. Replacing 'programming' with 'coding' preserves the intended preference of using a device for code creation.",
+                "status": "equivalent",
+                "target": "coding"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "8680a3a3a8b12c5d56ee18477e4a81d54584c6a274517b144b032dd72739615a",
+      "evaluated_at": "2026-10-08T01:56:11.379205+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.0,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "classification": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "purchase": {
+          "passed": 5,
+          "total": 5,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "purchase-model-criterion-synonym",
+          "domain": "purchase",
+          "tags": [
+            "semantic",
+            "canonicalization"
+          ],
+          "passed": true,
+          "duration_seconds": 0.0,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "canonicalize_sparse_label",
+              "subject": {
+                "label": "unplugged_runtime",
+                "kind": "criterion",
+                "criterion": null
+              },
+              "response": {
+                "reason": "The label 'unplugged_runtime' refers to how long a device can operate without being plugged in, which is directly measured by battery life in hours. The target 'battery_life' with unit 'hours' captures this concept in a practical, common usage context. Although 'unplugged_runtime' is a more specific phrasing, in everyday language, 'battery life' is the standard term used to describe runtime without power. Replacing 'unplugged_runtime' with 'battery_life' preserves the intended preference\u2014how long a device lasts on its own power\u2014without introducing ambiguity or a broader/narrower conceptual difference. Thus, they are equivalent in this decision.",
+                "status": "equivalent",
+                "target": "battery_life"
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    },
+    {
+      "schema_version": "preprocessing-eval-report-v1",
+      "dataset_version": "5",
+      "dataset_sha256": "3fc06d3e2efd6098502303d62c5e89ae859eb11a932d0c2b6f626e7e8adbbb78",
+      "evaluated_at": "2026-10-08T01:56:11.379875+00:00",
+      "label_provenance": null,
+      "mode": "recorded_response_regression",
+      "model": "recorded:qwen3:4b-instruct",
+      "selected_tags": [],
+      "duration_seconds": 0.001,
+      "cases": {
+        "passed": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "assertions": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "operational_errors": 0,
+      "by_dimension": {
+        "extraction": {
+          "passed": 2,
+          "total": 2,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "facts": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        },
+        "status": {
+          "passed": 1,
+          "total": 1,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "by_domain": {
+        "event": {
+          "passed": 4,
+          "total": 4,
+          "accuracy": 1.0,
+          "missing_paths": 0,
+          "value_mismatches": 0
+        }
+      },
+      "results": [
+        {
+          "case_id": "event-related-food-is-distinct",
+          "domain": "event",
+          "tags": [
+            "semantic",
+            "canonicalization"
+          ],
+          "passed": true,
+          "duration_seconds": 0.001,
+          "result_status": "provisional",
+          "error": null,
+          "issues": [
+            {
+              "code": "EXECUTION_ADAPTER_REQUIRED",
+              "path": "preparation",
+              "message": "Sparse meanings need a supported execution adapter before ranking"
+            }
+          ],
+          "model_calls": [
+            {
+              "method": "canonicalize_sparse_label",
+              "subject": {
+                "label": "vegan",
+                "kind": "value",
+                "criterion": {
+                  "attribute_id": "food",
+                  "value_type": "tag_set",
+                  "unit": null
+                }
+              },
+              "response": {
+                "reason": "The label 'vegan' refers to food that does not include any animal products, such as meat, dairy, or eggs. The target 'vegetarian' includes plant-based foods but may still contain animal products like dairy or eggs, which are not excluded in vegan diets. Therefore, 'vegetarian' is not equivalent to 'vegan' because it allows for animal-derived ingredients. 'Seafood' is an animal product and directly contradicts vegan principles. Thus, neither target is a meaningful synonym or equivalent to 'vegan' in this context. The label 'vegan' has a clear meaning, but no provided target matches it in scope or definition. As a result, there is no equivalent target.",
+                "status": "distinct",
+                "target": null
+              },
+              "duration_seconds": 0.0
+            }
+          ],
+          "processing_version": "sparse-v11",
+          "evidence_model": "recorded:qwen3:4b-instruct",
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "accuracy": 1.0,
+            "missing_paths": 0,
+            "value_mismatches": 0
+          },
+          "failures": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2719 @@
+{
+  "schema_version": "preprocessing-eval-v1",
+  "dataset_version": "challenge-1",
+  "description": "Separate synthetic challenge labels authored from input meaning before evaluation. Independent human review pending; not a held-out accuracy claim.",
+  "label_provenance": {
+    "author": "Codex",
+    "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+    "independent_review": "pending",
+    "reviewer": null
+  },
+  "cases": [
+    {
+      "case_id": "warehouse-ideal-load",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Literal answer explicitly declares the numeric intent; threshold preferences remain soft.",
+      "planning": {
+        "round_id": "warehouse-ideal-load",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-ideal-load-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "load capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-ideal-load",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-ideal-load-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-ideal-load-answer",
+                "question_id": "preference",
+                "value": "ideally 45 kg"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": 45,
+              "numeric_intent": "target",
+              "utility_rule": "numeric_target_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "printer-minimum-output",
+      "domain": "printer",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Literal answer explicitly declares the numeric intent; threshold preferences remain soft.",
+      "planning": {
+        "round_id": "printer-minimum-output",
+        "option_revision": "1",
+        "option_snapshot_id": "printer-minimum-output-options",
+        "decision_question": "Which printer option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "output_rate",
+                "value": 15,
+                "value_type": "number",
+                "unit": "pages",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "output_rate",
+                "value": 40,
+                "value_type": "number",
+                "unit": "pages",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "output rate preference?",
+            "role": "soft",
+            "criterion": "output_rate",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "printer-minimum-output",
+        "option_revision": "1",
+        "response_snapshot_id": "printer-minimum-output-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "printer-minimum-output-answer",
+                "question_id": "preference",
+                "value": "at least 22 pages"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "output_rate",
+              "preferred_value": {
+                "lower": 22,
+                "upper": null,
+                "lower_inclusive": true,
+                "upper_inclusive": true
+              },
+              "numeric_intent": "minimum",
+              "utility_rule": "numeric_range_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "venue-upper-noise",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Literal answer explicitly declares the numeric intent; threshold preferences remain soft.",
+      "planning": {
+        "round_id": "venue-upper-noise",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-upper-noise-options",
+        "decision_question": "Which venue option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "noise_level",
+                "value": 35,
+                "value_type": "number",
+                "unit": "dB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "noise_level",
+                "value": 70,
+                "value_type": "number",
+                "unit": "dB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "noise level preference?",
+            "role": "soft",
+            "criterion": "noise_level",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-upper-noise",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-upper-noise-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "venue-upper-noise-answer",
+                "question_id": "preference",
+                "value": "under 50 dB"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "noise_level",
+              "preferred_value": {
+                "lower": null,
+                "upper": 50,
+                "lower_inclusive": true,
+                "upper_inclusive": false
+              },
+              "numeric_intent": "less_than",
+              "utility_rule": "numeric_range_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "server-higher-memory",
+      "domain": "server",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Literal answer explicitly declares the numeric intent; threshold preferences remain soft.",
+      "planning": {
+        "round_id": "server-higher-memory",
+        "option_revision": "1",
+        "option_snapshot_id": "server-higher-memory-options",
+        "decision_question": "Which server option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "memory_capacity",
+                "value": 16,
+                "value_type": "number",
+                "unit": "GB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "memory_capacity",
+                "value": 64,
+                "value_type": "number",
+                "unit": "GB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "memory capacity preference?",
+            "role": "soft",
+            "criterion": "memory_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "server-higher-memory",
+        "option_revision": "1",
+        "response_snapshot_id": "server-higher-memory-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "server-higher-memory-answer",
+                "question_id": "preference",
+                "value": "higher is better"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "memory_capacity",
+              "preferred_value": null,
+              "numeric_intent": "maximize",
+              "utility_rule": "numeric_maximize_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "printer-lower-noise",
+      "domain": "printer",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Literal answer explicitly declares the numeric intent; threshold preferences remain soft.",
+      "planning": {
+        "round_id": "printer-lower-noise",
+        "option_revision": "1",
+        "option_snapshot_id": "printer-lower-noise-options",
+        "decision_question": "Which printer option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "noise_level",
+                "value": 30,
+                "value_type": "number",
+                "unit": "dB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "noise_level",
+                "value": 60,
+                "value_type": "number",
+                "unit": "dB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "noise level preference?",
+            "role": "soft",
+            "criterion": "noise_level",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "printer-lower-noise",
+        "option_revision": "1",
+        "response_snapshot_id": "printer-lower-noise-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "printer-lower-noise-answer",
+                "question_id": "preference",
+                "value": "lower is better"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "noise_level",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-load-range",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Literal answer explicitly declares the numeric intent; threshold preferences remain soft.",
+      "planning": {
+        "round_id": "warehouse-load-range",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-load-range-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "load capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-load-range",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-load-range-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-load-range-answer",
+                "question_id": "preference",
+                "value": "between 35 and 50 kg"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": {
+                "lower": 35,
+                "upper": 50,
+                "lower_inclusive": true,
+                "upper_inclusive": true
+              },
+              "numeric_intent": "range",
+              "utility_rule": "numeric_range_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-ambiguous-number",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "A bare quantity does not distinguish a target from an acceptable minimum.",
+      "planning": {
+        "round_id": "warehouse-ambiguous-number",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-ambiguous-number-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "load capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-ambiguous-number",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-ambiguous-number-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-ambiguous-number-answer",
+                "question_id": "preference",
+                "value": 45
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "AMBIGUOUS_NUMERIC_INTENT"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-ambiguous-unit-text",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "A bare quantity does not distinguish a target from an acceptable minimum.",
+      "planning": {
+        "round_id": "warehouse-ambiguous-unit-text",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-ambiguous-unit-text-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "load capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-ambiguous-unit-text",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-ambiguous-unit-text-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-ambiguous-unit-text-answer",
+                "question_id": "preference",
+                "value": "45 kg"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "AMBIGUOUS_NUMERIC_INTENT"
+            }
+          ]
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": []
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-declared-target",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "The same bare answer takes its declared question intent; numeric intent does not change the question role.",
+      "planning": {
+        "round_id": "warehouse-declared-target",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-declared-target-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1,
+            "numeric_intent": "target"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-declared-target",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-declared-target-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-declared-target-answer",
+                "question_id": "preference",
+                "value": 45
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": 45,
+              "numeric_intent": "target",
+              "utility_rule": "numeric_target_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-declared-soft-minimum",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "The same bare answer takes its declared question intent; numeric intent does not change the question role.",
+      "planning": {
+        "round_id": "warehouse-declared-soft-minimum",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-declared-soft-minimum-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1,
+            "numeric_intent": "minimum"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-declared-soft-minimum",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-declared-soft-minimum-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-declared-soft-minimum-answer",
+                "question_id": "preference",
+                "value": 45
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": {
+                "lower": 45,
+                "upper": null,
+                "lower_inclusive": true,
+                "upper_inclusive": true
+              },
+              "numeric_intent": "minimum",
+              "utility_rule": "numeric_range_v1",
+              "source_type": "member_response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-declared-hard-minimum",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "The same bare answer takes its declared question intent; numeric intent does not change the question role.",
+      "planning": {
+        "round_id": "warehouse-declared-hard-minimum",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-declared-hard-minimum-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Required capacity?",
+            "role": "hard",
+            "criterion": "load_capacity",
+            "relevance": 0,
+            "numeric_intent": "minimum"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-declared-hard-minimum",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-declared-hard-minimum-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-declared-hard-minimum-answer",
+                "question_id": "preference",
+                "value": 45
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "required_value": 45,
+              "constraint_rule": "minimum_v1",
+              "confirmation_status": "confirmed",
+              "numeric_intent": "minimum"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-tags-contradictory",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Formatting is normalized before required/excluded tag sets are compared.",
+      "planning": {
+        "round_id": "warehouse-tags-contradictory",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-tags-contradictory-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling",
+                  "stackable"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "handling tags preference?",
+            "role": "soft",
+            "criterion": "handling_tags",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-tags-contradictory",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-tags-contradictory-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-tags-contradictory-answer",
+                "question_id": "preference",
+                "value": {
+                  "preferences": [
+                    {
+                      "criterion": "handling_tags",
+                      "value": [
+                        "Cooling"
+                      ],
+                      "must_have": true
+                    },
+                    {
+                      "criterion": "handling_tags",
+                      "value": [
+                        "cooling"
+                      ],
+                      "must_have": true,
+                      "polarity": "avoid"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFLICTING_ANSWER"
+            }
+          ]
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "constraint_rule": "contains_all_v1",
+              "status": "needs_clarification"
+            },
+            {
+              "constraint_rule": "excludes_all_v1",
+              "status": "needs_clarification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-tags-compatible",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Formatting is normalized before required/excluded tag sets are compared.",
+      "planning": {
+        "round_id": "warehouse-tags-compatible",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-tags-compatible-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling",
+                  "stackable"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "handling tags preference?",
+            "role": "soft",
+            "criterion": "handling_tags",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-tags-compatible",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-tags-compatible-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-tags-compatible-answer",
+                "question_id": "preference",
+                "value": {
+                  "preferences": [
+                    {
+                      "criterion": "handling_tags",
+                      "value": [
+                        "Cooling"
+                      ],
+                      "must_have": true
+                    },
+                    {
+                      "criterion": "handling_tags",
+                      "value": [
+                        "fragile"
+                      ],
+                      "must_have": true,
+                      "polarity": "avoid"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-distinct-required-sets",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Distinct required sets can coexist; preserve both sources.",
+      "planning": {
+        "round_id": "warehouse-distinct-required-sets",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-distinct-required-sets-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling",
+                  "stackable"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Required handling tags?",
+            "role": "hard",
+            "criterion": "handling_tags",
+            "relevance": 0
+          },
+          {
+            "question_id": "extra",
+            "label": "Required handling tags?",
+            "role": "hard",
+            "criterion": "handling_tags",
+            "relevance": 0
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-distinct-required-sets",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-distinct-required-sets-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-distinct-required-sets-answer",
+                "question_id": "preference",
+                "value": [
+                  "cooling"
+                ]
+              },
+              {
+                "question_id": "extra",
+                "value": [
+                  "stackable"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "preference",
+              "required_value": [
+                "cooling"
+              ]
+            },
+            {
+              "source_question_id": "extra",
+              "required_value": [
+                "stackable"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "venue-compatible-caps",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Intersect bounds without rounding; equal endpoints are feasible only when both are inclusive.",
+      "planning": {
+        "round_id": "venue-compatible-caps",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-compatible-caps-options",
+        "decision_question": "Which venue option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 100,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 200,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "maximum"
+          },
+          {
+            "question_id": "second",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "maximum"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-compatible-caps",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-compatible-caps-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "venue-compatible-caps-answer",
+                "question_id": "preference",
+                "value": 150
+              },
+              {
+                "question_id": "second",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "preference",
+              "required_value": 150,
+              "status": "confirmed"
+            },
+            {
+              "source_question_id": "second",
+              "required_value": 120,
+              "status": "confirmed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "venue-compatible-floor-cap",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Intersect bounds without rounding; equal endpoints are feasible only when both are inclusive.",
+      "planning": {
+        "round_id": "venue-compatible-floor-cap",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-compatible-floor-cap-options",
+        "decision_question": "Which venue option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 100,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 200,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "minimum"
+          },
+          {
+            "question_id": "second",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "maximum"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-compatible-floor-cap",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-compatible-floor-cap-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "venue-compatible-floor-cap-answer",
+                "question_id": "preference",
+                "value": 120
+              },
+              {
+                "question_id": "second",
+                "value": 150
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "preference",
+              "required_value": 120,
+              "status": "confirmed"
+            },
+            {
+              "source_question_id": "second",
+              "required_value": 150,
+              "status": "confirmed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "venue-touching-inclusive",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Intersect bounds without rounding; equal endpoints are feasible only when both are inclusive.",
+      "planning": {
+        "round_id": "venue-touching-inclusive",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-touching-inclusive-options",
+        "decision_question": "Which venue option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 100,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 200,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "minimum"
+          },
+          {
+            "question_id": "second",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "maximum"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-touching-inclusive",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-touching-inclusive-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "venue-touching-inclusive-answer",
+                "question_id": "preference",
+                "value": 120
+              },
+              {
+                "question_id": "second",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "preference",
+              "required_value": 120,
+              "status": "confirmed"
+            },
+            {
+              "source_question_id": "second",
+              "required_value": 120,
+              "status": "confirmed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "venue-touching-exclusive",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Intersect bounds without rounding; equal endpoints are feasible only when both are inclusive.",
+      "planning": {
+        "round_id": "venue-touching-exclusive",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-touching-exclusive-options",
+        "decision_question": "Which venue option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 100,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 200,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "minimum"
+          },
+          {
+            "question_id": "second",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "less_than"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-touching-exclusive",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-touching-exclusive-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "venue-touching-exclusive-answer",
+                "question_id": "preference",
+                "value": 120
+              },
+              {
+                "question_id": "second",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFLICTING_ANSWER"
+            }
+          ]
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "preference",
+              "required_value": 120,
+              "status": "needs_clarification"
+            },
+            {
+              "source_question_id": "second",
+              "required_value": 120,
+              "status": "needs_clarification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "venue-impossible-floor-cap",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Intersect bounds without rounding; equal endpoints are feasible only when both are inclusive.",
+      "planning": {
+        "round_id": "venue-impossible-floor-cap",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-impossible-floor-cap-options",
+        "decision_question": "Which venue option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 100,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "guest_capacity",
+                "value": 200,
+                "value_type": "number",
+                "unit": "people",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "minimum"
+          },
+          {
+            "question_id": "second",
+            "label": "Capacity limit?",
+            "role": "hard",
+            "criterion": "guest_capacity",
+            "relevance": 0,
+            "numeric_intent": "maximum"
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-impossible-floor-cap",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-impossible-floor-cap-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "venue-impossible-floor-cap-answer",
+                "question_id": "preference",
+                "value": 151
+              },
+              {
+                "question_id": "second",
+                "value": 150
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFLICTING_ANSWER"
+            }
+          ]
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "source_question_id": "preference",
+              "required_value": 151,
+              "status": "needs_clarification"
+            },
+            {
+              "source_question_id": "second",
+              "required_value": 150,
+              "status": "needs_clarification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-compound-bounds",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "note": "Two hard bounds in one answer describe one interval.",
+      "planning": {
+        "round_id": "warehouse-compound-bounds",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-compound-bounds-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "load capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-compound-bounds",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-compound-bounds-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-compound-bounds-answer",
+                "question_id": "preference",
+                "value": {
+                  "preferences": [
+                    {
+                      "criterion": "load_capacity",
+                      "value": 35,
+                      "must_have": true,
+                      "intent": "minimum"
+                    },
+                    {
+                      "criterion": "load_capacity",
+                      "value": 50,
+                      "must_have": true,
+                      "intent": "maximum"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "required_value": {
+                "lower": 35,
+                "upper": 50,
+                "lower_inclusive": true,
+                "upper_inclusive": true
+              },
+              "constraint_rule": "within_range_v1",
+              "numeric_intent": "range"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "printer-natural-quiet-direction",
+      "domain": "printer",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "note": "The comparative phrase expresses a direction, not a numeric target.",
+      "planning": {
+        "round_id": "printer-natural-quiet-direction",
+        "option_revision": "1",
+        "option_snapshot_id": "printer-natural-quiet-direction-options",
+        "decision_question": "Which printer option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "noise_level",
+                "value": 30,
+                "value_type": "number",
+                "unit": "dB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "noise_level",
+                "value": 60,
+                "value_type": "number",
+                "unit": "dB",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "noise level preference?",
+            "role": "soft",
+            "criterion": "noise_level",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "printer-natural-quiet-direction",
+        "option_revision": "1",
+        "response_snapshot_id": "printer-natural-quiet-direction-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "printer-natural-quiet-direction-answer",
+                "question_id": "preference",
+                "value": "The less noise it makes, the better."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "noise_level",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-natural-capacity-direction",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "note": "Heavier load expresses maximizing capacity.",
+      "planning": {
+        "round_id": "warehouse-natural-capacity-direction",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-natural-capacity-direction-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 30,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "load_capacity",
+                "value": 60,
+                "value_type": "number",
+                "unit": "kg",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "load capacity preference?",
+            "role": "soft",
+            "criterion": "load_capacity",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-natural-capacity-direction",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-natural-capacity-direction-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-natural-capacity-direction-answer",
+                "question_id": "preference",
+                "value": "I would favour whichever can carry the heavier load."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "provisional"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "ready"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": null,
+              "numeric_intent": "maximize",
+              "utility_rule": "numeric_maximize_v1",
+              "source_type": "semantic_model"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-natural-required-tag",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "note": "Explicit requirement wording must be grounded and require typed confirmation after model extraction.",
+      "planning": {
+        "round_id": "warehouse-natural-required-tag",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-natural-required-tag-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "stackable"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "handling tags preference?",
+            "role": "soft",
+            "criterion": "handling_tags",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-natural-required-tag",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-natural-required-tag-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-natural-required-tag-answer",
+                "question_id": "preference",
+                "value": "Our shipments need cooling."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFIRM_REQUIREMENT"
+            }
+          ]
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "handling_tags",
+              "required_value": [
+                "cooling"
+              ],
+              "constraint_rule": "contains_all_v1",
+              "source_type": "semantic_model",
+              "confirmation_status": "needs_confirmation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-natural-excluded-tag",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "note": "Explicit requirement wording must be grounded and require typed confirmation after model extraction.",
+      "planning": {
+        "round_id": "warehouse-natural-excluded-tag",
+        "option_revision": "1",
+        "option_snapshot_id": "warehouse-natural-excluded-tag-options",
+        "decision_question": "Which warehouse option should our group choose?",
+        "roster": [
+          "p1"
+        ],
+        "options": [
+          {
+            "option_id": "option-0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "cooling"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          },
+          {
+            "option_id": "option-1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "handling_tags",
+                "value": [
+                  "stackable"
+                ],
+                "value_type": "tag_set",
+                "status": "confirmed",
+                "source": "synthetic challenge specification"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "handling tags preference?",
+            "role": "soft",
+            "criterion": "handling_tags",
+            "relevance": 1
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "warehouse-natural-excluded-tag",
+        "option_revision": "1",
+        "response_snapshot_id": "warehouse-natural-excluded-tag-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "answer_id": "warehouse-natural-excluded-tag-answer",
+                "question_id": "preference",
+                "value": "Our shipments must not use cooling."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "value": "needs_clarification"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "op": "contains_rows",
+          "value": [
+            {
+              "code": "CONFIRM_REQUIREMENT"
+            }
+          ]
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "op": "rows",
+          "value": [
+            {
+              "attribute_id": "handling_tags",
+              "required_value": [
+                "cooling"
+              ],
+              "constraint_rule": "excludes_all_v1",
+              "source_type": "semantic_model",
+              "confirmation_status": "needs_confirmation"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

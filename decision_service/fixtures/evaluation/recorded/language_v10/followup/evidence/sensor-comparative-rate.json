@@ -1,0 +1,30 @@
+{
+  "option_snapshot_id": "sensor-comparative-rate-options",
+  "response_snapshot_id": "sensor-comparative-rate-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preference": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "sampling_rate",
+            "evidence": "I prefer the higher sampling rate.",
+            "intent": "maximize",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "higher"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

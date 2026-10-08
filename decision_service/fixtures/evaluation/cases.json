@@ -1,6 +1,6 @@
 {
   "schema_version": "preprocessing-eval-v1",
-  "dataset_version": "4",
+  "dataset_version": "5",
   "description": "Synthetic authored development examples. Labels need team review; not a held-out benchmark or live accuracy claim.",
   "cases": [
     {
@@ -13,7 +13,7 @@
       "planning": {
         "round_id": "purchase-typed-values",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-typed-values-options",
+        "option_snapshot_id": "purchase-typed-values-options-intent-v2",
         "decision_question": "Which laptop should our team buy?",
         "roster": [
           "p1"
@@ -91,7 +91,8 @@
           },
           {
             "question_id": "battery",
-            "label": "Battery life preference?"
+            "label": "Battery life preference?",
+            "numeric_intent": "target"
           },
           {
             "question_id": "usage",
@@ -685,7 +686,7 @@
       "planning": {
         "round_id": "trip-schedule-missing-cost",
         "option_revision": "1",
-        "option_snapshot_id": "trip-schedule-missing-cost-options",
+        "option_snapshot_id": "trip-schedule-missing-cost-options-intent-v2",
         "decision_question": "Where should we take a holiday?",
         "roster": [
           "p1"
@@ -705,7 +706,8 @@
             "choices": [
               "5 days",
               "7 days"
-            ]
+            ],
+            "numeric_intent": "target"
           },
           {
             "question_id": "budget",
@@ -1049,7 +1051,7 @@
       "planning": {
         "round_id": "purchase-unit-mismatch",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-unit-mismatch-options",
+        "option_snapshot_id": "purchase-unit-mismatch-options-intent-v2",
         "decision_question": "Which laptop should we buy?",
         "roster": [
           "p1"
@@ -1123,7 +1125,8 @@
         "questions": [
           {
             "question_id": "battery",
-            "label": "Battery life preference?"
+            "label": "Battery life preference?",
+            "numeric_intent": "target"
           }
         ]
       },
@@ -1388,12 +1391,12 @@
       ]
     },
     {
-      "case_id": "trip-conflicting-budgets",
+      "case_id": "trip-compatible-budgets",
       "domain": "trip",
       "tags": [
         "structured"
       ],
-      "note": "Conflicting confirmed limits currently invalidate the packet.",
+      "note": "Different upper limits are compatible; preserve both and enforce the tighter one.",
       "planning": {
         "round_id": "trip-conflicting-budgets",
         "option_revision": "1",
@@ -1477,12 +1480,12 @@
           "dimension": "status",
           "path": "/status",
           "op": "equals",
-          "value": "invalid_input"
+          "value": "provisional"
         },
         {
           "dimension": "clarification",
           "path": "/issues",
-          "op": "contains_rows",
+          "op": "absent_rows",
           "value": [
             {
               "code": "CONFLICTING_ANSWER"
@@ -1660,7 +1663,7 @@
       "planning": {
         "round_id": "purchase-runtime-paraphrase",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-runtime-paraphrase-options",
+        "option_snapshot_id": "purchase-runtime-paraphrase-options-intent-v2",
         "decision_question": "Which laptop should we buy?",
         "roster": [
           "p1"
@@ -1734,7 +1737,8 @@
         "questions": [
           {
             "question_id": "runtime",
-            "label": "How long should it run unplugged?"
+            "label": "How long should it run unplugged?",
+            "numeric_intent": "target"
           }
         ]
       },
@@ -3252,7 +3256,7 @@
       "planning": {
         "round_id": "purchase-member-importance",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-member-importance-options",
+        "option_snapshot_id": "purchase-member-importance-options-intent-v2",
         "decision_question": "Which device should we buy?",
         "roster": [
           "p1",
@@ -3310,7 +3314,8 @@
             "label": "Battery life preference?",
             "role": "soft",
             "criterion": "battery_life",
-            "relevance": 1
+            "relevance": 1,
+            "numeric_intent": "target"
           },
           {
             "question_id": "colour",
@@ -3440,7 +3445,7 @@
       "planning": {
         "round_id": "purchase-importance-paraphrase",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-importance-paraphrase-options",
+        "option_snapshot_id": "purchase-importance-paraphrase-options-intent-v2",
         "decision_question": "Which device should we buy?",
         "roster": [
           "p1"
@@ -3497,7 +3502,8 @@
             "label": "Battery life preference?",
             "role": "soft",
             "criterion": "battery_life",
-            "relevance": 1
+            "relevance": 1,
+            "numeric_intent": "target"
           },
           {
             "question_id": "colour",
@@ -4085,7 +4091,7 @@
       "planning": {
         "round_id": "purchase-declared-aliases",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-declared-aliases-options",
+        "option_snapshot_id": "purchase-declared-aliases-options-intent-v2",
         "decision_question": "Which device should our team buy?",
         "currency": "USD",
         "cost_scope": "per_device_total",
@@ -4165,7 +4171,8 @@
           },
           {
             "question_id": "battery",
-            "label": "Runtime preference?"
+            "label": "Runtime preference?",
+            "numeric_intent": "target"
           },
           {
             "question_id": "usage",
@@ -4686,7 +4693,7 @@
       "planning": {
         "round_id": "purchase-model-criterion-synonym",
         "option_revision": "1",
-        "option_snapshot_id": "purchase-model-criterion-synonym-options",
+        "option_snapshot_id": "purchase-model-criterion-synonym-options-intent-v2",
         "decision_question": "Which device should we buy?",
         "roster": [
           "p1"
@@ -4729,7 +4736,8 @@
             "label": "Preferred unplugged runtime?",
             "role": "soft",
             "criterion": "unplugged_runtime",
-            "relevance": 1
+            "relevance": 1,
+            "numeric_intent": "target"
           }
         ]
       },
