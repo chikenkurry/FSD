@@ -104,7 +104,7 @@ Preprocessing does not retrieve live external facts or rank sparse options.
 The `semantic_evidence` returned after model extraction can be saved and
 replayed with `--semantic-evidence`; replay validates the snapshot IDs and
 processing version.
-The handoff schema is `sparse-v4`; processing now uses `sparse-v6`, so
+The handoff schema is `sparse-v4`; processing now uses `sparse-v11`, so
 artifacts created by the previous processing version must be regenerated.
 
 Run from the `FSD` repository root with Python 3.10 or later. The module uses only the Python standard library.

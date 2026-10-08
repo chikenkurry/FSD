@@ -4,7 +4,7 @@ Preprocessing turns the plan and member answers into typed data and comparison
 declarations. It does not calculate scores, rank options, or retrieve external
 facts. The generic path now uses `sparse-v4`; the activity/time execution path
 continues to use `activity-v2`.
-Generic processing is versioned separately as `sparse-v6`; older model artifacts
+Generic processing is versioned separately as `sparse-v11`; older model artifacts
 must be regenerated before replay.
 
 ```mermaid
@@ -47,6 +47,10 @@ result = preprocess(
 Use `planning.options` for a generic decision. Use `planning.activities` for
 an existing activity/time round. The service IDs identify immutable snapshots;
 callers must supply matching round IDs and option revisions.
+`policy.max_scenario_requests` limits date/duration scenario output (default
+10,000) and is checked against saved evidence. Duration targets must be positive
+whole days; the former 365-day ceiling is removed. Scenario ranges are clipped
+to supplied shared availability before enumeration.
 
 ## Input
 
@@ -74,6 +78,9 @@ Supported form declarations are `text`, `choice`, `multi_choice`, `number`,
 `boolean`, and `date_intervals`. Ordinary numeric/boolean values and declared
 choice IDs are accepted in the answer envelope. A leader can override role,
 criterion, relevance, weight, or mapping when needed.
+Numeric questions can also declare `numeric_intent`: `target`, `minimum`,
+`maximum`, `less_than`, `greater_than`, `maximize`, `minimize`, or `range`.
+This declares the meaning of a bare numeric answer without changing hard/soft role.
 
 ### Response snapshot
 
@@ -155,7 +162,11 @@ synthetic test data.
    A semantic provider extracts other text into grounded interpretations,
    preserving preferred versus avoided values and multiple criteria in one answer.
    Numeric meanings distinguish targets, higher/lower directions, intervals, and
-   strict or inclusive bounds. Evidence must occur in the answer.
+   strict or inclusive bounds. A bare numeric quantity needs an explicit question
+   intent, leader comparison mapping, or unambiguous target/limit wording;
+   otherwise emit `AMBIGUOUS_NUMERIC_INTENT` and request clarification. The model
+   cannot establish a target from an otherwise ambiguous quantity.
+   Evidence must occur in the answer.
    Normalize equivalent criterion IDs and scoped text values with declared aliases
    first. An optional model equivalence assessment handles remaining labels against
    supplied criteria and observed/declared values. Ambiguous equivalence requests
@@ -163,6 +174,14 @@ synthetic test data.
    A hard interpretation needs requirement wording in its own clause; an unrelated
    clause cannot turn a preference into a requirement. Vague dates without a
    stated year request clarification before any model date extraction.
+   Clear comparative preference clauses and label-only answers to a bound soft
+   question cannot be promoted to hard merely because the model says must-have.
+   A conservative English comparative grammar can repair numeric direction from
+   the same evidence clause after the model has selected a typed criterion.
+   Explicit hard questions and requirement wording still need a concrete limit.
+   Single-token category answers use scoped label resolution directly, avoiding
+   a separate model extraction that could invent requirement strength. Full
+   clauses still use extraction.
 7. **Compile typed answers.** Emit preferences and hard constraints with rule,
    unit, source question/answer IDs, evidence, and resolution status. A model
    interpretation of a hard requirement or available date range needs typed
@@ -179,7 +198,16 @@ synthetic test data.
    unit, source question, and priority. For date/duration decisions, form scenario
    requests and request costs with the relevant dates, duration, and budget scope.
 10. **Validate the preparation.** Check declarations, references, units,
-   normalized answers, and conflicts. Return the typed packet plus actionable
+   normalized answers, and conflicts within each member/criterion. Required and
+   excluded tags must not overlap after canonicalization. Numeric requirements
+   are intersected with exact decimal comparisons: differing upper limits are
+   compatible, while reversed bounds or touching open endpoints are not.
+   Preserve each question's requirement and provenance; multiple numeric hard
+   meanings in one question compile to their intersected interval. Impossible
+   confirmed requirements retain their records with `status: needs_clarification`
+   and actionable `CONFLICTING_ANSWER` issues, rather than invalidating the snapshot.
+   Cross-member feasibility remains an execution responsibility.
+   Return the typed packet plus actionable
    issues and frozen model evidence for replay.
 
 The semantic provider is optional. Arbitrary wording still needs a configured
@@ -258,6 +286,8 @@ A normalized preference has this shape:
   "kind": "attribute_preference",
   "attribute_id": "battery_life",
   "value_type": "number",
+  "numeric_intent": "target",
+  "intent_source": "question",
   "preferred_value": 12,
   "unit": "hours",
   "scope": "all",
@@ -295,7 +325,8 @@ remains accepted.
 
 | Member meaning | Output |
 | --- | --- |
-| `12 hours` | Target `12`, `numeric_target_v1`, declared scale |
+| `12 hours`, with no declared intent | `AMBIGUOUS_NUMERIC_INTENT`; no usable preference |
+| `ideally 12 hours`, or `12 hours` under a target question | Target `12`, `numeric_target_v1`, declared scale |
 | `longer is better` | Null target, `direction: maximize`, `numeric_maximize_v1` |
 | `cheaper is better` | Null target, `direction: minimize`, `numeric_minimize_v1` |
 | `between 10 and 14 hours` | Endpoints and inclusivity flags, `numeric_range_v1` |
@@ -306,6 +337,28 @@ Direction parameters use the minimum and maximum confirmed option facts. Missing
 facts leave the domain unresolved; a constant confirmed domain is valid. Ranges
 preserve inclusive/exclusive endpoints and reject reversed or empty intervals.
 No utility scores are calculated during preprocessing.
+
+For example, a form can explicitly ask for a soft minimum:
+
+```json
+{
+  "question_id": "battery",
+  "label": "Preferred minimum battery life?",
+  "role": "soft",
+  "criterion": "battery_life",
+  "relevance": 1,
+  "numeric_intent": "minimum"
+}
+```
+
+Answering `12 hours` produces a soft range with lower endpoint 12, not an exact
+target. Setting `role: hard` and `relevance: 0` instead produces `minimum_v1`.
+Explicit answer wording or a structured meaning's `intent` can override a
+question default. The product fixture explicitly declares `numeric_intent: target`.
+Numeric answer records expose `numeric_intent` and `intent_source` (`answer`,
+`question`, `semantic_model`, or `combined_requirements`); questions expose
+`numeric_intent_source`. Intersected model requirements still need confirmation
+of the emitted interval, rule, and unit.
 
 Explicit numeric importance is a relative multiplier, supplied either in
 `participants[].importance` or an importance question's answer:
@@ -389,6 +442,9 @@ The schema checks target membership and response structure; it cannot prove that
 an LLM's synonym judgment is correct. Earlier live development runs missed an
 undeclared programming/coding synonym; the final run resolved it. Reviewed aliases make that mapping
 deterministic; general synonym accuracy still needs independent evaluation.
+The `scoped-labels-v3` prompt assesses each target independently in the supplied
+criterion's practical context. An incoherent non-equivalent decision carrying
+a suggested target requests clarification; it never authorizes a merge.
 
 `preparation.canonicalization.records` preserves original and canonical labels,
 input path, criterion scope, mapping source, and status. Original answers also
@@ -411,6 +467,9 @@ External fact gathering is not implemented. The current model can suggest
 qualitative tags worth investigating for missing soft criteria. These appear as
 `tag_suggestions` with `status: hypothesis`; they do not satisfy `fact_requests`.
 Canonicalizing a member's preference also does not establish an option fact.
+The [fact collection proposal](FACT_COLLECTION_PROPOSAL.md) describes source
+options and a separate collector feeding frozen planning snapshots. It is a
+research/design document; no collector was added to preprocessing.
 
 A future collector should retrieve evidence from a source/API and attach the
 source, context, and evidence status. An LLM could help select a relevant source
@@ -444,6 +503,9 @@ intervals; it must not accept a candidate merely because the intervals touch.
 Unknown facts do not prove hard feasibility. The declared group objective and
 missing-value policy remain part of the handoff. These are proposed generic
 comparison semantics, not implementations in the current activity algorithm.
+Execution must gate on `preparation.status: ready` and use only confirmed hard
+records. `confirmation_status: confirmed` alone is insufficient when a record's
+`status` is `needs_clarification` because its requirements contradict one another.
 
 ## Run and verify
 
@@ -466,3 +528,6 @@ per-criterion normalization), `generic_values.py` (numeric intent),
 and `sparse.py` (snapshots and scenario orchestration). Provider
 transport tests are mocked; the suite does not measure live extraction accuracy.
 Use `python3 -m decision_service.evaluation` for the cross-domain labelled report.
+See [HARDCODING_AUDIT.md](HARDCODING_AUDIT.md) for fixed language rules, reserved
+concepts, product limits, policy defaults, and the older activity path's domain
+assumptions.

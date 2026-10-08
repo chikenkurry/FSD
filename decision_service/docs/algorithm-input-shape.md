@@ -1,6 +1,6 @@
 # Decision Service contracts
 
-The execution schema is `activity-v2`; preprocessing uses `semantic-v5`.
+The execution schema is `activity-v2`; preprocessing uses `semantic-v6`.
 `decision_service/contract.py` validates the same handoff before preprocessing
 returns `ready` and before the algorithm runs. Old execution payloads must be
 regenerated from their planning and response snapshots.
@@ -103,6 +103,14 @@ supply `cost_status` and `cost_source`. Supplied frozen values default to
 `confirmed` with source `planning_service`; this treats Planning as the
 source of record, and does not mean preprocessing independently verified them.
 Model guesses must be explicitly supplied as `estimated`.
+
+Open-budget text uses the plan's currency. `planning.currency_minor_digits`
+declares the number of fractional digits for conversion to integer minor units
+(0–9; default 2 for compatibility). Declare 0 for JPY or 3 for BHD rather than
+relying on that default. Supplied integer cost facts must use the same convention.
+The declared precision is included in the output context when provided; no
+currency conversion or automatic ISO precision lookup occurs. An amount with
+excess precision requests clarification instead of being rounded.
 
 Unknown cost is null, never zero. For a limited budget, missing or estimated
 cost makes the candidate unresolved. Unlimited budgets do not need a cost

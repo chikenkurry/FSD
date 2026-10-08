@@ -13,7 +13,10 @@ requirements, question relevance in different decisions, compound answers,
 numeric directions/ranges/strict bounds, and member importance including cycles.
 Facts are fictional. Dataset version 3 added ten examples for richer meanings;
 version 4 adds six for criterion/tag aliases, model synonyms, and distinct related
-concepts. These remain authored development cases, not independent held-out data.
+concepts. Version 5 declares formerly implicit numeric targets and replaces the
+different-budget rejection label with compatible upper limits. Snapshot IDs
+change where numeric intent declarations change. These remain authored
+development cases, not independent held-out data.
 The team should review the labels before using the results as capstone evidence.
 These examples are not a held-out benchmark and cannot establish accuracy on
 arbitrary user input.
@@ -51,6 +54,65 @@ python3 -m decision_service.evaluation --tag semantic --tag negation
 ```
 
 Use `--tag canonicalization` for the six alias/equivalence development cases.
+
+## Separate processing challenge set
+
+[processing_challenge.json](../fixtures/evaluation/processing_challenge.json)
+contains 24 new synthetic examples across warehouse, printer, venue, and server
+decisions: 20 structured cases and four natural-language extraction cases.
+Expected meanings were authored from the inputs before executing this dataset;
+they were not copied from observed pipeline output. An initial fixture-format
+correction removed null optional unit fields; expected meanings were unchanged.
+These cases accompany implementation work and are **not an independently
+reviewed or held-out benchmark**. `label_provenance` records Codex authorship,
+`independent_review: pending`, and `reviewer: null`; evaluation reports preserve
+those fields. Independent human labelling/review remains outstanding.
+
+The labels distinguish exact targets, soft thresholds, hard limits, directions,
+ambiguous quantities, compatible differing limits, strict interval endpoints,
+compound hard intervals, and conflicting/compatible tag requirements. Review
+each case's `note` and expected labels against its input meaning, without using
+the model's output as the label. Record the independent reviewer and bump the
+dataset version if the labels change. Re-evaluate after review; do not claim
+independent accuracy from the current results.
+
+```sh
+python3 -m decision_service.evaluation \
+  --dataset decision_service/fixtures/evaluation/processing_challenge.json \
+  --tag structured --output /tmp/processing-challenge-structured.json
+
+python3 -m decision_service.evaluation \
+  --dataset decision_service/fixtures/evaluation/processing_challenge.json \
+  --semantic-provider ollama --model qwen3:4b-instruct \
+  --output /tmp/processing-challenge-live.json \
+  --save-evidence-dir /tmp/processing-challenge-evidence
+```
+
+On 8 October 2026, `sparse-v7` passed **20/20 structured cases and 64/64
+assertions** without a model. The complete rules run passed **20/24 cases and
+66/78 assertions**; the four natural-language cases require semantic extraction.
+A local Qwen run passed **22/24 cases and 72/78 assertions**, making five model
+calls in 60.7 seconds with no operational errors. Saved-evidence replay produced
+the same 22/24 results. The two failing comparative preferences were incorrectly
+marked hard by the model; clause grounding rejected them and requested
+clarification. Both failures and raw model replies remain in the reports;
+these labels and prompts were not changed to obtain a passing result.
+
+Frozen [reports and replay evidence](../fixtures/evaluation/recorded/processing_challenge_v1/README.md)
+from `sparse-v7` are retained for historical inspection. Current processing
+rejects those older artifacts. Current replay evidence is recorded under
+`recorded/refactor_v11/challenge/evidence`.
+
+```sh
+python3 -m decision_service.evaluation \
+  --dataset decision_service/fixtures/evaluation/processing_challenge.json \
+  --evidence-dir decision_service/fixtures/evaluation/recorded/refactor_v11/challenge/evidence \
+  --output /tmp/processing-challenge-replay.json
+```
+
+The historical v7 full challenge run exited `1` because those two cases failed.
+Current-version results are documented separately below; failed cases always
+remain in the denominator and determine the CLI exit code.
 
 ### Configured model
 
@@ -97,6 +159,56 @@ and makes paid API calls. The mocked provider tests verify report generation and
 replay; live development results are documented below.
 
 ### Recorded development run
+
+The hardcoding cleanup uses `sparse-v11` (`semantic-v6` for activity input).
+Currency and duration tests cover non-SGD budgets, declared minor-unit precision,
+exact large decimals, durations above a year, strict endpoints and scenario limits.
+The refactor was checked with the previously recorded model replies: **34/34**
+development cases, **24/24** challenge cases and **8/10** follow-up cases retain
+their labelled outcomes. These are recorded-response regression results, not a
+new live-model accuracy run. Fresh evidence was emitted by the current pipeline;
+older evidence versions were not relabelled as current artifacts.
+[Regression reports and current replay evidence](../fixtures/evaluation/recorded/refactor_v11/README.md)
+preserve the distinction and the two known model failures. Historical live runs
+below retain their original versions and results.
+
+On 8 October 2026, the finalized natural-language changes in `sparse-v10` with
+`scoped-labels-v3` passed **34/34 development cases and 185/185 assertions**,
+and **24/24 challenge cases and 78/78 assertions**. The new
+[language_followup.json](../fixtures/evaluation/language_followup.json) passed
+**8/10 cases and 21/24 assertions**. All three saved-evidence replays reproduce
+the live results with no operational errors. The development run took 87.8
+seconds/12 calls; challenge 57.1 seconds/5 calls; follow-up 98.4 seconds/10 calls.
+
+Comparative repairs use supported English grammar within the item's evidence
+clause, after the model selects a typed criterion. Explicit hard questions and
+real requirements are not softened. Single-token category labels use direct
+scoped canonicalization rather than asking extraction to infer obligation.
+The synonym prompt assesses each alternative separately and distinguishes clear
+new meanings from genuinely ambiguous labels. It contains no runtime global
+programming/coding alias table.
+
+The follow-up failures are an incoherent hiking/outdoor assessment (clarification)
+and an incorrect noisy/busy equivalence (estimated model preference). Both
+remain in the report and denominator. The follow-up labels were authored before
+first execution, then used in development; they are not held-out or independently
+reviewed data. Independent human review is still pending.
+
+[Final reports, intermediate failures and replay evidence](../fixtures/evaluation/recorded/language_v10/README.md)
+are preserved, including an intermediate provider timeout. No failed labels were
+changed to obtain a passing result. Historical runs below use older processing
+versions and are not current-pipeline accuracy claims.
+
+On 8 October 2026, `sparse-v7` with `qwen3:4b-instruct` passed **33/34 cases
+and 183/185 assertions** on dataset version 5 in 77.3 seconds, making 12 model
+calls with no operational errors. Replay reproduced the same result. The model
+again missed undeclared programming/coding equivalence; this regression was
+preserved rather than rerunning until it passed. The rules baseline remains
+23/34 cases and 148/185 assertions, including 22/22 structured cases.
+The [live report](../fixtures/evaluation/recorded/development_v5/live.json)
+and [replay report](../fixtures/evaluation/recorded/development_v5/replay.json)
+retain the failure and raw reply. Historical dataset/version runs below are not
+current-pipeline accuracy claims.
 
 On 7 October 2026, the `sparse-v6` pipeline with `qwen3:4b-instruct` passed
 **34/34 cases and 185/185 assertions** on dataset version 4. The final run took
@@ -162,7 +274,7 @@ python3 -m decision_service.evaluation \
 Each selected case needs its own `case_id.json` evidence object. The pipeline
 validates snapshot IDs and processing version. Missing, stale, or malformed
 evidence produces a failed case; a missing file never silently falls back to rules.
-Generic processing now uses `sparse-v6`. Regenerate earlier semantic artifacts.
+Generic processing now uses `sparse-v11`. Regenerate earlier semantic artifacts.
 Canonicalization records include frozen assessments, declared aliases, and whether
 model equivalence was enabled; a replay rejects changed declarations or missing
 assessments for a model-enabled run.
