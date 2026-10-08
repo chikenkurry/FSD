@@ -23,8 +23,8 @@ func NewProposedActivityHandler(repo *repository.ProposedActivityRepository) *Pr
 type CreateProposedActivityRequest struct {
 	Title            string          `json:"title"`
 	Description      *string         `json:"description,omitempty"`
-	EstCostPerPerson float64         `json:"est_cost_per_person"`
-	DurationMinutes  int             `json:"duration_minutes"`
+	EstCostPerPerson float64         `json:"est_cost_per_person,omitempty"`
+	DurationMinutes  int             `json:"duration_minutes,omitempty"`
 	Metadata         json.RawMessage `json:"metadata,omitempty"`
 }
 
@@ -66,28 +66,13 @@ func (h *ProposedActivityHandler) CreateActivity(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if req.EstCostPerPerson < 0 {
-		WriteError(w, http.StatusBadRequest, "Cost cannot be negative")
-		return
-	}
-
-	if req.DurationMinutes <= 0 {
-		WriteError(w, http.StatusBadRequest, "Duration must be greater than 0")
-		return
-	}
-
-	metadata := req.Metadata
-	if len(metadata) == 0 {
-		metadata = json.RawMessage(`{}`)
-	}
-
 	activity := &model.ProposedActivity{
 		PlanID:           planID,
 		Title:            req.Title,
 		Description:      req.Description,
 		EstCostPerPerson: req.EstCostPerPerson,
 		DurationMinutes:  req.DurationMinutes,
-		Metadata:         metadata,
+		Metadata:         req.Metadata,
 	}
 
 	if err := h.repo.Create(r.Context(), activity); err != nil {
@@ -95,7 +80,7 @@ func (h *ProposedActivityHandler) CreateActivity(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, activity)
+	WriteJSONResponse(w, http.StatusCreated, toProposedActivityResponse(activity))
 }
 
 // GET /v1/proposed_activity/plans/{plan_id} - List activities for a plan
@@ -112,7 +97,13 @@ func (h *ProposedActivityHandler) ListActivitiesByPlan(w http.ResponseWriter, r 
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{"data":  activities})
+	responses := make([]ProposedActivityResponse, 0, len(activities))
+
+	for i := range activities {
+		responses = append(responses, toProposedActivityResponse(&activities[i]))
+	}
+
+	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{"data": responses})
 }
 
 // GET /v1/proposed_activity/{id} - Get an activity by ID
@@ -135,7 +126,7 @@ func (h *ProposedActivityHandler) GetActivityByID(w http.ResponseWriter, r *http
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, activity)
+	WriteJSONResponse(w, http.StatusOK, toProposedActivityResponse(activity))
 }
 
 // PATCH /v1/proposed_activity/{id} - Update an activity
@@ -206,7 +197,7 @@ func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, updatedActivity)
+	WriteJSONResponse(w, http.StatusOK, toProposedActivityResponse(updatedActivity))
 }
 
 // DELETE /v1/proposed_activity/{id} - Delete an activity
@@ -228,4 +219,17 @@ func (h *ProposedActivityHandler) DeleteActivity(w http.ResponseWriter, r *http.
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func toProposedActivityResponse(a *model.ProposedActivity) ProposedActivityResponse {
+	return ProposedActivityResponse{
+		ID:               a.ID,
+		PlanID:           a.PlanID,
+		Title:            a.Title,
+		Description:      a.Description,
+		EstCostPerPerson: a.EstCostPerPerson,
+		DurationMinutes:  a.DurationMinutes,
+		Metadata:         json.RawMessage(a.Metadata),
+		CreatedAt:        a.CreatedAt,
+	}
 }
