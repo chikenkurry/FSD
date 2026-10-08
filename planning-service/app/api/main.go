@@ -25,6 +25,8 @@ type JsonResponse struct {
 
 var ctx = context.Background()
 
+var joinBaseURL = "http://localhost:8080/join"
+
 
 func main() {
 	cfg, err := config.Load()
@@ -46,6 +48,7 @@ func main() {
 	err = db.AutoMigrate(
 		&model.User{},
 		&model.Plan{},
+		&model.Invitation{},
 		&model.Question{},
 		&model.QuestionPreset{},
 		&model.PlanRound{},
@@ -69,6 +72,9 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
+
+	invitationRepo := repository.NewInvitationRepository(db)
+	invitationHandler := handler.NewInvitationHandler(invitationRepo, joinBaseURL)
 
 	planMemberRepo := repository.NewPlanMemberRepository(db)
 	planMemberHandler := handler.NewPlanMemberHandler(planMemberRepo)
@@ -97,6 +103,10 @@ func main() {
 	mux.HandleFunc("POST /v1/users", userHandler.CreateUser)
 	mux.HandleFunc("GET /v1/users/{id}", userHandler.GetUserByID)
 	mux.HandleFunc("PUT /v1/users/{id}", userHandler.UpdateUser)
+
+	// invitation CRUD methods
+	mux.HandleFunc("POST /v1/plans/{plan_id}/invites", invitationHandler.CreateInvitation)
+	mux.HandleFunc("POST /v1/invites/{token}/join", invitationHandler.AcceptInvitation)
 
 	// plan member CRUD methods
 	mux.HandleFunc("POST /v1/plans/{plan_id}/members", planMemberHandler.AddMember)

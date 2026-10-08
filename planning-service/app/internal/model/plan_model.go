@@ -17,16 +17,16 @@ const (
 )
 
 type PlanCategory string
-
+// on update of categories, update the functions as well
 const (
 	CategoryMeeting PlanCategory = "MEETING"
 	CategoryTravel  PlanCategory = "TRAVEL"
 	CategoryDining  PlanCategory = "DINING"
 	CategoryGeneral PlanCategory = "GENERAL"
 )
-
 func (c PlanCategory) IsValidCategory() bool {
 	switch c {
+		// remember to update here too!
 		case CategoryMeeting, CategoryTravel, CategoryDining, CategoryGeneral:
 			return true
 	}
