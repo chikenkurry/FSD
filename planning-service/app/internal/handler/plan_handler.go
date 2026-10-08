@@ -126,13 +126,13 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Request) {
 	organiserID := r.PathValue("id")
 	if organiserID == "" {
-		http.Error(w, "Organiser id is required", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "Organiser id is required")
 		return
 	}
 
 	plans, err := h.repo.ListByOrganiser(r.Context(), organiserID, 20, 0)
 	if err != nil {
-		http.Error(w, "Failed to list plans", http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Failed to list plans")
 		return
 	}
 	WriteJSONResponse(w, http.StatusOK, plans)

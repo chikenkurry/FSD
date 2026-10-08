@@ -73,6 +73,9 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handler.NewUserHandler(userRepo)
 
+	questionRepo := repository.NewQuestionRepository(db)
+	questionHandler := handler.NewQuestionHandler(questionRepo)
+
 	invitationRepo := repository.NewInvitationRepository(db)
 	invitationHandler := handler.NewInvitationHandler(invitationRepo, joinBaseURL)
 
@@ -93,16 +96,22 @@ func main() {
 	mux.HandleFunc("GET /health", GetHealth)
 
 	// plans CRUD methods
-	mux.HandleFunc("POST /v1/plans", planHandler.CreatePlan)
+	mux.HandleFunc("POST /v1/plans", planHandler.CreatePlan) //👌
 	mux.HandleFunc("GET /v1/plans/{id}", planHandler.GetPlanById)
 	mux.HandleFunc("GET /v1/plans/organiser/{id}", planHandler.ListPlansByOrganiser)
 	mux.HandleFunc("PUT /v1/plans/{id}", planHandler.UpdatePlan)
 	mux.HandleFunc("DELETE /v1/plans/{id}", planHandler.DeletePlan)
 
 	// users CRUD methods
-	mux.HandleFunc("POST /v1/users", userHandler.CreateUser)
+	mux.HandleFunc("POST /v1/users", userHandler.CreateUser) //👌
 	mux.HandleFunc("GET /v1/users/{id}", userHandler.GetUserByID)
 	mux.HandleFunc("PUT /v1/users/{id}", userHandler.UpdateUser)
+
+	// question CRUD methods
+	mux.HandleFunc("POST /v1/question", questionHandler.Create) //👌
+	mux.HandleFunc("GET /v1/plans/question/{plan_id}", questionHandler.GetQuestionByPlanId)
+	mux.HandleFunc("PATCH /v1/question/{question_id}", questionHandler.UpdateQuestion)
+	mux.HandleFunc("Delete /v1/question/{question_id}", questionHandler.Delete)
 
 	// invitation CRUD methods
 	mux.HandleFunc("POST /v1/plans/{plan_id}/invites", invitationHandler.CreateInvitation)
