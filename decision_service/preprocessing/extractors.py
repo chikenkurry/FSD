@@ -7,9 +7,9 @@ the same normalization and validation as this rules baseline.
 from __future__ import annotations
 
 import re
-from decimal import Decimal, InvalidOperation
 
 from .common import InputError
+from .money import minor_amount, parse_budget
 
 
 ATTRIBUTE_PHRASES: dict[str, tuple[str, ...]] = {
@@ -93,22 +93,9 @@ def extract_preference(text: str, allowed: set[str]) -> list[dict]:
     ]
 
 
-def extract_budget(text: str, currency: str) -> dict:
-    normalized = text.casefold().strip()
-    if currency != "SGD":
-        raise InputError("UNSUPPORTED_CURRENCY", "answer", "Open budget parsing currently supports SGD")
-    amounts = re.findall(r"(?:sgd\s*|s\$\s*|\$\s*)(\d+(?:\.\d{1,2})?)\b", normalized)
-    unlimited = re.search(r"\b(?:no (?:spending |budget )?limit|unlimited|any budget)\b", normalized)
-    if unlimited and amounts:
-        raise InputError("AMBIGUOUS_ANSWER", "answer", "Both a spending limit and unlimited spending were stated")
-    if unlimited:
-        return {"kind": "unlimited"}
-    if not amounts:
-        raise InputError("AMBIGUOUS_ANSWER", "answer", "Give an exact SGD maximum or say no spending limit")
-    if len(amounts) != 1:
-        raise InputError("AMBIGUOUS_ANSWER", "answer", "Multiple budget amounts found")
-    try:
-        minor = int(Decimal(amounts[0]) * 100)
-    except InvalidOperation as exc:
-        raise InputError("AMBIGUOUS_ANSWER", "answer", "Invalid amount") from exc
-    return {"kind": "limited", "max_cost_minor": minor, "currency": currency}
+def extract_budget(text: str, currency: str, *, minor_digits: int = 2) -> dict:
+    budget = parse_budget(text, currency, "answer", open_text=True)
+    if budget["kind"] == "unlimited":
+        return budget
+    return {"kind": "limited", "max_cost_minor": minor_amount(budget["amount"], minor_digits, "answer"),
+            "currency": currency}

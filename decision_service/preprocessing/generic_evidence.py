@@ -5,18 +5,19 @@ from __future__ import annotations
 import re
 
 from .common import InputError
+from .comparatives import comparative_direction
 
 
 CLAUSE_BREAK = re.compile(
     r"[!?;\n]+|\.(?!\d)|\b(?:but|however|whereas)\b|"
     r"\band\s+(?=(?:I|we|they|you|must|need|cannot|can't)\b)", re.I,
 )
-REQUIREMENT = re.compile(r"\b(?:must|need|needs|required|require|essential|mandatory|cannot|have to)\b|\bcan't\b", re.I)
+REQUIREMENT = re.compile(r"\b(?:must|need|needs|required|require|essential|mandatory|cannot|have to|only if|non-negotiable)\b|\bcan't\b", re.I)
 OPTIONAL = re.compile(r"\b(?:(?:not|isn't|aren't) (?:required|essential|mandatory)|don't need|do not need|need not|needn't)\b", re.I)
-PREFERENCE = re.compile(r"\b(?:prefer|like|enjoy|want|avoid|dislike|hate)\b", re.I)
+PREFERENCE = re.compile(r"\b(?:prefer|favour|favor|like|enjoy|want|avoid|dislike|hate)\b", re.I)
 
 
-def scoped_interpretation(item: dict, answer_text: str, role: str, path: str) -> dict:
+def scoped_interpretation(item: dict, answer_text: str, role: str, path: str, *, question_criterion: str | None = None) -> dict:
     """Preserve a model excerpt, narrowing broad evidence when a value locates it.
 
     This is an English grounding check, not a general language classifier. It
@@ -41,7 +42,10 @@ def scoped_interpretation(item: dict, answer_text: str, role: str, path: str) ->
     if len(enclosing) != 1:
         raise InputError("AMBIGUOUS_ANSWER", path, "Hard requirement evidence must identify one supporting clause")
     clause = enclosing[0]
-    if OPTIONAL.search(clause) or (PREFERENCE.search(clause) and not REQUIREMENT.search(clause)):
+    plain_label = (role == "soft" and question_criterion == item["criterion"] and bool(item["value"].strip())
+                   and answer_text.casefold().strip(" .!?") == item["value"].casefold().strip(" .!?")
+                   and not re.search(r"\b(?:not|never|without|don't)\b", clause, re.I))
+    if OPTIONAL.search(clause) or ((plain_label or PREFERENCE.search(clause) or comparative_direction(clause)) and not REQUIREMENT.search(clause)):
         return {**result, "must_have": False}
     if not REQUIREMENT.search(clause):
         raise InputError("AMBIGUOUS_ANSWER", path, "Hard requirement needs explicit wording in its own clause")

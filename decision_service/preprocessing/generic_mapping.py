@@ -7,9 +7,10 @@ calculate candidate scores or decide feasibility.
 from __future__ import annotations
 
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from .common import InputError, require_in, require_list, require_object, require_text
+from .money import decimal_string as decimal_value
 
 
 TYPES = {"number", "decimal", "category", "boolean", "tag_set", "date_intervals"}
@@ -18,6 +19,12 @@ SOFT_RULES = {
     "category": "attribute_match_v1", "boolean": "attribute_match_v1", "tag_set": "tag_overlap_v1",
 }
 NUMERIC_SOFT_RULES = {"numeric_target_v1", "numeric_maximize_v1", "numeric_minimize_v1", "numeric_range_v1"}
+QUESTION_NUMERIC_INTENTS = {"target", "minimum", "maximum", "less_than", "greater_than", "maximize", "minimize", "range"}
+INTENT_RULES = {
+    "target": "numeric_target_v1", "maximize": "numeric_maximize_v1", "minimize": "numeric_minimize_v1",
+    "minimum": "numeric_range_v1", "maximum": "numeric_range_v1", "less_than": "numeric_range_v1",
+    "greater_than": "numeric_range_v1", "range": "numeric_range_v1",
+}
 HARD_RULES = {
     "number": {"maximum_v1", "minimum_v1", "equals_v1", "less_than_v1", "greater_than_v1", "within_range_v1"},
     "decimal": {"maximum_v1", "minimum_v1", "equals_v1", "less_than_v1", "greater_than_v1", "within_range_v1"},
@@ -42,18 +49,6 @@ def model_question_role(assessment: dict, label: str) -> dict:
 
 def token(value: str) -> str:
     return " ".join(value.casefold().split())
-
-
-def decimal_value(value: object, path: str) -> str:
-    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
-        raise InputError("INVALID_VALUE", path, "Expected a finite decimal amount")
-    try:
-        number = Decimal(str(value))
-    except InvalidOperation as exc:
-        raise InputError("INVALID_VALUE", path, "Expected a finite decimal amount") from exc
-    if not number.is_finite():
-        raise InputError("INVALID_VALUE", path, "Expected a finite decimal amount")
-    return format(number, "f")
 
 
 def infer_type(value: object, path: str) -> str:
@@ -122,6 +117,31 @@ def local_question(label: str, registry: dict) -> dict | None:
             "relevance": 0.0 if hard else 0.5, "reason": "Question names a supplied fact criterion"}
 
 
+def question_numeric_intent(question: dict, supplied: object = None) -> tuple[str | None, str | None]:
+    """Use explicit declarations or narrow wording rules, never an LLM guess."""
+    if "numeric_intent" in question:
+        return require_in(question["numeric_intent"], QUESTION_NUMERIC_INTENTS, "question.numeric_intent"), "leader"
+    rule = supplied.get("comparison_rule") if isinstance(supplied, dict) else None
+    by_rule = {"numeric_target_v1": "target", "numeric_maximize_v1": "maximize", "numeric_minimize_v1": "minimize",
+               "maximum_v1": "maximum", "minimum_v1": "minimum", "less_than_v1": "less_than",
+               "greater_than_v1": "greater_than", "equals_v1": "target", "within_range_v1": "range"}
+    if isinstance(rule, str) and rule in by_rule:
+        return by_rule[rule], "leader_mapping"
+    label = question["label"].casefold()
+    for pattern, intent in (
+        (r"\b(at least|minimum|no less than)\b", "minimum"),
+        (r"\b(at most|maximum|no more than)\b", "maximum"),
+        (r"\b(ideal|ideally|target|exactly)\b", "target"),
+        (r"\b(maximize|longer is better|higher is better)\b", "maximize"),
+        (r"\b(minimize|cheaper is better|lower is better)\b", "minimize"),
+    ):
+        if re.search(pattern, label):
+            return intent, "question_wording"
+    if question["role"] == "hard" and question["criterion"] == "max_cost":
+        return "maximum", "budget_question"
+    return None, None
+
+
 def resolve_mapping(question: dict, registry: dict, candidates: list[dict], context: dict, supplied: object = None) -> dict:
     aid, role = question["criterion"], question["role"]
     if role in {"informational", "importance", "unclassified"}:
@@ -146,6 +166,9 @@ def resolve_mapping(question: dict, registry: dict, candidates: list[dict], cont
         if field in supplied and supplied[field] != definition[field]:
             raise InputError("CONFLICTING_FACT_TYPE", "question.mapping", f"Mapping {field} differs from option facts")
     kind = require_in(definition["value_type"], TYPES, "question.mapping.value_type")
+    intent = question.get("numeric_intent")
+    if intent is not None and kind not in {"number", "decimal"}:
+        raise InputError("INVALID_MAPPING", "question.numeric_intent", "Numeric intent requires a numeric criterion")
     if definition["unit"] is not None:
         require_text(definition["unit"], "question.mapping.unit")
     registry[aid] = definition
@@ -156,6 +179,15 @@ def resolve_mapping(question: dict, registry: dict, candidates: list[dict], cont
             rule = "maximum_v1"
         elif re.search(r"\b(minimum|at least|min)\b", label):
             rule = "minimum_v1"
+    if intent is not None:
+        rule = INTENT_RULES[intent] if role == "soft" else {
+            "target": "equals_v1", "minimum": "minimum_v1", "maximum": "maximum_v1", "less_than": "less_than_v1",
+            "greater_than": "greater_than_v1", "range": "within_range_v1",
+        }.get(intent)
+        if role == "hard" and intent in {"maximize", "minimize"}:
+            raise InputError("INVALID_MAPPING", "question.numeric_intent", "Hard numeric questions need a limit, not a direction")
+        if "comparison_rule" in supplied and supplied["comparison_rule"] != rule:
+            raise InputError("INVALID_MAPPING", "question.mapping", "Comparison rule contradicts the declared numeric intent")
     rule = supplied.get("comparison_rule", rule)
     allowed = NUMERIC_SOFT_RULES if role == "soft" and kind in {"number", "decimal"} else {SOFT_RULES[kind]} if role == "soft" and kind in SOFT_RULES else HARD_RULES[kind] if role == "hard" else set()
     if rule is None:
@@ -188,20 +220,22 @@ def resolve_mapping(question: dict, registry: dict, candidates: list[dict], cont
 def interpretation_mapping(question: dict, criterion: str, registry: dict, candidates: list[dict], context: dict,
                            intent: str = "match", hard: bool = False) -> dict:
     """Build a comparison for one answer meaning without changing question weight."""
-    base = {**question, "criterion": criterion, "role": "hard" if hard else "soft"}
+    base = {k: v for k, v in question.items() if k not in {"numeric_intent", "numeric_intent_source"}}
+    base.update(criterion=criterion, role="hard" if hard else "soft")
     definition = registry.get(criterion)
     numeric = criterion in {"max_cost", "duration_days"} or definition and definition["value_type"] in {"number", "decimal"}
     rule = None
     if numeric:
         if hard:
-            rule = {"range": "within_range_v1", "maximum": "maximum_v1", "minimum": "minimum_v1",
+            rule = {"target": "equals_v1", "range": "within_range_v1", "maximum": "maximum_v1", "minimum": "minimum_v1",
                     "less_than": "less_than_v1", "greater_than": "greater_than_v1", "equals": "equals_v1"}.get(intent)
         else:
-            rule = {"maximize": "numeric_maximize_v1", "minimize": "numeric_minimize_v1",
+            rule = {"target": "numeric_target_v1", "maximize": "numeric_maximize_v1", "minimize": "numeric_minimize_v1",
                     "range": "numeric_range_v1", "maximum": "numeric_range_v1", "minimum": "numeric_range_v1",
                     "less_than": "numeric_range_v1", "greater_than": "numeric_range_v1"}.get(intent)
     supplied = {"comparison_rule": rule} if rule else None
-    if criterion == question["criterion"] and intent in {"match", "target"} and not hard and question["role"] == "soft":
+    if (criterion == question["criterion"] and intent in {"match", "target"} and not hard and question["role"] == "soft"
+            and (not numeric or question["mapping"].get("comparison_rule") == "numeric_target_v1")):
         return question["mapping"]
     return resolve_mapping(base, registry, candidates, context, supplied)
 

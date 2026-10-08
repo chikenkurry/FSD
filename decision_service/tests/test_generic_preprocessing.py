@@ -153,7 +153,7 @@ class GenericPreprocessingTests(unittest.TestCase):
                         "reason": "Member is being asked for desired runtime",
                         "mapping": {"value_type": "number", "unit": "hours", "comparison_rule": "numeric_target_v1", "scale": None}}
 
-        self.planning["questions"] = [{"question_id": "battery", "label": "How long should it run unplugged?"}]
+        self.planning["questions"] = [{"question_id": "battery", "label": "How long should it run unplugged?", "numeric_intent": "target"}]
         self.responses["participants"][0]["answers"] = [{"answer_id": "runtime", "question_id": "battery", "value": 12}]
         provider = Provider()
         original = self.process(semantic_provider=provider)
@@ -171,7 +171,7 @@ class GenericPreprocessingTests(unittest.TestCase):
                         "mapping": self.mapping}
 
         provider = Provider()
-        self.planning["questions"] = [{"question_id": "battery", "label": "How long should it run unplugged?"}]
+        self.planning["questions"] = [{"question_id": "battery", "label": "How long should it run unplugged?", "numeric_intent": "target"}]
         self.responses["participants"][0]["answers"] = [{"question_id": "battery", "value": 12}]
         for mapping in ({"scale": 100}, {"value_type": "number", "unit": "minutes"}):
             with self.subTest(mapping=mapping):
@@ -218,7 +218,7 @@ class GenericPreprocessingTests(unittest.TestCase):
             def extract_sparse_answer(self, *args):
                 raise AssertionError("A numeric target should be parsed directly")
 
-        self.planning["questions"] = [{"question_id": "runtime", "label": "How long should it run unplugged?"}]
+        self.planning["questions"] = [{"question_id": "runtime", "label": "How long should it run unplugged?", "numeric_intent": "target"}]
         self.responses["participants"][0]["answers"] = [{"question_id": "runtime", "value": "12 hours"}]
         packet = self.process(semantic_provider=Provider())["preparation"]
         self.assertEqual(packet["status"], "ready")
@@ -410,17 +410,20 @@ class GenericPreprocessingTests(unittest.TestCase):
 
     def test_importance_question_is_not_assumed_to_be_a_numeric_target(self):
         self.planning["questions"][1]["label"] = "How important is battery life?"
+        self.planning["questions"][1].pop("numeric_intent")
         result = self.process()
         question = result["preparation"]["scoring_model"]["questions"][1]
         self.assertEqual(question["role"], "importance")
         self.assertNotEqual(result["preparation"]["status"], "ready")
 
-    def test_conflicting_budget_answers_are_rejected(self):
+    def test_differing_budget_limits_are_compatible(self):
         self.planning["questions"].append({"question_id": "budget2", "label": "Maximum budget?"})
         self.responses["participants"][0]["answers"].append({"question_id": "budget2", "value": 1000})
         result = self.process()
-        self.assertEqual(result["status"], "invalid_input")
-        self.assertEqual(result["issues"][0]["code"], "CONFLICTING_ANSWER")
+        self.assertEqual(result["status"], "provisional")
+        self.assertEqual(result["preparation"]["status"], "ready")
+        self.assertEqual([c["required_value"] for c in result["preparation"]["constraints"]], ["1500", "1000"])
+        self.assertNotIn("CONFLICTING_ANSWER", [i["code"] for i in result["issues"]])
 
     def test_malformed_question_mappings_return_errors(self):
         for mapping in ([1], {"comparison_rule": []}, {"value_type": {}}, {"unit": 12}, {"unexpected": True}):
@@ -430,6 +433,7 @@ class GenericPreprocessingTests(unittest.TestCase):
 
     def test_unknown_duration_wording_does_not_assume_travel_days(self):
         self.planning["questions"][1]["label"] = "How long should the warranty last?"
+        self.planning["questions"][1].pop("numeric_intent")
         result = self.process()
         question = result["preparation"]["scoring_model"]["questions"][1]
         self.assertEqual(question["role"], "unclassified")

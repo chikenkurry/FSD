@@ -3,15 +3,16 @@
     "schema_version": "sparse-v4",
     "round_id": "product-1",
     "option_revision": "1",
-    "processing_version": "sparse-v6",
+    "processing_version": "sparse-v11",
     "policy_version": "generic-question-relevance-v1",
-    "option_snapshot_id": "products-1",
+    "option_snapshot_id": "products-1-intent-v2",
     "response_snapshot_id": "product-responses-1",
     "decision_question": "Which device should our team buy?",
     "currency": "USD",
     "cost_scope": "per_device_total",
     "details": {},
-    "semantic_artifact_id": null
+    "semantic_artifact_id": null,
+    "max_scenario_requests": 10000
   },
   "candidates": [
     {
@@ -123,7 +124,9 @@
       "polarity": "prefer",
       "required_value": "1500",
       "constraint_rule": "maximum_v1",
-      "confirmation_status": "confirmed"
+      "confirmation_status": "confirmed",
+      "numeric_intent": "maximum",
+      "intent_source": "question"
     }
   ],
   "preferences": [
@@ -144,7 +147,9 @@
       "utility_rule": "numeric_target_v1",
       "utility_parameters": {
         "scale": 3.0
-      }
+      },
+      "numeric_intent": "target",
+      "intent_source": "question"
     },
     {
       "participant_id": "p1",
@@ -170,7 +175,7 @@
   "informational_answers": [],
   "unclassified_answers": [],
   "canonicalization": {
-    "policy_version": "scoped-labels-v1",
+    "policy_version": "scoped-labels-v3",
     "declarations": {},
     "records": [
       {
@@ -220,7 +225,9 @@
         "aggregation": "direct",
         "utility_rule": null,
         "constraint_rule": "maximum_v1",
-        "missing_value_policy": "unresolved"
+        "missing_value_policy": "unresolved",
+        "numeric_intent": "maximum",
+        "numeric_intent_source": "question_wording"
       },
       {
         "question_id": "battery",
@@ -249,7 +256,9 @@
         "aggregation": "direct",
         "utility_rule": "numeric_target_v1",
         "constraint_rule": null,
-        "missing_value_policy": "unresolved"
+        "missing_value_policy": "unresolved",
+        "numeric_intent": "target",
+        "numeric_intent_source": "leader"
       },
       {
         "question_id": "usage",

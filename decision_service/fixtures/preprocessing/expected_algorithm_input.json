@@ -11,7 +11,7 @@
     "timezone": "Asia/Singapore",
     "algorithm_version": "baseline-v2",
     "policy_version": "goal-option-relevance-v2",
-    "processing_version": "semantic-v5",
+    "processing_version": "semantic-v6",
     "semantic_model": null,
     "semantic_artifact_id": null
   },

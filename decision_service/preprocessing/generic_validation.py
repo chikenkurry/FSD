@@ -7,9 +7,9 @@ from decimal import Decimal
 
 from .common import InputError, require_object
 from .generic_mapping import HARD_RULES, NUMERIC_SOFT_RULES, SOFT_RULES, typed_value
-from .generic_values import numeric_semantics
+from .generic_values import intersect_numeric_requirements, numeric_semantics
 
-def validate_preparation(handoff: dict) -> None:
+def validate_preparation(handoff: dict, issues: list[dict] | None = None) -> None:
     """Reject invalid references and declarations before exporting preparation."""
     require_object(handoff, "preparation")
     registry = {entry["attribute_id"]: entry for entry in handoff["criteria"]}
@@ -27,7 +27,6 @@ def validate_preparation(handoff: dict) -> None:
             allowed = HARD_RULES[mapping["value_type"]]
         if mapping["comparison_rule"] not in allowed:
             raise InputError("UNSUPPORTED_UTILITY_RULE", "preparation.questions", "Comparison does not support the question type")
-    seen_requirements = {}
     for collection in (handoff["preferences"], handoff["constraints"]):
         seen = set()
         for entry in collection:
@@ -41,13 +40,8 @@ def validate_preparation(handoff: dict) -> None:
             if entry.get("unit") != definition["unit"]:
                 raise InputError("UNIT_MISMATCH", "preparation", "Answer unit differs from its criterion")
             _validate_comparison(entry, definition)
-            if "required_value" in entry and entry["confirmation_status"] == "confirmed":
-                conflict_key = (entry["participant_id"], entry["attribute_id"], entry["constraint_rule"])
-                if conflict_key in seen_requirements and seen_requirements[conflict_key] != entry["required_value"]:
-                    raise InputError("CONFLICTING_ANSWER", "preparation.constraints", "Confirmed answers give different limits for the same criterion")
-                seen_requirements[conflict_key] = entry["required_value"]
     _validate_member_weights(handoff, participants, questions)
-    _validate_numeric_requirements(handoff["constraints"], registry)
+    _validate_requirements(handoff["constraints"], registry, issues)
 
 
 def _validate_comparison(entry: dict, definition: dict) -> None:
@@ -113,32 +107,40 @@ def _validate_member_weights(handoff: dict, participants: set, questions: dict) 
             raise InputError("INVALID_PREPARATION", "preparation.importance", "Importance needs answer provenance")
 
 
-def _validate_numeric_requirements(constraints: list[dict], registry: dict) -> None:
-    bounds = {}
+def _validate_requirements(constraints: list[dict], registry: dict, issues: list[dict] | None) -> None:
+    """Intersect requirements within each member/criterion, preserving provenance.
+
+    Differing upper/lower limits and required tag sets are compatible unless
+    their intersection is empty. Member conflicts are reviewable answers, not
+    malformed snapshot structures. Unconfirmed interpretations stay pending.
+    """
+    groups = {}
     for entry in constraints:
-        if "required_value" not in entry or entry["confirmation_status"] != "confirmed" or registry[entry["attribute_id"]]["value_type"] not in {"number", "decimal"}:
-            continue
-        rule, value = entry["constraint_rule"], entry["required_value"]
-        interval = {"lower": None, "upper": None, "lower_inclusive": True, "upper_inclusive": True}
-        if rule == "within_range_v1":
-            interval = value
-        elif rule in {"minimum_v1", "greater_than_v1", "equals_v1"}:
-            interval.update(lower=value, lower_inclusive=rule != "greater_than_v1")
-        if rule in {"maximum_v1", "less_than_v1", "equals_v1"}:
-            interval.update(upper=value, upper_inclusive=rule != "less_than_v1")
-        key = (entry["participant_id"], entry["attribute_id"])
-        combined = bounds.setdefault(key, {"lower": None, "upper": None, "lower_inclusive": True, "upper_inclusive": True})
-        for endpoint in ("lower", "upper"):
-            if interval[endpoint] is None:
-                continue
-            candidate = Decimal(str(interval[endpoint]))
-            current = combined[endpoint]
-            tighter = current is None or (candidate > current if endpoint == "lower" else candidate < current)
-            inclusive = endpoint + "_inclusive"
-            if tighter:
-                combined.update({endpoint: candidate, inclusive: interval[inclusive]})
-            elif candidate == current:
-                combined[inclusive] = combined[inclusive] and interval[inclusive]
-        lower, upper = combined["lower"], combined["upper"]
-        if lower is not None and upper is not None and (lower > upper or lower == upper and not (combined["lower_inclusive"] and combined["upper_inclusive"])):
-            raise InputError("CONFLICTING_ANSWER", "preparation.constraints", "Confirmed numeric requirements have no overlapping values")
+        if "required_value" in entry and entry["confirmation_status"] == "confirmed":
+            groups.setdefault((entry["participant_id"], entry["attribute_id"]), []).append(entry)
+    for (pid, aid), entries in groups.items():
+        kind = registry[aid]["value_type"]
+        try:
+            if kind in {"number", "decimal"}:
+                intersect_numeric_requirements([(entry["constraint_rule"], entry["required_value"]) for entry in entries],
+                                               "preparation.constraints")
+            elif kind == "tag_set":
+                required, excluded = set(), set()
+                for entry in entries:
+                    (required if entry["constraint_rule"] == "contains_all_v1" else excluded).update(entry["required_value"])
+                overlap = sorted(required & excluded)
+                if overlap:
+                    raise InputError("CONFLICTING_ANSWER", "preparation.constraints", "Tags are both required and excluded: " + ", ".join(overlap))
+            elif kind in {"category", "boolean"}:
+                required = {entry["required_value"] for entry in entries if entry["constraint_rule"] == "equals_v1"}
+                excluded = {entry["required_value"] for entry in entries if entry["constraint_rule"] == "not_equals_v1"}
+                if len(required) > 1 or required & excluded or kind == "boolean" and excluded == {True, False}:
+                    raise InputError("CONFLICTING_ANSWER", "preparation.constraints", "Scalar requirements have no compatible value")
+        except InputError as exc:
+            if issues is None:
+                raise
+            qids = sorted({entry["source_question_id"] for entry in entries})
+            issues.append(InputError(exc.code, f"responses.participants.{pid}.constraints.{aid}",
+                                     exc.message + "; review questions: " + ", ".join(qids)).as_issue())
+            for entry in entries:
+                entry["status"] = "needs_clarification"

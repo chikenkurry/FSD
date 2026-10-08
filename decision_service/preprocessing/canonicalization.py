@@ -11,7 +11,7 @@ from copy import deepcopy
 from .common import InputError, require_in, require_list, require_object, require_text
 
 
-POLICY_VERSION = "scoped-labels-v1"
+POLICY_VERSION = "scoped-labels-v3"
 TEXT_TYPES = {"category", "tag_set"}
 
 
@@ -153,7 +153,13 @@ class Canonicalizer:
                          attribute_id=(definition or {}).get("attribute_id"))
             return target, True
         if target is not None:
-            raise InputError("INVALID_SEMANTIC_RESULT", path, "Distinct or unresolved labels must have a null target")
+            # A suggested target with a non-equivalent decision is incoherent,
+            # not proof of equivalence. Keep the raw assessment for replay and
+            # ask for label clarification without blaming the member's input.
+            reason = "Model decision conflicts with its suggested target. " + reason
+            self._record(kind, original or label, None, path, "semantic_model", "unresolved",
+                         (definition or {}).get("attribute_id"), reason)
+            raise InputError("AMBIGUOUS_CANONICAL_LABEL", path, reason)
         self._record(kind, original or label, None, path, "semantic_model", status, (definition or {}).get("attribute_id"), reason)
         if status == "unresolved":
             raise InputError("AMBIGUOUS_CANONICAL_LABEL", path, reason)

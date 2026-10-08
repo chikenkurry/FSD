@@ -8,19 +8,19 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import re
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from decision_service.contract import ContractError, group_objective
 
-from .common import InputError, require_in, require_list, require_object, require_text
+from .common import InputError, issue as _issue, require_in, require_int, require_list, require_object, require_text
 from .canonicalization import Canonicalizer
-from .generic_mapping import TYPES, fact_registry, local_question, model_question_role, resolve_mapping
+from .generic_mapping import QUESTION_NUMERIC_INTENTS, TYPES, fact_registry, local_question, model_question_role, question_numeric_intent, resolve_mapping
 from .generic_preparation import MEMBER_ISSUES, compile_preparation
-from .generic_answers import _duration, process_answers
+from .generic_answers import process_answers
+from .scenarios import DEFAULT_MAX_SCENARIO_REQUESTS, build_scenario_requests
 from .member_importance import importance_question
 from .semantics import (
     SemanticProvider, SemanticServiceError,
@@ -29,11 +29,7 @@ from .semantics import (
 
 
 SCHEMA_VERSION = "sparse-v4"
-VERSION = "sparse-v6"
-
-
-def _issue(code: str, path: str, message: str) -> dict:
-    return {"code": code, "path": path, "message": message}
+VERSION = "sparse-v11"
 
 
 def _slug(value: str) -> str:
@@ -145,50 +141,6 @@ def _check_option_cost_facts(candidates: list[dict], currency: str | None, cost_
                 raise InputError("INVALID_COST", "planning.options.facts", "Cost fact needs a nonnegative amount")
 
 
-def _scenario_requests(candidates: list[dict], roster: list[str], constraints: list[dict], preferences: list[dict], questions: list[dict]) -> list[dict]:
-    """Combine shared availability with offered durations when both exist."""
-    if not any(q["criterion"] == "availability" for q in questions):
-        return []
-    by_member = {member_id: [] for member_id in roster}
-    for constraint in constraints:
-        if constraint["criterion"] == "availability":
-            by_member[constraint["participant_id"]].extend(constraint["value"])
-    if any(not windows for windows in by_member.values()):
-        return []
-    common = [(date.fromisoformat(x["start_date"]), date.fromisoformat(x["end_date"])) for x in by_member[roster[0]]]
-    for member_id in roster[1:]:
-        other = [(date.fromisoformat(x["start_date"]), date.fromisoformat(x["end_date"])) for x in by_member[member_id]]
-        common = [(max(a, c), min(b, d)) for a, b in common for c, d in other if max(a, c) <= min(b, d)]
-    durations = set()
-    for q in questions:
-        if q["criterion"] == "duration_days":
-            durations.update(parsed["days"] for label in q["choices"].values() if (parsed := _duration(label)) and parsed["kind"] == "preferred")
-    for preference in preferences:
-        if preference["criterion"] != "duration_days":
-            continue
-        value = preference["value"]
-        if isinstance(value, dict) and value.get("kind") == "preferred":
-            durations.add(value["days"])
-        elif type(value) in {int, float} and int(value) == value and 1 <= value <= 365:
-            durations.add(int(value))
-        elif preference.get("intent") == "range" and value.get("lower") is not None and value.get("upper") is not None:
-            if 1 <= value["lower"] <= value["upper"] <= 365:
-                first, last = math.ceil(value["lower"]), math.floor(value["upper"])
-                first += int(not value["lower_inclusive"] and first == value["lower"])
-                last -= int(not value["upper_inclusive"] and last == value["upper"])
-                durations.update(range(first, last + 1))
-    result = []
-    for candidate in candidates:
-        for days in sorted(durations):
-            for start, end in sorted(set(common)):
-                latest = end - timedelta(days=days - 1)
-                if latest >= start:
-                    result.append({"option_id": candidate["option_id"], "duration_days": days,
-                                   "earliest_start_date": start.isoformat(), "latest_start_date": latest.isoformat(),
-                                   "cost_evidence_status": "unknown"})
-    return result
-
-
 def _scenario_costs(raw: object, currency: str | None, cost_scope: str | None, option_ids: set[str]) -> dict[tuple, dict]:
     costs = {}
     for i, entry in enumerate(require_list(raw, "planning.scenario_costs")):
@@ -243,6 +195,7 @@ def preprocess_sparse(
         responses = require_object(response_snapshot, "responses")
         policy = require_object({} if policy is None else policy, "policy")
         objective = group_objective(policy.get("group_objective"))
+        scenario_limit = require_int(policy.get("max_scenario_requests", DEFAULT_MAX_SCENARIO_REQUESTS), "policy.max_scenario_requests", minimum=1)
         round_id = require_text(planning.get("round_id"), "planning.round_id")
         revision = require_text(planning.get("option_revision"), "planning.option_revision")
         option_snapshot_id = require_text(planning.get("option_snapshot_id"), "planning.option_snapshot_id")
@@ -287,6 +240,8 @@ def preprocess_sparse(
                 "processing_version": VERSION,
             }.items()):
                 raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence", "Evidence does not match these snapshots")
+            if semantic_evidence.get("scenario_policy", {"max_requests": DEFAULT_MAX_SCENARIO_REQUESTS}) != {"max_requests": scenario_limit}:
+                raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence.scenario_policy", "Scenario policy differs from the recorded run")
             assessments = require_object(semantic_evidence.get("question_assessments"), "semantic_evidence.question_assessments")
             extracted = require_object(semantic_evidence.get("answer_assessments"), "semantic_evidence.answer_assessments")
             suggestions = require_object(semantic_evidence.get("option_suggestions", {}), "semantic_evidence.option_suggestions")
@@ -379,6 +334,16 @@ def preprocess_sparse(
                 question["canonicalization_source"] = "semantic_model"
             question["answer_format"] = require_in(item.get("answer_format", "choice" if choices else "text"),
                                                   {"text", "choice", "multi_choice", "number", "boolean", "date_intervals"}, f"{path}.answer_format")
+            definition = registry.get(question["criterion"])
+            numeric = question["criterion"] in {"max_cost", "duration_days"} or definition and definition["value_type"] in {"number", "decimal"}
+            if "numeric_intent" in item and question["role"] == "unclassified":
+                question.update(numeric_intent=require_in(item["numeric_intent"], QUESTION_NUMERIC_INTENTS, f"{path}.numeric_intent"),
+                                numeric_intent_source="leader")
+            elif "numeric_intent" in item and (not numeric or question["role"] not in {"soft", "hard"}):
+                raise InputError("INVALID_MAPPING", f"{path}.numeric_intent", "Numeric intent requires a hard or soft numeric question")
+            if numeric and question["role"] in {"soft", "hard"}:
+                intent, intent_source = question_numeric_intent({**question, **({"numeric_intent": item["numeric_intent"]} if "numeric_intent" in item else {})}, item.get("mapping"))
+                question.update(numeric_intent=intent, numeric_intent_source=intent_source)
             question["mapping"] = resolve_mapping(question, registry, candidates, context, item.get("mapping"))
             canonicalizer.register_choices(question)
             if question["mapping"]["status"] == "unresolved" and question["role"] != "unclassified":
@@ -411,7 +376,7 @@ def preprocess_sparse(
                               and issue["path"] == f"planning.questions[{i}]")]
 
         has_schedule_questions = {"availability", "duration_days"} <= {q["criterion"] for q in questions}
-        scenario_requests = _scenario_requests(candidates, roster, constraints, preferences, questions) if has_schedule_questions else []
+        scenario_requests = build_scenario_requests(candidates, roster, constraints, preferences, questions, max_requests=scenario_limit) if has_schedule_questions else []
         scenario_criteria = {"availability", "duration_days", "max_cost"} if has_schedule_questions else set()
         criteria = sorted({q["criterion"] for q in questions
                            if q["question_id"] not in answered_questions and (q["role"] == "hard" or q["role"] == "soft" and q["weight"])
@@ -467,11 +432,13 @@ def preprocess_sparse(
                                            "option_suggestions": suggestions, "date_assessments": date_assessments,
                                            "canonical_assessments": canonical_assessments,
                                            "canonicalization_enabled": canonicalizer.model_enabled,
-                                           "canonicalization_declarations": canonicalizer.declarations}
+                                           "canonicalization_declarations": canonicalizer.declarations,
+                                           "scenario_policy": {"max_requests": scenario_limit}}
         artifact_id = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
         handoff = {"context": {"schema_version": SCHEMA_VERSION, "round_id": round_id, "option_revision": revision,
                                 "processing_version": VERSION,
                                 "policy_version": require_text(policy.get("policy_version", "generic-question-relevance-v1"), "policy.policy_version"),
+                                "max_scenario_requests": scenario_limit,
                                 "option_snapshot_id": option_snapshot_id, "response_snapshot_id": response_snapshot_id,
                                 "decision_question": decision, "currency": currency, "cost_scope": context["cost_scope"],
                                 "details": context["details"],

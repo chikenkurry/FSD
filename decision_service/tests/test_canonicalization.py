@@ -146,7 +146,7 @@ class CanonicalizationTests(unittest.TestCase):
 
     def test_model_criterion_synonym_reuses_type_and_does_not_create_fact_request(self):
         self.planning["questions"] = [{"question_id": "runtime", "label": "Preferred power endurance?",
-                                      "role": "soft", "criterion": "power_endurance", "relevance": 1}]
+                                      "role": "soft", "criterion": "power_endurance", "numeric_intent": "target", "relevance": 1}]
         self.responses["participants"][0]["answers"] = [{"question_id": "runtime", "value": 12}]
         provider = LabelProvider({"power_endurance": equivalent("battery_life")})
         result = self.process(semantic_provider=provider)
@@ -178,8 +178,9 @@ class CanonicalizationTests(unittest.TestCase):
         self.responses["participants"][0]["answers"][0]["value"] = ["Development"]
         for reply in (equivalent("new-tag"), {"status": "unresolved", "target": "coding", "reason": "Unsure"}):
             result = preprocess(self.planning, self.responses, semantic_provider=LabelProvider({"development": reply}))
-            self.assertEqual(result["status"], "invalid_input")
-            self.assertEqual(result["issues"][0]["code"], "INVALID_SEMANTIC_RESULT")
+            self.assertEqual(result["status"], "invalid_input" if reply["status"] == "equivalent" else "needs_clarification")
+            self.assertEqual(result["issues"][0]["code"],
+                             "INVALID_SEMANTIC_RESULT" if reply["status"] == "equivalent" else "AMBIGUOUS_CANONICAL_LABEL")
 
     def test_equivalent_assessment_is_cached_for_repeated_labels(self):
         self.use_usage_only()
@@ -216,7 +217,7 @@ class CanonicalizationTests(unittest.TestCase):
         self.assertEqual(packet["preferences"][0]["preferred_value"], ["c", "c#", "c++"])
         self.planning["questions"][0].update(role="soft", criterion="usage_tags", relevance=1)
         self.responses["participants"][0]["answers"][0]["value"] = {"preferences": [
-            {"criterion": "Battery-Life", "value": 12}]}
+            {"criterion": "Battery-Life", "value": 12, "intent": "target"}]}
         self.assertEqual(self.process()["preparation"]["preferences"][0]["attribute_id"], "battery_life")
 
     def test_importance_aliases_use_same_criteria_for_weights(self):

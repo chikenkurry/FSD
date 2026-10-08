@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from .common import InputError
 from .generic_mapping import normalize_answer, token
+from .money import parse_amount
 
 
 INTENTS = {"match", "target", "maximize", "minimize", "range", "maximum", "minimum", "less_than", "greater_than"}
@@ -18,6 +19,7 @@ BOUND_WORDS = {
     "more than": "greater_than", "greater than": "greater_than",
 }
 BOUND_PATTERN = "|".join(re.escape(word) for word in sorted(BOUND_WORDS, key=len, reverse=True))
+TARGET_PATTERN = r"(?:exactly|ideally|ideal(?:ly)?(?: about)?|target(?: of)?|aim(?:ing)? for)\s+"
 
 
 def grounded_numeric_bound(item: dict, mapping: dict, path: str) -> dict:
@@ -46,25 +48,8 @@ def grounded_numeric_bound(item: dict, mapping: dict, path: str) -> dict:
 
 
 def numeric_value(value: object, mapping: dict, path: str) -> object:
-    if isinstance(value, str) and mapping["value_type"] == "decimal":
-        text = value.strip()
-        if re.search(r"\d,\d", text):
-            if not re.fullmatch(r"(?:[A-Za-z]{3}\s+|[$£€])?[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s+[A-Za-z]+)?", text):
-                raise InputError("AMBIGUOUS_ANSWER", path, "Use commas only as thousands separators")
-            text = text.replace(",", "")
-        unit = mapping.get("unit")
-        symbols = {"$": {"USD", "SGD", "AUD", "CAD", "NZD", "HKD"}, "£": {"GBP"}, "€": {"EUR"}}
-        for symbol, currencies in symbols.items():
-            if text.startswith(symbol):
-                if unit not in currencies:
-                    raise InputError("UNIT_MISMATCH", path, "Currency symbol and criterion unit differ")
-                text = text[len(symbol):].strip()
-        if unit and text.upper().startswith(unit + " "):
-            text = text[len(unit):].strip()
-        match = re.fullmatch(r"([+-]?\d+(?:\.\d+)?)\s*k(?:\s+([A-Za-z]+))?", text, re.I)
-        if match:
-            text = format(Decimal(match.group(1)) * 1000, "f") + (" " + match.group(2) if match.group(2) else "")
-        value = text
+    if mapping["value_type"] == "decimal":
+        return parse_amount(value, mapping.get("unit"), path)
     return normalize_answer(value, mapping, path)
 
 
@@ -80,6 +65,9 @@ def numeric_semantics(value: object, mapping: dict, path: str, intent: str = "ma
         return intent, None
     if isinstance(value, str):
         text = token(value)
+        target = re.fullmatch(TARGET_PATTERN + r"(.+)", text)
+        if target:
+            return "target", numeric_value(target.group(1), mapping, path)
         if not re.search(r"\bthan\b", text) and re.fullmatch(r"(?:prefer )?(?:greater|higher|larger|longer|more)(?: is better| [a-z_ ]+)?|maximize", text):
             return "maximize", None
         if not re.search(r"\bthan\b", text) and re.fullmatch(r"(?:prefer )?(?:lower|smaller|shorter|less|cheaper)(?: is better| [a-z_ ]+)?|minimize", text):
@@ -114,6 +102,35 @@ def numeric_semantics(value: object, mapping: dict, path: str, intent: str = "ma
     if intent == "range":
         raise InputError("AMBIGUOUS_ANSWER", path, "Specify the range endpoints")
     return intent if intent in BOUND_RULES else "target", numeric_value(value, mapping, path)
+
+
+def intersect_numeric_requirements(requirements: list[tuple[str, object]], path: str) -> dict:
+    """Intersect typed limits exactly; keep the winning endpoints' original types."""
+    combined = {"lower": None, "upper": None, "lower_inclusive": True, "upper_inclusive": True}
+    for rule, value in requirements:
+        interval = {"lower": None, "upper": None, "lower_inclusive": True, "upper_inclusive": True}
+        if rule == "within_range_v1":
+            interval = value
+        if rule in {"minimum_v1", "greater_than_v1", "equals_v1"}:
+            interval.update(lower=value, lower_inclusive=rule != "greater_than_v1")
+        if rule in {"maximum_v1", "less_than_v1", "equals_v1"}:
+            interval.update(upper=value, upper_inclusive=rule != "less_than_v1")
+        for endpoint in ("lower", "upper"):
+            candidate, current = interval[endpoint], combined[endpoint]
+            if candidate is None:
+                continue
+            tighter = current is None or (Decimal(str(candidate)) > Decimal(str(current)) if endpoint == "lower"
+                                          else Decimal(str(candidate)) < Decimal(str(current)))
+            inclusive = endpoint + "_inclusive"
+            if tighter:
+                combined.update({endpoint: candidate, inclusive: interval[inclusive]})
+            elif Decimal(str(candidate)) == Decimal(str(current)):
+                combined[inclusive] = combined[inclusive] and interval[inclusive]
+    lower, upper = combined["lower"], combined["upper"]
+    if lower is not None and upper is not None and (Decimal(str(lower)) > Decimal(str(upper)) or
+            Decimal(str(lower)) == Decimal(str(upper)) and not (combined["lower_inclusive"] and combined["upper_inclusive"])):
+        raise InputError("CONFLICTING_ANSWER", path, "Numeric requirements have no overlapping values")
+    return combined
 
 
 def preference_range(intent: str, value: object) -> dict:

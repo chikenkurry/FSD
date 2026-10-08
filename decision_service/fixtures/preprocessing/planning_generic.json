@@ -1,7 +1,7 @@
 {
   "round_id": "product-1",
   "option_revision": "1",
-  "option_snapshot_id": "products-1",
+  "option_snapshot_id": "products-1-intent-v2",
   "decision_question": "Which device should our team buy?",
   "currency": "USD",
   "cost_scope": "per_device_total",
@@ -81,7 +81,8 @@
     },
     {
       "question_id": "battery",
-      "label": "How much battery life do you prefer?"
+      "label": "How much battery life do you prefer?",
+      "numeric_intent": "target"
     },
     {
       "question_id": "usage",

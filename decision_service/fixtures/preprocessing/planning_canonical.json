@@ -1,7 +1,7 @@
 {
   "round_id": "purchase-declared-aliases",
   "option_revision": "1",
-  "option_snapshot_id": "purchase-declared-aliases-options",
+  "option_snapshot_id": "purchase-declared-aliases-options-intent-v2",
   "decision_question": "Which device should our team buy?",
   "currency": "USD",
   "cost_scope": "per_device_total",
@@ -81,7 +81,8 @@
     },
     {
       "question_id": "battery",
-      "label": "Runtime preference?"
+      "label": "Runtime preference?",
+      "numeric_intent": "target"
     },
     {
       "question_id": "usage",

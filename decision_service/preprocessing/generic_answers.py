@@ -5,22 +5,19 @@ from __future__ import annotations
 import json
 import re
 from datetime import date
-from decimal import Decimal, InvalidOperation
 
-from .common import InputError, require_in, require_list, require_object, require_text
+from .common import InputError, issue as _issue, require_in, require_list, require_object, require_text
 from .generic_mapping import interpretation_mapping, normalize_answer, token
 from .generic_evidence import answer_provenance, scoped_interpretation
 from .generic_interpretations import prepare_meaning
 from .member_importance import extract_importance, validate_model_importance
 from .semantics import SemanticServiceError, validate_sparse_answer_assessment, validate_sparse_dates
+from .durations import parse_duration_choice
+from .money import parse_budget
 
 
 NO_PREFERENCE = {"anything", "fine with anything", "no preference", "none", "either", "either is fine", "anything is fine"}
 DATE_RANGE_RE = re.compile(r"\s*(\d{4}-\d{2}-\d{2})(?:\s*(?:to|through|until|–|—| - )\s*(\d{4}-\d{2}-\d{2}))?\s*", re.I)
-
-
-def _issue(code: str, path: str, message: str) -> dict:
-    return {"code": code, "path": path, "message": message}
 
 
 def _answer_text(value: object, question: dict, path: str) -> str:
@@ -70,28 +67,10 @@ def _dates(value: object, path: str) -> list[dict] | None:
 
 
 def _budget(text: str, currency: str | None) -> dict | None:
-    normalized = text.casefold().strip()
-    if normalized in {"unlimited", "no limit", "no budget limit"}:
-        return {"kind": "unlimited"}
-    match = re.fullmatch(r"(?:(?P<prefix>[a-z]{3}|[$£€])\s*)?(?P<amount>[0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?P<multiplier>k)?\s*(?P<suffix>[a-z]{3})?", normalized)
-    if not match:
-        return None
-    explicit = match.group("suffix") or match.group("prefix")
-    if explicit and explicit not in {"$", "£", "€"} and currency and explicit.upper() != currency:
-        return None
-    if explicit in {"£", "€"} and currency and {"£": "GBP", "€": "EUR"}[explicit] != currency:
-        return None
-    if explicit == "$" and currency and currency not in {"SGD", "USD", "CAD", "AUD", "NZD", "HKD"}:
-        return None
     try:
-        amount = Decimal(match.group("amount").replace(",", ""))
-        if match.group("multiplier"):
-            amount *= 1000
-    except InvalidOperation:
+        return parse_budget(text, currency, "answer")
+    except InputError:
         return None
-    if amount < 0:
-        return None
-    return {"kind": "limited", "amount": str(amount), "currency": currency}
 
 
 
@@ -99,10 +78,10 @@ def _duration(text: str) -> dict | None:
     normalized = text.casefold().strip()
     if normalized in NO_PREFERENCE:
         return {"kind": "indifferent"}
-    match = re.fullmatch(r"(\d+)\s*(?:days?)?", normalized)
-    if not match or not 1 <= int(match.group(1)) <= 365:
+    days = parse_duration_choice(normalized)
+    if days is None:
         return None
-    return {"kind": "preferred", "days": int(match.group(1))}
+    return {"kind": "preferred", "days": days}
 
 
 def process_answers(responses: dict, roster: list[str], questions: list[dict], candidates: list[dict],
@@ -162,6 +141,7 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                                                                        evidence_text if evidence is None else evidence),
                         "confirmation": canonicalizer.confirmation(answer.get("confirmed_requirement"), path)}
             def append_meaning(raw: dict, source_type: str, evidence: str):
+                extracted_by_model = source_type == "semantic_model"
                 try:
                     raw, used_model = canonicalizer.meaning(raw, path)
                 except InputError as exc:
@@ -171,7 +151,8 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                     return
                 if used_model:
                     source_type = "semantic_model"
-                meaning = prepare_meaning(raw, q, registry, candidates, context, path)
+                meaning = prepare_meaning(raw, q, registry, candidates, context, path,
+                                          model_derived=extracted_by_model)
                 compiled = {**entry(meaning["value"], source_type, evidence), **meaning,
                             "confirmation": canonicalizer.confirmation(answer.get("confirmed_requirements", answer.get("confirmed_requirement")), path)}
                 if meaning["is_hard"]:
@@ -203,7 +184,12 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                     if type(raw_meaning.get("must_have", False)) is not bool:
                         raise InputError("INVALID_ANSWER", path, "must_have must be boolean")
                     require_in(raw_meaning.get("polarity", "prefer"), {"prefer", "avoid"}, path)
-                    append_meaning({"must_have": False, "polarity": "prefer", **raw_meaning}, "member_response", evidence_text)
+                    try:
+                        append_meaning({"must_have": False, "polarity": "prefer", **raw_meaning}, "member_response", evidence_text)
+                    except InputError as exc:
+                        if exc.code not in {"AMBIGUOUS_NUMERIC_INTENT", "AMBIGUOUS_ANSWER", "CONFLICTING_ANSWER", "UNIT_MISMATCH"}:
+                            raise
+                        issues.append(exc.as_issue())
                 continue
             if q["role"] in {"soft", "hard"} and q["mapping"].get("value_type") in {"number", "decimal"}:
                 try:
@@ -214,7 +200,7 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                 except InputError as exc:
                     compound_text = (isinstance(value, str) and re.search(r"\b(and|but)\b", value, re.I)
                                      and not re.match(r"(?:between\s+)?[+-]?\d+(?:\.\d+)?\s+(?:and|to)\b", value, re.I))
-                    if exc.code in {"UNIT_MISMATCH", "CONFLICTING_ANSWER", "AMBIGUOUS_BUDGET", "AMBIGUOUS_DURATION", "INVALID_VALUE"} and not compound_text:
+                    if exc.code == "AMBIGUOUS_NUMERIC_INTENT" or exc.code in {"UNIT_MISMATCH", "CONFLICTING_ANSWER", "AMBIGUOUS_BUDGET", "AMBIGUOUS_DURATION", "INVALID_VALUE"} and not compound_text:
                         issues.append(exc.as_issue())
                         continue
             criterion = q["criterion"]
@@ -266,7 +252,11 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
             if mapping["status"] == "resolved":
                 known_values = {token(str(v)) for c in candidates for f in c["facts"] if f["criterion"] == criterion
                                 for v in (f["value"] if isinstance(f["value"], list) else [f["value"]])}
-                direct = mapping["value_type"] in {"number", "decimal", "boolean"} or isinstance(value, list) or bool(q["choices"]) or token(answer_text) in known_values or canonicalizer.has_value_alias(answer_text, criterion)
+                # A single category token is already a typed label under this
+                # bound question. Resolve its scoped synonym directly instead
+                # of asking extraction to invent preference/requirement strength.
+                category_label = mapping["value_type"] == "category" and not re.search(r"\s", answer_text.strip())
+                direct = category_label or mapping["value_type"] in {"number", "decimal", "boolean"} or isinstance(value, list) or bool(q["choices"]) or token(answer_text) in known_values or canonicalizer.has_value_alias(answer_text, criterion)
                 if direct:
                     raw_value = [_answer_text(v, q, path) for v in value] if isinstance(value, list) else answer_text
                     try:
@@ -309,7 +299,8 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                 continue
             for interpretation in result["interpretations"]:
                 try:
-                    interpretation = scoped_interpretation(interpretation, answer_text, q["role"], path)
+                    interpretation = scoped_interpretation(interpretation, answer_text, q["role"], path,
+                                                          question_criterion=q["criterion"])
                     append_meaning(interpretation, "semantic_model", interpretation["evidence"])
                 except InputError as exc:
                     issues.append(exc.as_issue())

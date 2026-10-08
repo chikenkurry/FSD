@@ -6,7 +6,7 @@ import re
 
 from .common import InputError, issue
 from .generic_mapping import HARD_RULES, normalize_answer, typed_value
-from .generic_values import BOUND_RULES, numeric_semantics, preference_range
+from .generic_values import BOUND_RULES, intersect_numeric_requirements, numeric_semantics, preference_range
 from .generic_validation import validate_preparation
 from .member_importance import compile_member_weights
 
@@ -18,6 +18,7 @@ MEMBER_ISSUES = {
     "AMBIGUOUS_IMPORTANCE", "CONFLICTING_IMPORTANCE",
     "UNRESOLVED_ANSWER_MAPPING",
     "AMBIGUOUS_CANONICAL_LABEL",
+    "AMBIGUOUS_NUMERIC_INTENT",
 }
 
 
@@ -29,13 +30,15 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
     for (member_id, qid, aid, polarity), answers in groups.items():
         question = questions[qid]
         mapping = answers[0].get("mapping", question["mapping"])
-        if mapping["status"] != "resolved":
+        if any(answer.get("mapping", question["mapping"])["status"] != "resolved" for answer in answers):
             issues.append(issue("UNRESOLVED_ANSWER_MAPPING", f"responses.participants.{member_id}.answers.{qid}",
                                 f"Criterion {aid} needs a supported comparison or a numeric scale"))
             continue
         path = f"responses.participants.{member_id}.answers.{qid}"
         original = answers[0]
         provenance = dict(original["provenance"])
+        if any(answer["provenance"]["source_type"] == "semantic_model" for answer in answers):
+            provenance["source_type"] = "semantic_model"
         excerpts = list(dict.fromkeys(answer["provenance"]["evidence"] for answer in answers))
         if len(excerpts) > 1:
             provenance["evidence_excerpts"] = excerpts
@@ -43,6 +46,12 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
         intents = {answer.get("intent", "match") for answer in answers}
         intent = answers[0].get("intent", "match")
         try:
+            if hard and mapping["value_type"] in {"number", "decimal"} and len(answers) > 1:
+                interval = intersect_numeric_requirements([
+                    (BOUND_RULES.get(answer.get("intent"), answer["mapping"]["comparison_rule"]), answer["value"])
+                    for answer in answers], path)
+                mapping = {**mapping, "comparison_rule": "within_range_v1", "parameters": {}}
+                raw_values, intent, intents = [interval], "range", {"range"}
             if len(intents) != 1:
                 raise InputError("CONFLICTING_ANSWER", path, "Criterion has conflicting preference directions or targets")
             if mapping["attribute_id"] == "availability":
@@ -55,9 +64,9 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
                                "unit": mapping["unit"]})
                 continue
             else:
-                if mapping["attribute_id"] == "max_cost" and isinstance(raw_values[0], dict):
+                if mapping["attribute_id"] == "max_cost" and isinstance(raw_values[0], dict) and "amount" in raw_values[0]:
                     raw_values = [raw_values[0]["amount"]]
-                elif mapping["attribute_id"] == "duration_days" and isinstance(raw_values[0], dict):
+                elif mapping["attribute_id"] == "duration_days" and isinstance(raw_values[0], dict) and "days" in raw_values[0]:
                     raw_values = [raw_values[0]["days"]]
                 if intent in {"maximize", "minimize"}:
                     if hard:
@@ -82,6 +91,9 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
                 "status": "estimated" if provenance["source_type"] == "semantic_model" else "confirmed",
                 "polarity": polarity,
             }
+            if mapping["value_type"] in {"number", "decimal"}:
+                compiled.update(numeric_intent=intent,
+                                intent_source="combined_requirements" if hard and len(answers) > 1 else original.get("intent_source", "question"))
             if hard:
                 rule = BOUND_RULES.get(intent, "within_range_v1" if intent == "range" else mapping["comparison_rule"])
                 if question["role"] != "hard" and "mapping" not in original:
@@ -210,7 +222,7 @@ def compile_preparation(handoff: dict, registry: dict, issues: list[dict]) -> di
                     continue
                 issues.append(issue("MISSING_ANSWER", path,
                                     "An active soft question needs a normalized answer or explicit indifference"))
+    validate_preparation(handoff, issues)
     processing_issues = [i for i in issues if i["code"] != "EXECUTION_ADAPTER_REQUIRED"]
     handoff["status"] = "needs_clarification" if any(i["code"] in MEMBER_ISSUES for i in processing_issues) else "needs_information" if processing_issues else "ready"
-    validate_preparation(handoff)
     return handoff

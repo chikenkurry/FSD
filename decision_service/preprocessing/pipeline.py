@@ -14,6 +14,7 @@ from decision_service.contract import (
 from .candidates import generate_candidates
 from .common import (
     InputError,
+    issue as _issue,
     require_in,
     require_instant,
     require_int,
@@ -35,6 +36,7 @@ from .semantics import (
     validate_question_assessment,
 )
 from .sparse import preprocess_sparse
+from .money import validate_minor_digits
 from .weights import SOFT_KINDS, resolve_weights
 
 
@@ -44,12 +46,8 @@ QUESTION_KINDS = {
     "semantic_preference", "semantic_requirement",
 }
 REQUIRED_STATUSES = {"complete", "incomplete", "stale", "needs_clarification"}
-PROCESSING_VERSION = "semantic-v5"
+PROCESSING_VERSION = "semantic-v6"
 WEIGHT_POLICY_VERSION = "goal-option-relevance-v2"
-
-
-def _issue(code: str, path: str, message: str) -> dict[str, str]:
-    return {"code": code, "path": path, "message": message}
 
 
 def _intervals(value: Any, path: str) -> list[dict[str, str]]:
@@ -149,6 +147,7 @@ def _process_member(
     activity_ids: set[str],
     currency: str,
     issues: list[dict],
+    minor_digits: int = 2,
 ) -> tuple[dict, list[dict], dict[str, str]]:
     member_path = f"responses.participants.{member_id}"
     answers = {}
@@ -216,7 +215,7 @@ def _process_member(
             elif kind == "budget":
                 budget_values.append(_budget(value, currency, path))
             elif kind == "open_budget":
-                budget_values.append(extract_budget(require_text(value, path), currency))
+                budget_values.append(extract_budget(require_text(value, path), currency, minor_digits=minor_digits))
             elif kind == "open_requirement":
                 extracted = extract_requirement(require_text(value, path), set(q["supported_attributes"]))
                 for requirement in extracted:
@@ -253,7 +252,7 @@ def _process_member(
             elif kind in {"semantic_preference", "semantic_requirement"}:
                 semantic_answers[question_id] = answer_as_text(q, value, path)
         except InputError as exc:
-            if exc.code in {"AMBIGUOUS_ANSWER", "UNSUPPORTED_ANSWER", "CONFLICTING_ANSWER"}:
+            if exc.code in {"AMBIGUOUS_ANSWER", "AMBIGUOUS_BUDGET", "UNIT_MISMATCH", "UNSUPPORTED_ANSWER", "CONFLICTING_ANSWER"}:
                 issues.append(_issue(exc.code, path, exc.message))
             else:
                 raise
@@ -296,6 +295,7 @@ def preprocess(
             raise InputError("STALE_SNAPSHOT", "responses", "Response round or option revision does not match planning")
         timezone_name = require_text(planning.get("timezone"), "planning.timezone")
         currency = require_text(planning.get("currency"), "planning.currency").upper()
+        minor_digits = validate_minor_digits(planning.get("currency_minor_digits", 2), "planning.currency_minor_digits")
         questions = _questions(planning.get("questions"))
         if sum(q["kind"] == "availability" for q in questions) != 1:
             raise InputError("INVALID_QUESTION_CONFIG", "planning.questions", "Exactly one availability question is required")
@@ -336,7 +336,8 @@ def preprocess(
             participants.append({"participant_id": member_id, "response_status": status, "is_required_for_decision": True})
             if status != "complete":
                 issues.append(_issue("INCOMPLETE_RESPONSE", f"responses.participants.{member_id}", "Participant response is not complete and current"))
-            constraint, member_preferences, member_semantic = _process_member(member_id, member, questions, candidates, activity_ids, currency, issues)
+            constraint, member_preferences, member_semantic = _process_member(
+                member_id, member, questions, candidates, activity_ids, currency, issues, minor_digits)
             constraints.append(constraint)
             preferences.extend(member_preferences)
             semantic_answers.update({(member_id, qid): answer for qid, answer in member_semantic.items()})
@@ -484,6 +485,8 @@ def preprocess(
                 "missing_value_policy": dict(MISSING_VALUE_POLICY),
             },
         }
+        if "currency_minor_digits" in planning:
+            algorithm_input["context"]["currency_minor_digits"] = minor_digits
         validate_handoff(algorithm_input)
         return {"status": "ready", "issues": [], "algorithm_input": algorithm_input,
                 "semantic_evidence": frozen_evidence, "semantic_interpretations": interpretations}

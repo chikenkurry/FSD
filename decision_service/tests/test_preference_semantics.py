@@ -48,7 +48,8 @@ class PreferenceSemanticsTests(unittest.TestCase):
         self.planning, self.responses = snapshots(
             [("battery_life", "number", "hours")], [{"battery_life": 10}, {"battery_life": 15}],
             {"question_id": "runtime", "label": "Battery life preference?", "role": kind,
-             "criterion": "battery_life", "relevance": 1 if kind == "soft" else 0})
+             "criterion": "battery_life", "numeric_intent": "target" if kind == "soft" else "minimum",
+             "relevance": 1 if kind == "soft" else 0})
 
     def test_one_structured_answer_can_have_three_criteria(self):
         self.answer({"preferences": [
@@ -286,7 +287,7 @@ class PreferenceSemanticsTests(unittest.TestCase):
         self.answer("at least 14 hours")
         self.responses["participants"][0]["answers"].append({"question_id": "cap", "value": "under 14 hours"})
         result = preprocess(self.planning, self.responses)
-        self.assertEqual(result["status"], "invalid_input")
+        self.assertEqual(result["status"], "needs_clarification")
         self.assertEqual(result["issues"][0]["code"], "CONFLICTING_ANSWER")
 
     def test_invalid_member_importance_values_and_declarations_are_rejected(self):
