@@ -59,6 +59,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		IsRequired: req.IsRequired,
 		SortOrder: req.SortOrder,
+		Options: req.Options,
 	}
 	if err := h.repo.Create(r.Context(), question); err != nil {
 		WriteError(w, http.StatusInternalServerError, "Fail to create question")

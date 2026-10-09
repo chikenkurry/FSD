@@ -17,6 +17,7 @@ type CreatePlanRequest struct {
 	Title           string             `json:"title"`
 	Description     *string            `json:"description,omitempty"`
 	Category        model.PlanCategory `json:"plan_category"`
+	State           model.PlanState    `json:"plan_state"`
 	OrganiserID     uuid.UUID          `json:"organiser_id"`
 	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
 	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
@@ -29,7 +30,7 @@ type PlanResponse struct {
 	Title           string             `json:"title"`
 	Description     *string            `json:"description,omitempty"`
 	Category        model.PlanCategory `json:"plan_category"`
-	Status          model.PlanState    `json:"status"`
+	State          	model.PlanState    `json:"state"`
 	CreatedByUserID uuid.UUID          `json:"created_by_user_id"`
 	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
 	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
@@ -45,7 +46,7 @@ type PlanResponse struct {
 type UpdatePlanRequest struct {
 	Title           *string          `json:"title,omitempty"`
 	Description     *string          `json:"description,omitempty"`
-	Status          *model.PlanState `json:"status,omitempty"`
+	State          *model.PlanState  `json:"state,omitempty"`
 	TimeWindowStart *time.Time       `json:"time_window_start,omitempty"`
 	TimeWindowEnd   *time.Time       `json:"time_window_end,omitempty"`
 }
@@ -55,7 +56,7 @@ type PlanHandler struct {
 }
 
 type JsonResponse struct {
-	Status  string `json:"status"`
+	State  string `json:"state"`
 	Message string `json:"message"`
 }
 
@@ -81,11 +82,16 @@ func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !req.State.IsValidState() {
+		WriteError(w, http.StatusBadRequest, "invalid state")
+		return
+	}
+
 	plan := &model.Plan{
 		Title:           req.Title,
 		Description:     req.Description,
 		Category:        req.Category,
-		Status:          model.PlanStateDraft,
+		State:           model.PlanStateDraft,
 		CreatedByUserID: req.OrganiserID,
 		TimeWindowStart: req.TimeWindowStart,
 		TimeWindowEnd:   req.TimeWindowEnd,
@@ -161,8 +167,12 @@ func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	if req.Description != nil {
 		updates["description"] = req.Description
 	}
-	if req.Status != nil {
-		updates["status"] = *req.Status
+	if req.State != nil {
+		if !req.State.IsValidState() {
+			WriteError(w, http.StatusBadRequest, "invalid state")
+			return
+		}
+		updates["state"] = *req.State
 	}
 	if req.TimeWindowStart != nil {
 		updates["time_window_start"] = req.TimeWindowStart
@@ -217,7 +227,7 @@ func toPlanResponse(p *model.Plan) PlanResponse {
 		ID:              p.ID,
 		Title:           p.Title,
 		Description:     p.Description,
-		Status:          p.Status,
+		State:          p.State,
 		CreatedByUserID: p.CreatedByUserID,
 		TimeWindowStart: p.TimeWindowStart,
 		TimeWindowEnd:   p.TimeWindowEnd,

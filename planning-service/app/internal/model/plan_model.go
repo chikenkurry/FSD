@@ -9,12 +9,21 @@ import (
 type PlanState string
 
 const (
-	PlanStateDraft      PlanState = "draft"
-	PlanStateCollecting PlanState = "collecting"
-	PlanStateReviewing  PlanState = "reviewing"
-	PlanStateConfirmed  PlanState = "confirmed"
-	PlanStateArchived   PlanState = "archived"
+	PlanStateDraft      PlanState = "DRAFT"
+	PlanStateCollecting PlanState = "COLLECTING"
+	PlanStateReviewing  PlanState = "REVIEWING"
+	PlanStateConfirmed  PlanState = "CONFIRMED"
+	PlanStateArchived   PlanState = "ARCHIVED"
 )
+
+func (c PlanState) IsValidState() bool {
+	switch c {
+		// remember to update here too!
+		case PlanStateDraft, PlanStateCollecting, PlanStateReviewing, PlanStateConfirmed, PlanStateArchived:
+			return true
+	}
+	return false
+}
 
 type PlanCategory string
 // on update of categories, update the functions as well
@@ -24,6 +33,7 @@ const (
 	CategoryDining  PlanCategory = "DINING"
 	CategoryGeneral PlanCategory = "GENERAL"
 )
+
 func (c PlanCategory) IsValidCategory() bool {
 	switch c {
 		// remember to update here too!
@@ -38,7 +48,7 @@ type Plan struct {
 	Title           string       `gorm:"type:varchar(255);not null" json:"title"`
 	Description     *string      `gorm:"type:text" json:"description,omitempty"`
 	Category        PlanCategory `gorm:"type:varchar(50);not null;" json:"category"`
-	Status          PlanState    `gorm:"type:varchar(50);default:'DRAFT';not null;index:idx_plans_status" json:"status"`
+	State           PlanState    `gorm:"type:varchar(50);default:'DRAFT';not null;index:idx_plans_state" json:"state"`
 	CreatedByUserID uuid.UUID    `gorm:"type:uuid;not null;index:idx_plans_created_by" json:"created_by_user_id"`
 	TimeWindowStart *time.Time   `gorm:"type:timestamptz" json:"time_window_start,omitempty"`
 	TimeWindowEnd   *time.Time   `gorm:"type:timestamptz" json:"time_window_end,omitempty"`
