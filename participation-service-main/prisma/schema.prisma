@@ -1,0 +1,109 @@
+// Participation service schema. Owned by pair B; no foreign keys to other services' databases.
+// plan_id / member_id / activity_id are opaque IDs issued by Planning.
+// CHECK constraints (ratings 0-4, budget cap rules, interval ordering) are not expressible in
+// Prisma; they live in prisma/check_constraints.sql and are added as a second migration (see README).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoundState {
+  COLLECTING
+  FROZEN
+}
+
+enum ResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum BudgetKind {
+  UNANSWERED
+  CAP
+  UNLIMITED
+}
+
+enum ActivityAnswerKind {
+  RATING
+  NO_PREFERENCE
+  CANNOT_JOIN
+  NEEDS_INFO
+}
+
+/// One row per Planning round, created by the idempotent provision handshake.
+/// id is Planning's round_id. activity_ids are the activities members may answer.
+model ResponseRound {
+  id                   String     @id @db.Uuid
+  planId               String     @map("plan_id") @db.Uuid
+  optionRevision       Int        @map("option_revision")
+  activityIds          String[]   @map("activity_ids")
+  state                RoundState @default(COLLECTING)
+  provisionOperationId String     @unique @map("provision_operation_id") @db.Uuid
+  provisionPayloadHash String     @map("provision_payload_hash")
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  responses Response[]
+
+  @@index([planId])
+  @@map("response_rounds")
+}
+
+/// A member's private response for one round. Draft until submitted (R02).
+/// revision increments on every write and backs optimistic concurrency.
+model Response {
+  id                         String         @id @default(uuid()) @db.Uuid
+  roundId                    String         @map("round_id") @db.Uuid
+  memberId                   String         @map("member_id") @db.Uuid
+  status                     ResponseStatus @default(DRAFT)
+  revision                   Int            @default(1)
+  acknowledgedOptionRevision Int            @map("acknowledged_option_revision")
+  budgetKind                 BudgetKind     @default(UNANSWERED) @map("budget_kind")
+  /// Per-person cap in SGD minor units (cents). Only set when budget_kind = CAP. 0 is a real cap.
+  budgetCapMinor             Int?           @map("budget_cap_minor")
+  privateNote                String?        @map("private_note")
+  createdAt                  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  round           ResponseRound          @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  availability    AvailabilityInterval[]
+  activityAnswers ActivityAnswer[]
+
+  @@unique([roundId, memberId])
+  @@index([roundId])
+  @@map("responses")
+}
+
+/// Available periods on the 30-minute grid. Unmarked time means unavailable.
+model AvailabilityInterval {
+  id         String   @id @default(uuid()) @db.Uuid
+  responseId String   @map("response_id") @db.Uuid
+  startAt    DateTime @map("start_at") @db.Timestamptz(3)
+  endAt      DateTime @map("end_at") @db.Timestamptz(3)
+
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
+  @@map("availability_intervals")
+}
+
+/// Per-activity answer. A rating, "no preference" (neutral at snapshot time), cannot-join,
+/// or needs-information all count as an answer. A missing row means unanswered.
+model ActivityAnswer {
+  id         String             @id @default(uuid()) @db.Uuid
+  responseId String             @map("response_id") @db.Uuid
+  activityId String             @map("activity_id") @db.Uuid
+  kind       ActivityAnswerKind
+  /// 0-4 when kind = RATING, otherwise null.
+  rating     Int?
+
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@unique([responseId, activityId])
+  @@map("activity_answers")
+}

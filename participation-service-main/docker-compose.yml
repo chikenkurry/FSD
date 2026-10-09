@@ -1,0 +1,35 @@
+# Local development only: Postgres, plus the service built from this repo.
+# Day-to-day you can run just the database (`docker compose up -d db`) and `npm run start:dev`.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: participation
+      POSTGRES_PASSWORD: participation
+      POSTGRES_DB: participation
+    ports:
+      - "54329:5432"
+    volumes:
+      - participation-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U participation -d participation"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  participation:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://participation:participation@db:5432/participation
+      PORT: "3000"
+      NODE_ENV: development
+      AUTH_MODE: dev
+      INTERNAL_API_TOKEN: local-dev-internal-token-change-me
+    ports:
+      - "3002:3000"
+
+volumes:
+  participation-db:
