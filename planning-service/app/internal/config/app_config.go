@@ -10,6 +10,8 @@ import (
 
 type Config struct {
 	DatabaseDSN string
+	ParticipationBaseURL string
+	InternalAPIToken     string
 }
 
 func Load() (*Config, error) {
@@ -19,7 +21,11 @@ func Load() (*Config, error) {
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL != "" {
-		return &Config{DatabaseDSN: dbURL}, nil
+		return &Config{
+			DatabaseDSN: dbURL,
+			ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
+			InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
+		}, nil 	
 	}
 
 	// alternatively, assemble DSN from individual variables
@@ -40,7 +46,11 @@ func Load() (*Config, error) {
 		host, port, user, password, dbname, sslmode,
 	)
 
-	return &Config{DatabaseDSN: dsn}, nil
+	return &Config{
+		DatabaseDSN: dsn, 
+		ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
+		InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
+	}, nil
 }
 
 // Helper to provide default fallback values

@@ -86,7 +86,7 @@ func main() {
 	proposedActivityHandler := handler.NewProposedActivityHandler(proposedActivityRepo)
 
 	planRoundRepo := repository.NewPlanRoundRepository(db)
-	planRoundHandler := handler.NewPlanRoundHandler(planRoundRepo)
+	planRoundHandler := handler.NewPlanRoundHandler(planRoundRepo, planRepo, cfg.ParticipationBaseURL, cfg.InternalAPIToken,)
 
 	selectionRepo := repository.NewConfirmedSelectionRepository(db)
 	selectionHandler := handler.NewConfirmedSelectionHandler(selectionRepo)
@@ -138,6 +138,7 @@ func main() {
 	mux.HandleFunc("GET /v1/rounds/{id}", planRoundHandler.GetRoundByID)
 	mux.HandleFunc("PATCH /v1/rounds/{id}", planRoundHandler.UpdateRound)
 	mux.HandleFunc("DELETE /v1/rounds/{id}", planRoundHandler.DeleteRound)
+	mux.HandleFunc("POST /v1/rounds/open/{id}", planRoundHandler.OpenRound)
 
 	// selection CRUD methods
 	mux.HandleFunc("POST /v1/confirmed-selection/plans/{plan_id}", selectionHandler.CreateConfirmedSelection)

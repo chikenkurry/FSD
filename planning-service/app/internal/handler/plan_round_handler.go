@@ -5,6 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"strings"
+	"bytes"
+	"io"
 
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
@@ -13,11 +16,24 @@ import (
 )
 
 type PlanRoundHandler struct {
-	repo *repository.PlanRoundRepository
+	repo                 *repository.PlanRoundRepository
+	planRepo             *repository.PlanRepository
+	participationBaseURL string
+	internalAPIToken     string
 }
 
-func NewPlanRoundHandler(repo *repository.PlanRoundRepository) *PlanRoundHandler {
-	return &PlanRoundHandler{repo: repo}
+func NewPlanRoundHandler(
+	repo *repository.PlanRoundRepository,
+	planRepo *repository.PlanRepository,
+	participationBaseURL string,
+	internalAPIToken string,
+) *PlanRoundHandler {
+	return &PlanRoundHandler{
+		repo:                 repo,
+		planRepo:             planRepo,
+		participationBaseURL: strings.TrimRight(participationBaseURL, "/"),
+		internalAPIToken:     internalAPIToken,
+	}
 }
 
 type CreatePlanRoundRequest struct {
@@ -52,6 +68,7 @@ func (h *PlanRoundHandler) CreateRound(w http.ResponseWriter, r *http.Request) {
 	round := &model.PlanRound{
 		PlanID:     planID,
 		DeadlineAt: req.DeadlineAt,
+		IsActive:   false,
 	}
 
 	if err := h.repo.Create(r.Context(), round); err != nil {
@@ -173,4 +190,126 @@ func (h *PlanRoundHandler) DeleteRound(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// POST /v1/rounds/open/{id}
+func (h *PlanRoundHandler) OpenRound(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	roundID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "Invalid Round UUID format")
+		return
+	}
+
+	if h.internalAPIToken == "" || h.participationBaseURL == "" {
+		WriteError(w, http.StatusServiceUnavailable, "Participation integration is not configured")
+		return
+	}
+
+	round, err := h.repo.GetByID(ctx, roundID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPlanRoundNotFound) {
+			WriteError(w, http.StatusNotFound, "Plan round not found")
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, "Failed to retrieve round")
+		return
+	}
+
+	plan, err := h.planRepo.GetByIDWithDetails(ctx, round.PlanID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPlanNotFound) {
+			WriteError(w, http.StatusNotFound, "Plan not found")
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, "Failed to retrieve plan")
+		return
+	}
+
+	if len(plan.ProposedActivities) < 1 || len(plan.ProposedActivities) > 8 {
+		WriteError(w, http.StatusBadRequest, "A plan must have between 1 and 8 proposed activities")
+		return
+	}
+
+	activityIDs := make([]uuid.UUID, 0, len(plan.ProposedActivities))
+	for _, activity := range plan.ProposedActivities {
+		activityIDs = append(activityIDs, activity.ID)
+	}
+
+	// Use the same round ID as the operation ID for safe retries? idk where to get operation id otherwise.
+	provisionRequest := struct {
+		OperationID    string      `json:"operationId"`
+		RoundID        string      `json:"roundId"`
+		PlanID         string      `json:"planId"`
+		OptionRevision int         `json:"optionRevision"`
+		ActivityIDs    []uuid.UUID `json:"activityIds"`
+	}{
+		OperationID:    round.ID.String(),
+		RoundID:        round.ID.String(),
+		PlanID:         round.PlanID.String(),
+		OptionRevision: 1,
+		ActivityIDs:    activityIDs,
+	}
+
+	body, err := json.Marshal(provisionRequest)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Failed to prepare provisioning request")
+		return
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, h.participationBaseURL+"/internal/rounds/provision", bytes.NewReader(body))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Failed to prepare Participation request")
+		return
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("x-internal-token", h.internalAPIToken)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		WriteError(w, http.StatusBadGateway, "Could not reach Participation Service; retry opening this round")
+		return
+	}
+	defer response.Body.Close()
+
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		WriteError(w, http.StatusBadGateway, "Could not read Participation response; retry opening this round")
+		return
+	}
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		WriteError(w, http.StatusBadGateway, "Participation provisioning failed; the plan was not marked as collecting")
+		return
+	}
+
+	// Only after provisioning succeeds, update Planning's state.
+	if _, err := h.planRepo.Update(ctx, plan.ID, map[string]interface{}{
+		"state": model.PlanStateCollecting,
+	}); err != nil {
+		WriteError(w, http.StatusInternalServerError, "Provisioning succeeded but updating plan state failed; retry opening this round")
+		return
+	}
+
+	updatedRound, err := h.repo.Update(ctx, round.ID, map[string]interface{}{
+		"is_active": true,
+	})
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Provisioning succeeded but activating the round failed; retry opening this round")
+		return
+	}
+	updatedRound.IsActive = true
+
+	var participationResult json.RawMessage
+	if json.Valid(responseBody) {
+		participationResult = json.RawMessage(responseBody)
+	}
+
+	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
+		"round":         updatedRound,
+		"participation": participationResult,
+	})
 }
