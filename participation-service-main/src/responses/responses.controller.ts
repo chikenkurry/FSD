@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentMember, MemberSessionGuard } from '../auth/member-session.guard';
 import { AuthorisedMember } from '../auth/session-authoriser';
 import { MyResponseView } from './my-response.view';
 import { ResponsesService } from './responses.service';
 import { SaveDraftDto } from './save-draft.dto';
+import { SubmitResponseDto } from './submit-response.dto';
 
 /**
  * A member only ever reaches their own response: the member comes from the session,
@@ -41,5 +42,20 @@ export class ResponsesController {
     @Body() dto: SaveDraftDto,
   ): Promise<MyResponseView> {
     return this.responses.saveDraft(roundId, member, dto);
+  }
+
+  @Post('submit')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: "Submit the caller's own response",
+    description:
+      'Requires a complete draft: budget answered and every activity answered. 409 ROUND_CLOSED once frozen.',
+  })
+  submit(
+    @Param('roundId') roundId: string,
+    @CurrentMember() member: AuthorisedMember,
+    @Body() dto: SubmitResponseDto,
+  ): Promise<MyResponseView> {
+    return this.responses.submit(roundId, member, dto);
   }
 }

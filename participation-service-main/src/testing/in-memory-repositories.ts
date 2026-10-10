@@ -1,6 +1,7 @@
 import {
   DraftData,
   DraftUnitOfWork,
+  FreezeUnitOfWork,
   ResponseRecord,
   ResponseRepository,
 } from '../responses/response.repository';
@@ -19,7 +20,14 @@ export class InMemoryRoundRepository extends RoundRepository {
       (r) => r.provisionOperationId === round.provisionOperationId,
     );
     if (this.rounds.has(round.id) || operationTaken) return null;
-    const record: RoundRecord = { ...round, state: 'COLLECTING' };
+    const record: RoundRecord = {
+      ...round,
+      state: 'COLLECTING',
+      freezeOperationId: null,
+      freezePayloadHash: null,
+      snapshotId: null,
+      snapshot: null,
+    };
     this.rounds.set(round.id, record);
     return record;
   }
@@ -44,6 +52,12 @@ export class InMemoryResponseRepository extends ResponseRepository {
   async find(roundId: string, memberId: string): Promise<ResponseRecord | null> {
     const row = this.findRow(roundId, memberId);
     return row ? structuredClone(row) : null;
+  }
+
+  async listByRound(roundId: string): Promise<ResponseRecord[]> {
+    return [...this.stored.values()]
+      .filter((r) => r.roundId === roundId)
+      .map((r) => structuredClone(r));
   }
 
   async withRoundWriteLock<T>(
@@ -77,7 +91,19 @@ export class InMemoryResponseRepository extends ResponseRepository {
       update: async (responseId, expectedRevision, data) => {
         const row = this.stored.get(responseId);
         if (!row || row.revision !== expectedRevision) return false;
-        this.stored.set(responseId, { ...row, revision: row.revision + 1, ...fields(data) });
+        this.stored.set(responseId, {
+          ...row,
+          status: 'DRAFT',
+          revision: row.revision + 1,
+          ...fields(data),
+        });
+        return true;
+      },
+
+      submit: async (responseId, expectedRevision) => {
+        const row = this.stored.get(responseId);
+        if (!row || row.revision !== expectedRevision) return false;
+        this.stored.set(responseId, { ...row, status: 'SUBMITTED', updatedAt: new Date() });
         return true;
       },
 
@@ -87,6 +113,28 @@ export class InMemoryResponseRepository extends ResponseRepository {
         return structuredClone(row);
       },
     };
+  }
+
+  async withRoundFreezeLock<T>(
+    roundId: string,
+    work: (unit: FreezeUnitOfWork) => Promise<T>,
+  ): Promise<T | null> {
+    const round = this.rounds.rounds.get(roundId);
+    if (!round) return null;
+    return work({
+      round,
+      listResponses: () => this.listByRound(roundId),
+      freeze: async (data) => {
+        this.rounds.rounds.set(roundId, {
+          ...round,
+          state: 'FROZEN',
+          freezeOperationId: data.freezeOperationId,
+          freezePayloadHash: data.freezePayloadHash,
+          snapshotId: data.snapshotId,
+          snapshot: data.snapshot as RoundRecord['snapshot'],
+        });
+      },
+    });
   }
 }
 

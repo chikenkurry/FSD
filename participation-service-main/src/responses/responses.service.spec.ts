@@ -157,4 +157,39 @@ describe('ResponsesService', () => {
       });
     });
   });
+
+  describe('submit', () => {
+    it('marks a complete draft submitted', async () => {
+      const { service } = setup();
+      await service.saveDraft(ROUND_ID, member1, aDraft());
+      const submitted = await service.submit(ROUND_ID, member1, { expectedRevision: 1 });
+      expect(submitted.status).toBe('SUBMITTED');
+      expect(submitted.revision).toBe(1);
+    });
+
+    it('rejects an incomplete draft', async () => {
+      const { service } = setup();
+      await service.saveDraft(
+        ROUND_ID,
+        member1,
+        aDraft({ budget: { kind: 'UNANSWERED' }, activityAnswers: [] }),
+      );
+      await expect(service.submit(ROUND_ID, member1, { expectedRevision: 1 })).rejects.toMatchObject({
+        code: 'INVALID_INPUT',
+      });
+    });
+
+    it('returns to DRAFT if the member saves again after submitting', async () => {
+      const { service } = setup();
+      await service.saveDraft(ROUND_ID, member1, aDraft());
+      await service.submit(ROUND_ID, member1, { expectedRevision: 1 });
+      const edited = await service.saveDraft(
+        ROUND_ID,
+        member1,
+        aDraft({ expectedRevision: 1, budget: { kind: 'UNLIMITED' } }),
+      );
+      expect(edited.status).toBe('DRAFT');
+      expect(edited.revision).toBe(2);
+    });
+  });
 });

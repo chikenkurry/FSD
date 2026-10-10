@@ -10,8 +10,8 @@ NestJS + TypeScript, PostgreSQL via Prisma. One repo per service.
 
 | Ticket | State |
 | --- | --- |
-| R01 provision a round, save and read a private draft | Implemented (this scaffold) |
-| R02 submit, immutable snapshot, freeze | Not started. The save path already takes `FOR SHARE` on the round row so freeze can take `FOR UPDATE` on the same row |
+| R01 provision a round, save and read a private draft | Implemented |
+| R02 submit, immutable snapshot, freeze | Implemented |
 | R03-R06 | Not started |
 
 ## Run it locally
@@ -53,8 +53,12 @@ npm run test:e2e      # needs the migrated local database; deletes only rows of 
 | --- | --- | --- |
 | `GET /health`, `GET /health/ready` | gateway, orchestrator | liveness, readiness (checks the database) |
 | `POST /internal/rounds/provision` | Planning only | idempotent: create the round, open for responses |
+| `POST /internal/rounds/freeze` | Planning only | idempotent: close writes and store Decision's response snapshot |
+| `GET /internal/rounds/:roundId/response-snapshot` | Decision only | immutable snapshot (snake_case algorithm fields, no private notes) |
+| `GET /internal/rounds/:roundId/progress` | Planning only | submitted/draft counts and per-member status |
 | `GET /rounds/:roundId/my-response` | member | own draft (revision 0 and empty if never saved) |
 | `PUT /rounds/:roundId/my-response` | member | replace own draft; send back the `revision` you loaded as `expectedRevision` |
+| `POST /rounds/:roundId/my-response/submit` | member | mark a complete draft submitted |
 
 `/internal/*` needs the `x-internal-token` header and must not be routed through the public gateway.
 Errors follow `ApiErrorV1`: `{ code, message, retryable, requestId, fieldErrors? }`.
@@ -115,3 +119,4 @@ Testing layers: pure rules and services are unit tested against the in-memory fa
 2. Align `ApiErrorV1` and `MemberResponseV1` with the shared examples once F02 publishes them.
 3. CSRF protection for cookie-authenticated writes: decide whether the gateway or this service enforces it.
 4. Whether provision carries the form schema, or only activity IDs as in this scaffold.
+5. Planning's freeze call should send `user_id` values as `memberIds` (the same IDs session authorise will return).

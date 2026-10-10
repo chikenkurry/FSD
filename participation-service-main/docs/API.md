@@ -1,6 +1,6 @@
 # Participation service: API for other teams
 
-Owner: pair B (M3 backend). Status: **R01 implemented**. Anything marked *Planned* is not built yet and may change.
+Owner: pair B (M3 backend). Status: **R01 + R02 implemented** (provision, draft, submit, freeze, Decision snapshot). Anything marked *Planned* is not built yet and may change.
 
 ## Live documentation (Swagger / OpenAPI)
 
@@ -17,11 +17,11 @@ Swagger lists request bodies and validation rules. It does not describe response
 
 | Caller | Endpoint | Public via gateway? |
 | --- | --- | --- |
-| Planning (server to server) | `POST /internal/rounds/provision` | **No.** Internal only |
-| Frontend (member's browser) | `GET` and `PUT /rounds/{roundId}/my-response` | Yes |
+| Planning (server to server) | `POST /internal/rounds/provision`, `POST /internal/rounds/freeze`, `GET /internal/rounds/{roundId}/progress` | **No.** Internal only |
+| Frontend (member's browser) | `GET`/`PUT /rounds/{roundId}/my-response`, `POST /rounds/{roundId}/my-response/submit` | Yes |
 | Gateway / orchestrator | `GET /health`, `GET /health/ready` | Health checks only |
 | Participation calls **Planning** | `POST {PLANNING_BASE_URL}/internal/sessions/authorise` | Internal. Planning must build this (below) |
-| Decision | *Planned (R02):* response snapshot read | Internal |
+| Decision | `GET /internal/rounds/{roundId}/response-snapshot` | **No.** Internal only |
 
 Gateway rule: route only `/rounds/*` to this service. **Never route `/internal/*` or `/docs*` publicly.**
 
@@ -142,7 +142,7 @@ If the member has never saved: `revision: 0`, `status: "DRAFT"`, empty lists, `b
 
 ## 3. Save my response (frontend)
 
-`PUT /rounds/{roundId}/my-response`, member session. Replaces the whole draft. Partial drafts are allowed; completeness is checked at submission (*Planned, R02*).
+`PUT /rounds/{roundId}/my-response`, member session. Replaces the whole draft. Partial drafts are allowed; completeness is checked at submission. Saving after a submit returns the response to `DRAFT`.
 
 ```json
 {
@@ -175,7 +175,64 @@ Returns the saved response (same shape as section 2) with `revision` incremented
 
 Two saves racing from the same member: one wins, the other gets `409 STALE_VERSION`.
 
-## 4. Health
+## 4. Submit my response (frontend)
+
+`POST /rounds/{roundId}/my-response/submit`, member session.
+
+```json
+{ "expectedRevision": 1 }
+```
+
+Requires a saved complete draft: budget is `CAP` or `UNLIMITED`, and every activity of the round has an answer (`RATING`, `NO_PREFERENCE`, `CANNOT_JOIN`, or `NEEDS_INFO`). Empty availability is allowed (unavailable everywhere). Returns the response with `status: "SUBMITTED"`. Incomplete drafts return `400 INVALID_INPUT`.
+
+## 5. Freeze a round (Planning to Participation)
+
+`POST /internal/rounds/freeze`, header `x-internal-token`.
+
+Called when the organiser closes collection. Planning moves to review only after this returns 200. `memberIds` must be the same IDs Planning uses in session authorisation (`user_id` on plan members).
+
+```json
+{
+  "operationId": "7c2e1a0b-3d45-4b68-8e2f-4d8b7a3f0b21",
+  "roundId": "0f8a7c54-6d1f-4e0b-8a27-5b2d4f9c1e33",
+  "memberIds": [
+    "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+  ]
+}
+```
+
+Response `200`:
+
+```json
+{
+  "roundId": "0f8a7c54-6d1f-4e0b-8a27-5b2d4f9c1e33",
+  "snapshotId": "9a0b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d",
+  "state": "FROZEN",
+  "alreadyFrozen": false,
+  "snapshot": { }
+}
+```
+
+Idempotency: the same `operationId` and roster (order does not matter) returns `alreadyFrozen: true` and the same `snapshotId`. A different roster or `operationId` for an already frozen round returns `409 OPERATION_CONFLICT`. Writes after freeze return `409 ROUND_CLOSED`.
+
+## 6. Response snapshot (Decision)
+
+`GET /internal/rounds/{roundId}/response-snapshot`, header `x-internal-token`.
+
+Returns the immutable snapshot stored at freeze. Snake_case fields match `decision_service/algorithm-input-shape.md` (`participants`, `constraints`, `preferences`). Private notes are omitted.
+
+Budget mapping: `CAP` → `limited`, `UNLIMITED` → `unlimited`, `UNANSWERED` → `missing`. `NO_PREFERENCE` is already mapped to rating `2`. `CANNOT_JOIN` / `NEEDS_INFO` appear as `activity_flags` (`cannot_join` / `needs_information`). Decision must copy each activity flag onto every candidate of that activity as `candidate_flags` before running the algorithm. `required_attributes` is empty until members collect hard requirements here.
+
+`404` if the round has not been frozen.
+
+## 7. Progress (Planning)
+
+`GET /internal/rounds/{roundId}/progress`, header `x-internal-token`.
+
+Returns `{ roundId, planId, optionRevision, state, submittedCount, draftCount, responses: [{ memberId, status }] }`. No budgets, availability, notes, or answers.
+
+## 8. Health
 
 - `GET /health`: liveness, `{ "status": "ok" }`.
 - `GET /health/ready`: readiness, checks the database. `503 UPSTREAM_UNAVAILABLE` if it is down. Use this for load balancer checks.
@@ -205,12 +262,13 @@ x-internal-token: <shared secret>
 
 ### Planning: lifecycle calls
 
-- Publish: call provision (section 1) with a persisted `operationId`; mark COLLECTING only after `200`.
-- Close/freeze, snapshots, RSVP: *Planned (R02, R05).* Participation will expose an internal freeze (idempotent per `operationId`, writes before the freeze are included, writes after are rejected with `ROUND_CLOSED`) and an immutable response snapshot.
+- Publish: call provision (section 1) with a persisted `operationId`; mark COLLECTING only after `200`. Send Planning's `plan_rounds.id` as `roundId`, `plans.id` as `planId`, `proposed_activities.id` values as `activityIds`, and `1` (or the current option revision) as `optionRevision`.
+- Close: call freeze (section 5) with the approved roster `user_id`s; mark reviewing only after `200`. Retry the same `operationId`.
+- RSVP: *Planned (R05).*
 
-### Decision: data it will read (*Planned, R02*)
+### Decision: data it reads
 
-An internal read of an immutable `ResponseSnapshotV1` for a frozen round: per member, the availability intervals, budget (`kind` + cap), per-activity answers (with `NO_PREFERENCE` already mapped to neutral), excluding private notes and any identity or session data. The exact shape will be published under F02 before Decision depends on it. Until then, build against fixtures that follow the field meanings in section 3.
+`GET /internal/rounds/{roundId}/response-snapshot` (section 6). Combine with Planning's option/candidate snapshot, expand `activity_flags` onto candidates, then call `run_decision_algorithm`.
 
 ## Quick local test
 

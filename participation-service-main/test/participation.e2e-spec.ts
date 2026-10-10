@@ -265,5 +265,76 @@ describe('Participation service (e2e)', () => {
         .send({ ...draftBody(), memberId: memberB }) // cannot target another member
         .expect(400);
     });
+
+    it('submits a complete draft and rejects an incomplete one', async () => {
+      await request(app.getHttpServer())
+        .post(`${url()}/submit`)
+        .set(bearer(memberA))
+        .send({ expectedRevision: 0 })
+        .expect(400);
+
+      const saved = await request(app.getHttpServer())
+        .put(url())
+        .set(bearer(memberA))
+        .send(draftBody())
+        .expect(200);
+
+      const submitted = await request(app.getHttpServer())
+        .post(`${url()}/submit`)
+        .set(bearer(memberA))
+        .send({ expectedRevision: saved.body.revision })
+        .expect(200);
+      expect(submitted.body.status).toBe('SUBMITTED');
+    });
+  });
+
+  describe('freeze and Decision snapshot', () => {
+    beforeEach(async () => {
+      await request(app.getHttpServer())
+        .post('/internal/rounds/provision')
+        .set(INTERNAL)
+        .send(provisionBody())
+        .expect(200);
+    });
+
+    it('freezes the round, exposes a Decision snapshot, and closes writes', async () => {
+      await request(app.getHttpServer())
+        .put(`/rounds/${roundId}/my-response`)
+        .set(bearer(memberA))
+        .send(draftBody())
+        .expect(200);
+      await request(app.getHttpServer())
+        .post(`/rounds/${roundId}/my-response/submit`)
+        .set(bearer(memberA))
+        .send({ expectedRevision: 1 })
+        .expect(200);
+
+      const frozen = await request(app.getHttpServer())
+        .post('/internal/rounds/freeze')
+        .set(INTERNAL)
+        .send({ operationId: randomUUID(), roundId, memberIds: [memberA, memberB] })
+        .expect(200);
+      expect(frozen.body.state).toBe('FROZEN');
+      expect(frozen.body.snapshot.participants).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ participant_id: memberA, response_status: 'complete' }),
+          expect.objectContaining({ participant_id: memberB, response_status: 'incomplete' }),
+        ]),
+      );
+      expect(JSON.stringify(frozen.body.snapshot)).not.toContain('prefers somewhere quiet');
+
+      const snapshot = await request(app.getHttpServer())
+        .get(`/internal/rounds/${roundId}/response-snapshot`)
+        .set(INTERNAL)
+        .expect(200);
+      expect(snapshot.body.snapshot_id).toBe(frozen.body.snapshotId);
+
+      const closed = await request(app.getHttpServer())
+        .put(`/rounds/${roundId}/my-response`)
+        .set(bearer(memberA))
+        .send(draftBody({ expectedRevision: 1 }))
+        .expect(409);
+      expect(closed.body.code).toBe('ROUND_CLOSED');
+    });
   });
 });

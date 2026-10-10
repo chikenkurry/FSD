@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { AuthorisedMember } from '../auth/session-authoriser';
 import { Errors } from '../common/api-exception';
 import { RoundFacts, RoundRecord, RoundRepository } from '../rounds/round.repository';
+import { completenessErrors, isComplete } from './decision-snapshot';
 import { toDraftData } from './draft-data';
 import { MyResponseView, emptyView, toView } from './my-response.view';
 import { DraftData, DraftUnitOfWork, ResponseRepository } from './response.repository';
 import { validateDraft } from './response-rules';
 import { SaveDraftDto } from './save-draft.dto';
+import { SubmitResponseDto } from './submit-response.dto';
 
 /**
  * Member-facing draft use cases. Holds the business rules; storage and locking sit behind
@@ -46,6 +48,43 @@ export class ResponsesService {
       this.assertAcceptingResponses(unit.round, data.acknowledgedOptionRevision);
       const responseId = await this.writeDraft(unit, member.memberId, dto.expectedRevision, data);
       return toView(roundId, unit.round, await unit.load(responseId));
+    });
+
+    if (!view) throw Errors.notFound('Round not found');
+    return view;
+  }
+
+  /**
+   * Marks the caller's current draft as submitted. Completeness is required: every activity
+   * answered and budget not UNANSWERED. Empty availability is allowed (unavailable everywhere).
+   */
+  async submit(
+    roundId: string,
+    member: AuthorisedMember,
+    dto: SubmitResponseDto,
+  ): Promise<MyResponseView> {
+    const round = await this.requireRound(roundId, member);
+
+    const view = await this.responses.withRoundWriteLock(roundId, async (unit) => {
+      this.assertAcceptingResponses(unit.round, unit.round.optionRevision);
+      const existingId = await unit.findExistingId(member.memberId);
+      if (existingId === null) {
+        if (dto.expectedRevision !== 0) throw Errors.staleVersion();
+        throw Errors.invalidInput(completenessErrors({ budgetKind: 'UNANSWERED', activityAnswers: [] }, round.activityIds));
+      }
+
+      const current = await unit.load(existingId);
+      if (current.revision !== dto.expectedRevision) throw Errors.staleVersion();
+      if (current.acknowledgedOptionRevision !== unit.round.optionRevision) {
+        throw Errors.staleVersion('The options changed; reload the form before submitting');
+      }
+      if (!isComplete(current, round.activityIds)) {
+        throw Errors.invalidInput(completenessErrors(current, round.activityIds));
+      }
+      if (current.status !== 'SUBMITTED') {
+        if (!(await unit.submit(existingId, dto.expectedRevision))) throw Errors.staleVersion();
+      }
+      return toView(roundId, unit.round, await unit.load(existingId));
     });
 
     if (!view) throw Errors.notFound('Round not found');

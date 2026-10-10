@@ -1,3 +1,5 @@
+import type { ResponseSnapshotV1 } from '../responses/decision-snapshot';
+
 export type RoundStateValue = 'COLLECTING' | 'FROZEN';
 
 /** The facts about a round that decide whether a write is allowed. */
@@ -12,6 +14,10 @@ export interface RoundRecord extends RoundFacts {
   activityIds: string[];
   provisionOperationId: string;
   provisionPayloadHash: string;
+  freezeOperationId: string | null;
+  freezePayloadHash: string | null;
+  snapshotId: string | null;
+  snapshot: ResponseSnapshotV1 | null;
 }
 
 export interface NewRound {

@@ -18,6 +18,10 @@ export function aRound(overrides: Partial<RoundRecord> = {}): RoundRecord {
     state: 'COLLECTING',
     provisionOperationId: OPERATION_ID,
     provisionPayloadHash: 'hash',
+    freezeOperationId: null,
+    freezePayloadHash: null,
+    snapshotId: null,
+    snapshot: null,
     ...overrides,
   };
 }

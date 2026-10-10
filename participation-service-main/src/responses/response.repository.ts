@@ -1,4 +1,4 @@
-import { RoundFacts } from '../rounds/round.repository';
+import type { RoundFacts, RoundRecord } from '../rounds/round.repository';
 import { AnswerKindValue, BudgetKindValue, ResponseStatusValue } from './response.types';
 
 export interface AvailabilityRecord {
@@ -52,11 +52,31 @@ export interface DraftUnitOfWork {
   /** Replaces the draft only if its revision still equals `expectedRevision`. Resolves false if not. */
   update(responseId: string, expectedRevision: number, data: DraftData): Promise<boolean>;
 
+  /** Marks SUBMITTED only if revision still equals `expectedRevision`. Resolves false if not. */
+  submit(responseId: string, expectedRevision: number): Promise<boolean>;
+
   load(responseId: string): Promise<ResponseRecord>;
+}
+
+export interface FreezeWrite {
+  freezeOperationId: string;
+  freezePayloadHash: string;
+  snapshotId: string;
+  snapshot: unknown;
+}
+
+export interface FreezeUnitOfWork {
+  readonly round: RoundRecord;
+
+  listResponses(): Promise<ResponseRecord[]>;
+
+  freeze(data: FreezeWrite): Promise<void>;
 }
 
 export abstract class ResponseRepository {
   abstract find(roundId: string, memberId: string): Promise<ResponseRecord | null>;
+
+  abstract listByRound(roundId: string): Promise<ResponseRecord[]>;
 
   /**
    * Runs `work` in a transaction holding a shared lock on the round row. Concurrent saves proceed
@@ -66,5 +86,14 @@ export abstract class ResponseRepository {
   abstract withRoundWriteLock<T>(
     roundId: string,
     work: (unit: DraftUnitOfWork) => Promise<T>,
+  ): Promise<T | null>;
+
+  /**
+   * Exclusive lock on the round row. In-flight shared-lock saves finish first; later writes wait
+   * and then see FROZEN. Resolves null if the round does not exist.
+   */
+  abstract withRoundFreezeLock<T>(
+    roundId: string,
+    work: (unit: FreezeUnitOfWork) => Promise<T>,
   ): Promise<T | null>;
 }
