@@ -128,6 +128,28 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 	WriteJSONResponse(w, http.StatusOK, plan)
 }
 
+// GET /v1/plans/details/{id}
+func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+		return
+	}
+
+	plan, err := h.repo.GetByIDWithDetails(r.Context(), id)
+
+	if err != nil {
+		if err.Error() == "plan not found" {
+			http.Error(w, "Plan not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Fail to retreieve plan", http.StatusInternalServerError)
+		return
+	}
+
+	WriteJSONResponse(w, http.StatusOK, plan)
+}
+
 // GET /v1/plans/organiser/{id} - List plans for an organiser
 func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Request) {
 	organiserID := r.PathValue("id")

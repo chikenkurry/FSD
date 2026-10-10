@@ -62,6 +62,7 @@ func (r *PlanRepository) GetByIDWithDetails(ctx context.Context, id uuid.UUID) (
 		Preload("Rounds").
 		Preload("Members").
 		Preload("ProposedActivities").
+		Preload("Questions").
 		Preload("ConfirmedSelection").
 		First(&plan, "id = ?", id).Error
 

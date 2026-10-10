@@ -60,6 +60,7 @@ type Plan struct {
 	Rounds             []PlanRound         `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"rounds,omitempty"`
 	Members            []PlanMember        `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"members,omitempty"`
 	ProposedActivities []ProposedActivity  `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"proposed_activities,omitempty"`
+	Questions 		   []Question 		   `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"questions,omitempty"`
 	ConfirmedSelection *ConfirmedSelection `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"confirmed_selection,omitempty"`
 }
 
