@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
@@ -25,22 +26,30 @@ func NewPlanRoundRepository(db *gorm.DB) *PlanRoundRepository {
 // Create creates a new round for a plan.
 // Round number is automatically assigned based on the latest round.
 func (r *PlanRoundRepository) Create(ctx context.Context, round *model.PlanRound) error {
-	var lastRound model.PlanRound
-
-	err := r.db.WithContext(ctx).
-		Where("plan_id = ?", round.PlanID).
-		Order("round_number DESC").
-		First(&lastRound).Error
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		round.RoundNumber = 1
-	} else if err != nil {
-		return err
-	} else {
-		round.RoundNumber = lastRound.RoundNumber + 1
-	}
-
-	return r.db.WithContext(ctx).Create(round).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var plan model.Plan
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&plan, "id = ?", round.PlanID).Error; err != nil {
+			return err
+		}
+		var active int64
+		if err := tx.Table("integration_rounds").Where("plan_id = ? AND state IN ?", round.PlanID,
+			[]string{"PUBLISHING", "COLLECTING", "LOCKING"}).Count(&active).Error; err != nil {
+			return err
+		}
+		if active > 0 {
+			return errors.New("close collection before creating another round")
+		}
+		var lastRound model.PlanRound
+		err := tx.Where("plan_id = ?", round.PlanID).Order("round_number DESC").First(&lastRound).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			round.RoundNumber = 1
+		} else if err != nil {
+			return err
+		} else {
+			round.RoundNumber = lastRound.RoundNumber + 1
+		}
+		return tx.Create(round).Error
+	})
 }
 
 // GetByID fetches a single round by its primary key

@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	DatabaseDSN string
+	DatabaseDSN          string
 	ParticipationBaseURL string
 	InternalAPIToken     string
+	DecisionBaseURL      string
 }
 
 func Load() (*Config, error) {
@@ -22,10 +23,11 @@ func Load() (*Config, error) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL != "" {
 		return &Config{
-			DatabaseDSN: dbURL,
+			DatabaseDSN:          dbURL,
 			ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
 			InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
-		}, nil 	
+			DecisionBaseURL:      getEnv("DECISION_BASE_URL", "http://localhost:8000"),
+		}, nil
 	}
 
 	// alternatively, assemble DSN from individual variables
@@ -47,9 +49,10 @@ func Load() (*Config, error) {
 	)
 
 	return &Config{
-		DatabaseDSN: dsn, 
+		DatabaseDSN:          dsn,
 		ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
 		InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
+		DecisionBaseURL:      getEnv("DECISION_BASE_URL", "http://localhost:8000"),
 	}, nil
 }
 

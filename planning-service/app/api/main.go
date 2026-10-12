@@ -7,26 +7,24 @@ import (
 	"net/http"
 
 	"planning-service/app/internal/config"
+	"planning-service/app/internal/database"
 	"planning-service/app/internal/handler"
+	"planning-service/app/internal/integration"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
-	"planning-service/app/internal/database"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-
 type JsonResponse struct {
-	Status string `json:"status"`
+	Status  string `json:"status"`
 	Message string `json:"message"`
 }
-
 
 var ctx = context.Background()
 
 var joinBaseURL = "http://localhost:8080/join"
-
 
 func main() {
 	cfg, err := config.Load()
@@ -47,6 +45,10 @@ func main() {
 	// run migrations
 	err = db.AutoMigrate(
 		&model.User{},
+		&integration.Session{},
+		&integration.Round{},
+		&integration.Selection{},
+		&integration.ReopenOperation{},
 		&model.Plan{},
 		&model.Invitation{},
 		&model.Question{},
@@ -86,12 +88,16 @@ func main() {
 	proposedActivityHandler := handler.NewProposedActivityHandler(proposedActivityRepo)
 
 	planRoundRepo := repository.NewPlanRoundRepository(db)
-	planRoundHandler := handler.NewPlanRoundHandler(planRoundRepo, planRepo, cfg.ParticipationBaseURL, cfg.InternalAPIToken,)
+	planRoundHandler := handler.NewPlanRoundHandler(planRoundRepo)
 
 	selectionRepo := repository.NewConfirmedSelectionRepository(db)
 	selectionHandler := handler.NewConfirmedSelectionHandler(selectionRepo)
 
 	mux := http.NewServeMux()
+	flow := integration.NewHandler(db, cfg.ParticipationBaseURL, cfg.DecisionBaseURL, cfg.InternalAPIToken)
+	if len(cfg.InternalAPIToken) < 16 {
+		log.Fatal("INTERNAL_API_TOKEN must have at least 16 characters")
+	}
 
 	mux.HandleFunc("GET /health", GetHealth)
 
@@ -104,7 +110,7 @@ func main() {
 	mux.HandleFunc("DELETE /v1/plans/{id}", planHandler.DeletePlan)
 
 	// users CRUD methods
-	mux.HandleFunc("POST /v1/users", userHandler.CreateUser) //👌
+	mux.HandleFunc("POST /v1/users", flow.RegisterUser) //👌
 	mux.HandleFunc("GET /v1/users/{id}", userHandler.GetUserByID)
 	mux.HandleFunc("PUT /v1/users/{id}", userHandler.UpdateUser)
 
@@ -112,7 +118,7 @@ func main() {
 	mux.HandleFunc("POST /v1/question", questionHandler.Create) //👌
 	mux.HandleFunc("GET /v1/plans/question/{plan_id}", questionHandler.GetQuestionByPlanId)
 	mux.HandleFunc("PATCH /v1/question/{question_id}", questionHandler.UpdateQuestion)
-	mux.HandleFunc("Delete /v1/question/{question_id}", questionHandler.Delete)
+	mux.HandleFunc("DELETE /v1/question/{question_id}", questionHandler.Delete)
 
 	// invitation CRUD methods
 	mux.HandleFunc("POST /v1/plans/{plan_id}/invites", invitationHandler.CreateInvitation)
@@ -133,12 +139,15 @@ func main() {
 	mux.HandleFunc("DELETE /v1/proposed_activity/{id}", proposedActivityHandler.DeleteActivity)
 
 	// round CRUD methods
-	mux.HandleFunc("POST /v1/rounds/plans/{plan_id}", planRoundHandler.CreateRound)
-	mux.HandleFunc("GET /v1/rounds/plans/{plan_id}", planRoundHandler.ListRoundsByPlan)
 	mux.HandleFunc("GET /v1/rounds/{id}", planRoundHandler.GetRoundByID)
 	mux.HandleFunc("PATCH /v1/rounds/{id}", planRoundHandler.UpdateRound)
 	mux.HandleFunc("DELETE /v1/rounds/{id}", planRoundHandler.DeleteRound)
-	mux.HandleFunc("POST /v1/rounds/open/{id}", planRoundHandler.OpenRound)
+	mux.HandleFunc("POST /v1/rounds/open/{id}", flow.Publish)
+
+	mux.HandleFunc("POST /internal/sessions/authorise", flow.Internal(flow.AuthoriseSession))
+	mux.HandleFunc("GET /internal/rounds/{id}/option-snapshot", flow.Internal(flow.Snapshot))
+
+	flow.RegisterRoundRoutes(mux, planRoundHandler.CreateRound, planRoundHandler.ListRoundsByPlan)
 
 	// selection CRUD methods
 	mux.HandleFunc("POST /v1/confirmed-selection/plans/{plan_id}", selectionHandler.CreateConfirmedSelection)
@@ -146,11 +155,10 @@ func main() {
 
 	// start Server
 	log.Println("Planning Service running on :8080...")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", flow.Guard(mux)); err != nil {
 		log.Fatalf("Server stopped: %v", err)
 	}
 }
-
 
 func GetHealth(w http.ResponseWriter, r *http.Request) {
 	result := JsonResponse{Status: "okay", Message: "service be alive"}
