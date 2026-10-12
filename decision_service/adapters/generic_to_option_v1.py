@@ -27,10 +27,9 @@ def _result(status: str, issues: list[dict[str, str]], algorithm_input: dict | N
 def adapt_generic_to_option_v1(preparation: dict[str, Any]) -> dict:
     """Create a generic executable handoff for scalar option choices.
 
-    It supports confirmed scalar facts, equality/inequality hard constraints,
-    positive and avoidance preferences, numeric utilities, and indifference.
-    Tag-set and scenario semantics stay in preparation until their dedicated
-    matchers are implemented.
+    Supports scalar and tag-set facts, hard comparisons, numeric utilities,
+    categorical avoidance and indifference. Scenario expansion is handled by
+    the scenario adapter before applying this contract.
     """
     if not isinstance(preparation, dict) or preparation.get("status") != "ready":
         return _result("needs_information", [_issue("PREPARATION_NOT_READY", "Generic preparation must be ready before adaptation")])
@@ -79,7 +78,7 @@ def adapt_generic_to_option_v1(preparation: dict[str, Any]) -> dict:
         return _result("unsupported", issues)
 
     context = deepcopy(preparation.get("context", {}))
-    context.update(schema_version=SCHEMA_VERSION, algorithm_version="generic-option-baseline-v1")
+    context.update(schema_version=SCHEMA_VERSION, algorithm_version="generic-option-baseline-v2")
     handoff = {
         "context": context,
         "criteria": deepcopy(preparation.get("criteria", [])),

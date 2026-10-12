@@ -72,5 +72,5 @@ def adapt_scenarios_to_option_v1(preparation: dict[str, Any]) -> dict:
     executable["scenario_requests"] = []
     result = adapt_generic_to_option_v1(executable)
     if result["status"] == "ready":
-        result["algorithm_input"]["context"]["algorithm_version"] = "generic-option-scenario-v1"
+        result["algorithm_input"]["context"]["algorithm_version"] = "generic-option-scenario-v2"
     return result

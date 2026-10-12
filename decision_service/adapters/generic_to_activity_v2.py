@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any
+import math
 
 from decision_service.contract import (
     DEFAULT_OBJECTIVE,
@@ -36,7 +37,8 @@ def adapt_generic_to_activity_v2(preparation: dict[str, Any], execution_context:
     it must also supply ``availability_by_participant`` as normalized timestamp
     intervals. The adapter only supports equality-based generic preferences and
     confirmed equality hard requirements, because those are the utilities the
-    activity algorithm currently implements.
+    activity algorithm currently implements. Integer maximum budgets are also
+    supported; other numeric requirements require the generic matcher.
     """
     if not isinstance(preparation, dict) or preparation.get("status") != "ready":
         return _result("needs_information", [_issue("PREPARATION_NOT_READY", "Generic preparation must be ready before adaptation")])
@@ -61,6 +63,7 @@ def adapt_generic_to_activity_v2(preparation: dict[str, Any], execution_context:
 
     execution_candidates = []
     activity_ids: list[str] = []
+    covered_options = set()
     for raw in candidates:
         if not isinstance(raw, dict) or raw.get("option_id") not in source_candidates:
             issues.append(_issue("UNKNOWN_EXECUTION_OPTION", "A concrete candidate must reference a prepared option"))
@@ -85,8 +88,11 @@ def adapt_generic_to_activity_v2(preparation: dict[str, Any], execution_context:
             "facts": facts,
             **({"scenario_id": raw["scenario_id"]} if isinstance(raw.get("scenario_id"), str) else {}),
         })
+        covered_options.add(raw["option_id"])
         if raw["activity_id"] not in activity_ids:
             activity_ids.append(raw["activity_id"])
+    if set(source_candidates) - covered_options:
+        issues.append(_issue("MISSING_EXECUTION_OPTION", "Provide at least one concrete candidate for every prepared option"))
     if issues:
         return _result("needs_information", issues)
 
@@ -118,6 +124,17 @@ def adapt_generic_to_activity_v2(preparation: dict[str, Any], execution_context:
     if issues:
         return _result("unsupported", issues)
 
+    # The activity scorer uses global question weights. Reject personal weight
+    # changes rather than silently discarding the generic processor's policy.
+    question_weights = {q["question_id"]: q["weight"] for q in questions if not q["is_hard_constraint"]}
+    for row in preparation.get("scoring_model", {}).get("member_weights", []):
+        qid, pid = row.get("source_question_id"), row.get("participant_id")
+        criteria = {p.get("attribute_id") for p in preparation.get("preferences", [])
+                    if p.get("source_question_id") == qid and p.get("participant_id") == pid}
+        expected = question_weights.get(qid, 0) / len(criteria) if criteria else 0
+        if row.get("status") != "resolved" or not isinstance(row.get("effective_weight"), (int, float)) or not math.isclose(row["effective_weight"], expected, abs_tol=1e-9):
+            return _result("unsupported", [_issue("UNSUPPORTED_MEMBER_WEIGHTS", "The activity scorer cannot represent these member importance weights")])
+
     preferences = []
     for preference in preparation.get("preferences", []):
         if preference.get("polarity", "prefer") != "prefer" or preference.get("scope", "all") != "all":
@@ -143,17 +160,22 @@ def adapt_generic_to_activity_v2(preparation: dict[str, Any], execution_context:
             continue
         attribute_id = constraint.get("attribute_id")
         if attribute_id == "availability":
+            issues.append(_issue("UNSUPPORTED_AVAILABILITY", "Generic date availability cannot be replaced by timestamp intervals"))
             continue
         if attribute_id == "max_cost":
             if constraint.get("kind") == "unlimited":
                 continue
-            if constraint.get("constraint_rule") != "maximum_v1" or not isinstance(constraint.get("required_value"), int):
+            if constraint.get("status") != "confirmed" or constraint.get("constraint_rule") != "maximum_v1" or type(constraint.get("required_value")) is not int:
                 issues.append(_issue("UNSUPPORTED_BUDGET_RULE", "Only confirmed integer maximum budgets are activity-v2 compatible"))
                 continue
+            previous = constraints_by_member[participant_id]["budget"].get("max_cost_minor")
+            bound = constraint["required_value"] if previous is None else min(previous, constraint["required_value"])
             constraints_by_member[participant_id]["budget"] = {
-                "kind": "limited", "max_cost_minor": constraint["required_value"],
+                "kind": "limited", "max_cost_minor": bound,
                 "currency": execution_candidates[0]["currency"],
             }
+            if constraint.get("source_answer_id"):
+                constraints_by_member[participant_id]["answer_sources"].append(deepcopy(constraint))
             continue
         if constraint.get("constraint_rule") != "equals_v1" or constraint.get("status") != "confirmed":
             issues.append(_issue("UNSUPPORTED_HARD_CONSTRAINT", "Only confirmed equality requirements are activity-v2 compatible"))

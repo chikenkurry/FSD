@@ -100,14 +100,15 @@ def _numeric_utility(value: object, preference: dict) -> float:
         if lower == upper:
             return 1.0
         position = (actual - lower) / (upper - lower)
-        return float(position if rule == "numeric_maximize_v1" else Decimal(1) - position)
+        utility = position if rule == "numeric_maximize_v1" else Decimal(1) - position
+        return float(max(Decimal(0), min(Decimal(1), utility)))
     bounds = preference["preferred_value"]
     if _in_range(actual, bounds):
         return 1.0
     lower, upper = params.get("lower_bound"), params.get("upper_bound")
     if lower is None or upper is None or _decimal(lower) == _decimal(upper):
         return 0.0
-    distance = _decimal(lower) - actual if bounds.get("lower") is not None and actual < _decimal(bounds["lower"]) else actual - _decimal(bounds["upper"])
+    distance = _decimal(bounds["lower"]) - actual if bounds.get("lower") is not None and actual < _decimal(bounds["lower"]) else actual - _decimal(bounds["upper"])
     return float(max(Decimal(0), Decimal(1) - distance / (_decimal(upper) - _decimal(lower))))
 
 
@@ -178,13 +179,21 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
     try:
         validate_handoff(handoff)
     except ContractError as exc:
-        return GenericDecisionResult("invalid_input", run_id, "generic-option-baseline-v1", None, (), (), (str(exc),))
+        return GenericDecisionResult("invalid_input", run_id, "generic-option-baseline-v2", None, (), (), (str(exc),))
     required = _required_participants(handoff)
     if not required:
-        return GenericDecisionResult("invalid_input", run_id, "generic-option-baseline-v1", handoff["context"].get("policy_version"), (), (), ("NO_REQUIRED_PARTICIPANTS",))
+        return GenericDecisionResult("invalid_input", run_id, "generic-option-baseline-v2", handoff["context"].get("policy_version"), (), (), ("NO_REQUIRED_PARTICIPANTS",))
+    if any(p.get("response_status", "complete") != "complete" for p in handoff["participants"] if p["participant_id"] in required):
+        return GenericDecisionResult("blocked", run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"), (), (), ("INCOMPLETE_RESPONSE",))
     results, scored = [], []
     for candidate in handoff["candidates"]:
         state, codes = _feasibility(candidate, handoff["constraints"], set(required))
+        flags = {flag["flag"] for flag in handoff.get("option_flags", [])
+                 if flag["participant_id"] in required and flag["activity_id"] == candidate.get("source_option_id", candidate["option_id"])}
+        if "cannot_join" in flags:
+            state, codes = "infeasible", tuple(sorted(set(codes) | {"CANNOT_JOIN"}))
+        elif "needs_information" in flags and state != "infeasible":
+            state, codes = "unresolved", tuple(sorted(set(codes) | {"NEEDS_INFORMATION"}))
         result = {"option_id": candidate["option_id"], "feasibility": state, "explanation_codes": list(codes)}
         if state == "feasible":
             scores, score_codes = _score(candidate, handoff, required)
@@ -195,7 +204,7 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
                 group_score, variance = group_objective_metrics(minimum, average, scores, handoff["scoring_model"]["group_objective"])
                 scored.append((candidate, minimum, average, group_score, variance))
         results.append(result)
-    if not scored:
+    if not scored or any(row["feasibility"] == "unresolved" for row in results):
         status = "blocked" if any(row["feasibility"] == "unresolved" for row in results) else "no_feasible_candidate"
         return GenericDecisionResult(status, run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"), (), tuple(results))
     ordered = sorted(scored, key=lambda row: (-row[3], -row[1], -row[2], row[0]["option_id"]))

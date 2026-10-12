@@ -5,6 +5,7 @@ contract in pipeline.py remains available for existing rounds.
 """
 
 from __future__ import annotations
+import math
 
 import hashlib
 import json

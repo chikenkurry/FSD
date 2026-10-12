@@ -4,6 +4,7 @@ import unittest
 
 from decision_service.adapters import adapt_generic_to_option_v1, adapt_scenarios_to_option_v1
 from decision_service.generic_algorithm import run_decision
+from decision_service.generic_algorithm.run import _numeric_utility
 
 
 def preparation() -> dict:
@@ -61,6 +62,25 @@ class GenericOptionV1Tests(unittest.TestCase):
         self.assertEqual(result.ranked_candidates[0]["min_member_score"], 0.0)
         self.assertEqual({row["option_id"] for row in result.pareto_frontier}, {"a", "b"})
 
+    def test_contract_rejects_malformed_rules_types_and_objective(self):
+        handoff = self.handoff()
+        handoff['constraints'][0].update(constraint_rule='maximum_v1', required_value=1)
+        self.assertEqual(run_decision(handoff).status, 'invalid_input')
+        handoff = self.handoff()
+        handoff['candidates'][0]['facts'][0]['value_type'] = 'boolean'
+        self.assertEqual(run_decision(handoff).status, 'invalid_input')
+        handoff = self.handoff()
+        handoff['scoring_model']['group_objective']['mode'] = 'unknown'
+        self.assertEqual(run_decision(handoff).status, 'invalid_input')
+
+    def test_numeric_utilities_use_preferred_bounds_and_remain_bounded(self):
+        preference = {'utility_rule':'numeric_range_v1', 'preferred_value':{'lower':10,'upper':20},
+                      'utility_parameters':{'lower_bound':0,'upper_bound':100}}
+        self.assertAlmostEqual(_numeric_utility(5, preference), 0.95)
+        preference['utility_rule'] = 'numeric_maximize_v1'
+        self.assertEqual(_numeric_utility(200, preference), 1)
+        self.assertEqual(_numeric_utility(-20, preference), 0)
+
     def test_hard_constraint_excludes_a_candidate(self):
         source = preparation()
         source["candidates"][1]["facts"][1]["value"] = False
@@ -82,7 +102,7 @@ class GenericOptionV1Tests(unittest.TestCase):
         source["preferences"][0].update(kind="indifferent", utility_rule="neutral_v1")
         source["candidates"][0]["facts"][0]["status"] = "unknown"
         result = run_decision(self.handoff(source))
-        self.assertEqual(result.status, "ranked")  # p2 can still evaluate option b.
+        self.assertEqual(result.status, "blocked")  # Missing evidence could change the winner.
         source["preferences"][1].update(kind="indifferent", utility_rule="neutral_v1")
         source["candidates"][1]["facts"][0]["status"] = "unknown"
         result = run_decision(self.handoff(source))
@@ -92,7 +112,10 @@ class GenericOptionV1Tests(unittest.TestCase):
     def test_adapter_accepts_numeric_rules(self):
         source = preparation()
         source["criteria"][0]["value_type"] = "number"
-        source["preferences"][0]["utility_rule"] = "numeric_target_v1"
+        for index, candidate in enumerate(source["candidates"]):
+            candidate["facts"][0].update(value_type="number", value=10 + index)
+        for preference in source["preferences"]:
+            preference.update(utility_rule="numeric_target_v1", preferred_value=10, utility_parameters={"scale": 2})
         result = adapt_generic_to_option_v1(source)
         self.assertEqual(result["status"], "ready")
 
@@ -180,7 +203,7 @@ class GenericOptionV1Tests(unittest.TestCase):
              "preferred_value": 3, "utility_rule": "numeric_target_v1", "utility_parameters": {"scale": 2}, "polarity": "prefer"}
             for participant in ("p1", "p2")
         ]
-        source["scoring_model"]["questions"] = [{"question_id": "q_duration", "role": "soft", "weight": 1.0}]
+        source["scoring_model"]["questions"] = [{"question_id": "q_duration", "role": "soft", "weight": 1.0}, {"question_id": "q_portable", "role": "hard"}]
         source["scoring_model"]["member_weights"] = [
             {"participant_id": participant, "source_question_id": "q_duration", "attribute_id": "duration_days", "effective_weight": 1.0, "status": "resolved"}
             for participant in ("p1", "p2")

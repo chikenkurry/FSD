@@ -62,6 +62,23 @@ def test_requires_concrete_candidates_and_availability() -> None:
     assert adapted["issues"][0]["code"] == "CONCRETE_CANDIDATES_REQUIRED"
 
 
+def test_requires_execution_candidates_for_every_option() -> None:
+    preparation = _preparation()
+    preparation['candidates'].append({'option_id':'other','facts':[]})
+    adapted = adapt_generic_to_activity_v2(preparation, _execution_context())
+    assert adapted['status'] == 'needs_information'
+    assert 'MISSING_EXECUTION_OPTION' in [issue['code'] for issue in adapted['issues']]
+
+
+def test_does_not_drop_generic_date_availability() -> None:
+    preparation = _preparation()
+    preparation['constraints'].append({'participant_id':'p1','attribute_id':'availability',
+                                       'required_value':[{'start_date':'2026-10-02','end_date':'2026-10-03'}]})
+    adapted = adapt_generic_to_activity_v2(preparation, _execution_context())
+    assert adapted['status'] == 'unsupported'
+    assert adapted['issues'][0]['code'] == 'UNSUPPORTED_AVAILABILITY'
+
+
 def test_rejects_generic_avoidance_until_generic_algorithm_exists() -> None:
     preparation = _preparation()
     preparation["preferences"][0]["polarity"] = "avoid"
@@ -70,3 +87,22 @@ def test_rejects_generic_avoidance_until_generic_algorithm_exists() -> None:
 
     assert adapted["status"] == "unsupported"
     assert adapted["issues"][0]["code"] == "UNSUPPORTED_PREFERENCE"
+
+
+def test_intersects_multiple_compatible_budget_limits() -> None:
+    preparation = _preparation()
+    preparation['constraints'].append({**preparation['constraints'][0], 'required_value': 1500})
+    adapted = adapt_generic_to_activity_v2(preparation, _execution_context())
+    assert adapted['status'] == 'ready'
+    assert adapted['algorithm_input']['constraints'][0]['budget']['max_cost_minor'] == 1500
+    assert run_decision(adapted['algorithm_input']).status.value == 'no_feasible_candidate'
+
+
+def test_rejects_member_weights_the_activity_scorer_would_drop() -> None:
+    preparation = _preparation()
+    preparation['scoring_model']['member_weights'] = [{
+        'participant_id':'p1','source_question_id':'q_indoor','attribute_id':'indoor',
+        'status':'resolved','effective_weight':0.5}]
+    adapted = adapt_generic_to_activity_v2(preparation, _execution_context())
+    assert adapted['status'] == 'unsupported'
+    assert adapted['issues'][0]['code'] == 'UNSUPPORTED_MEMBER_WEIGHTS'
