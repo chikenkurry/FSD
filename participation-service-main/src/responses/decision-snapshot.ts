@@ -1,5 +1,10 @@
 import type { ResponseRecord } from './response.repository';
 import type { AnswerKindValue, BudgetKindValue } from './response.types';
+import { QuestionAnswerDto, QuestionDefinitionDto } from './question-answer';
+import { decisionStatus } from './response-completeness';
+
+export { decisionStatus, isComplete, completenessErrors } from './response-completeness';
+export type { DecisionResponseStatus } from './response-completeness';
 
 /**
  * Immutable snapshot Decision reads after freeze. Field names match
@@ -9,7 +14,11 @@ import type { AnswerKindValue, BudgetKindValue } from './response.types';
  * Candidate generation stays in Planning/Decision. Activity-level flags here must be
  * copied onto every candidate of that activity as `candidate_flags` before the algorithm runs.
  */
-export interface ResponseSnapshotV1 {
+export interface ResponseSnapshotV2 {
+  schema_version: "response-snapshot-v2";
+  option_snapshot_id: string | null;
+  currency: string;
+  minor_digits: number;
   snapshot_id: string;
   round_id: string;
   plan_id: string;
@@ -24,6 +33,7 @@ export interface SnapshotParticipant {
   participant_id: string;
   response_status: 'complete' | 'incomplete' | 'stale';
   is_required_for_decision: boolean;
+  answers?: QuestionAnswerDto[];
 }
 
 export interface SnapshotConstraint {
@@ -46,49 +56,6 @@ export interface SnapshotPreference {
   rating: 0 | 1 | 2 | 3 | 4;
 }
 
-export type DecisionResponseStatus = SnapshotParticipant['response_status'];
-
-export function decisionStatus(
-  response: ResponseRecord | undefined,
-  optionRevision: number,
-  activityIds: string[],
-): DecisionResponseStatus {
-  if (!response) return 'incomplete';
-  if (response.acknowledgedOptionRevision !== optionRevision) return 'stale';
-  return isComplete(response, activityIds) && response.status === 'SUBMITTED'
-    ? 'complete'
-    : 'incomplete';
-}
-
-export function isComplete(
-  response: { budgetKind: BudgetKindValue; activityAnswers: { activityId: string }[] },
-  activityIds: string[],
-): boolean {
-  if (response.budgetKind === 'UNANSWERED') return false;
-  const answered = new Set(response.activityAnswers.map((a) => a.activityId.toLowerCase()));
-  return activityIds.every((id) => answered.has(id.toLowerCase()));
-}
-
-export function completenessErrors(
-  response: { budgetKind: BudgetKindValue; activityAnswers: { activityId: string }[] },
-  activityIds: string[],
-): { field: string; message: string }[] {
-  const errors: { field: string; message: string }[] = [];
-  if (response.budgetKind === 'UNANSWERED') {
-    errors.push({ field: 'budget', message: 'Budget must be a cap or explicit unlimited before submit' });
-  }
-  const answered = new Set(response.activityAnswers.map((a) => a.activityId.toLowerCase()));
-  activityIds.forEach((id, index) => {
-    if (!answered.has(id.toLowerCase())) {
-      errors.push({
-        field: `activityAnswers.${index}`,
-        message: `Activity ${id} has no answer`,
-      });
-    }
-  });
-  return errors;
-}
-
 export function toDecisionSnapshot(args: {
   snapshotId: string;
   roundId: string;
@@ -98,7 +65,11 @@ export function toDecisionSnapshot(args: {
   memberIds: string[];
   responses: ResponseRecord[];
   createdAt: Date;
-}): ResponseSnapshotV1 {
+  questions?: QuestionDefinitionDto[];
+  currency?: string;
+  minorDigits?: number;
+  optionSnapshotId?: string | null;
+}): ResponseSnapshotV2 {
   const byMember = new Map(args.responses.map((r) => [r.memberId.toLowerCase(), r]));
   const memberIds = [...args.memberIds].sort((a, b) => a.localeCompare(b));
 
@@ -108,17 +79,22 @@ export function toDecisionSnapshot(args: {
 
   for (const memberId of memberIds) {
     const response = byMember.get(memberId.toLowerCase());
-    const status = decisionStatus(response, args.optionRevision, args.activityIds);
+    const status = decisionStatus(response, args.optionRevision, args.activityIds, args.questions);
     participants.push({
       participant_id: memberId,
       response_status: status,
       is_required_for_decision: true,
+      ...(args.questions?.length ? { answers: structuredClone(response?.answers ?? []) } : {}),
     });
-    constraints.push(toConstraint(memberId, response));
+    constraints.push(toConstraint(memberId, response, args.currency ?? "SGD"));
     if (response) preferences.push(...toPreferences(memberId, response.activityAnswers));
   }
 
   return {
+    schema_version: "response-snapshot-v2",
+    option_snapshot_id: args.optionSnapshotId ?? null,
+    currency: args.currency ?? "SGD",
+    minor_digits: args.minorDigits ?? 2,
     snapshot_id: args.snapshotId,
     round_id: args.roundId,
     plan_id: args.planId,
@@ -130,7 +106,7 @@ export function toDecisionSnapshot(args: {
   };
 }
 
-function toConstraint(participantId: string, response: ResponseRecord | undefined): SnapshotConstraint {
+function toConstraint(participantId: string, response: ResponseRecord | undefined, currency: string): SnapshotConstraint {
   return {
     participant_id: participantId,
     availability: {
@@ -141,7 +117,7 @@ function toConstraint(participantId: string, response: ResponseRecord | undefine
           end_at: interval.endAt.toISOString(),
         })),
     },
-    budget: toBudget(response?.budgetKind ?? 'UNANSWERED', response?.budgetCapMinor ?? null),
+    budget: toBudget(response?.budgetKind ?? 'UNANSWERED', response?.budgetCapMinor ?? null, currency),
     required_attributes: [],
     activity_flags: toActivityFlags(response?.activityAnswers ?? []),
     candidate_flags: [],
@@ -151,12 +127,13 @@ function toConstraint(participantId: string, response: ResponseRecord | undefine
 function toBudget(
   kind: BudgetKindValue,
   capMinor: number | null,
+  currency: string,
 ): SnapshotConstraint['budget'] {
-  if (kind === 'UNLIMITED') return { kind: 'unlimited', currency: 'SGD' };
+  if (kind === 'UNLIMITED') return { kind: 'unlimited', currency };
   if (kind === 'CAP' && capMinor !== null) {
-    return { kind: 'limited', max_cost_minor: capMinor, currency: 'SGD' };
+    return { kind: 'limited', max_cost_minor: capMinor, currency };
   }
-  return { kind: 'missing', currency: 'SGD' };
+  return { kind: 'missing', currency };
 }
 
 function toActivityFlags(

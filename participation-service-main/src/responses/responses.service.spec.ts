@@ -164,7 +164,7 @@ describe('ResponsesService', () => {
       await service.saveDraft(ROUND_ID, member1, aDraft());
       const submitted = await service.submit(ROUND_ID, member1, { expectedRevision: 1 });
       expect(submitted.status).toBe('SUBMITTED');
-      expect(submitted.revision).toBe(1);
+      expect(submitted.revision).toBe(2);
     });
 
     it('rejects an incomplete draft', async () => {
@@ -186,10 +186,10 @@ describe('ResponsesService', () => {
       const edited = await service.saveDraft(
         ROUND_ID,
         member1,
-        aDraft({ expectedRevision: 1, budget: { kind: 'UNLIMITED' } }),
+        aDraft({ expectedRevision: 2, budget: { kind: 'UNLIMITED' } }),
       );
       expect(edited.status).toBe('DRAFT');
-      expect(edited.revision).toBe(2);
+      expect(edited.revision).toBe(3);
     });
   });
 });

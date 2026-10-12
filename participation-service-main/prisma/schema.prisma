@@ -42,6 +42,11 @@ model ResponseRound {
   planId               String     @map("plan_id") @db.Uuid
   optionRevision       Int        @map("option_revision")
   activityIds          String[]   @map("activity_ids")
+  questions            Json       @default("[]")
+  memberIds            String[]   @default([]) @map("member_ids")
+  currency             String     @default("SGD")
+  minorDigits          Int        @default(2) @map("minor_digits")
+  optionSnapshotId     String?    @map("option_snapshot_id") @db.Uuid
   state                RoundState @default(COLLECTING)
   provisionOperationId String     @unique @map("provision_operation_id") @db.Uuid
   provisionPayloadHash String     @map("provision_payload_hash")
@@ -71,6 +76,7 @@ model Response {
   /// Per-person cap in SGD minor units (cents). Only set when budget_kind = CAP. 0 is a real cap.
   budgetCapMinor             Int?           @map("budget_cap_minor")
   privateNote                String?        @map("private_note")
+  answers                    Json           @default("[]")
   createdAt                  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Errors } from '../common/api-exception';
 import { isUuid } from '../common/validation';
-import { ResponseSnapshotV1, toDecisionSnapshot } from '../responses/decision-snapshot';
+import { ResponseSnapshotV2, toDecisionSnapshot } from '../responses/decision-snapshot';
 import { ResponseRepository } from '../responses/response.repository';
 import { FreezeRoundDto } from './freeze-round.dto';
 import { hashFreezePayload } from './freeze-hash';
@@ -24,7 +24,7 @@ export interface FreezeResult {
   snapshotId: string;
   state: 'FROZEN';
   alreadyFrozen: boolean;
-  snapshot: ResponseSnapshotV1;
+  snapshot: ResponseSnapshotV2;
 }
 
 export interface ProgressResult {
@@ -50,6 +50,12 @@ export class RoundsService {
    * No cross-service calls and no long transaction: one insert guarded by unique keys.
    */
   async provision(dto: ProvisionRoundDto): Promise<ProvisionResult> {
+    const ids = (dto.memberIds ?? []).map(id => id.toLowerCase());
+    const qids = (dto.questions ?? []).map(q => q.questionId.toLowerCase());
+    if (new Set(ids).size !== ids.length || new Set(qids).size !== qids.length
+        || new Set(dto.activityIds.map(id => id.toLowerCase())).size !== dto.activityIds.length) {
+      throw Errors.invalidInput([{ field: 'provision', message: 'Identifiers must be unique' }]);
+    }
     const hash = hashProvisionPayload(dto);
 
     const existing = await this.rounds.findById(dto.roundId);
@@ -62,6 +68,11 @@ export class RoundsService {
       activityIds: dto.activityIds,
       provisionOperationId: dto.operationId,
       provisionPayloadHash: hash,
+      questions: dto.questions ?? [],
+      memberIds: dto.memberIds ?? [],
+      currency: dto.currency ?? "SGD",
+      minorDigits: dto.minorDigits ?? 2,
+      optionSnapshotId: dto.optionSnapshotId ?? null,
     });
     if (created) return this.view(created, false);
 
@@ -115,6 +126,13 @@ export class RoundsService {
         };
       }
 
+      if (unit.round.memberIds?.length && JSON.stringify([...unit.round.memberIds].map(id => id.toLowerCase()).sort())
+          !== JSON.stringify([...dto.memberIds].map(id => id.toLowerCase()).sort())) {
+        throw Errors.operationConflict('Freeze roster must match the published roster');
+      }
+      if (new Set(dto.memberIds.map(id => id.toLowerCase())).size !== dto.memberIds.length) {
+        throw Errors.invalidInput([{ field: 'memberIds', message: 'Members must be unique' }]);
+      }
       const stored = await unit.listResponses();
       const snapshotId = randomUUID();
       const snapshot = toDecisionSnapshot({
@@ -123,6 +141,10 @@ export class RoundsService {
         planId: unit.round.planId,
         optionRevision: unit.round.optionRevision,
         activityIds: unit.round.activityIds,
+        questions: unit.round.questions ?? [],
+        currency: unit.round.currency ?? "SGD",
+        minorDigits: unit.round.minorDigits ?? 2,
+        optionSnapshotId: unit.round.optionSnapshotId ?? null,
         memberIds: dto.memberIds,
         responses: stored,
         createdAt: new Date(),
@@ -146,7 +168,7 @@ export class RoundsService {
     return result;
   }
 
-  async getSnapshot(roundId: string): Promise<ResponseSnapshotV1> {
+  async getSnapshot(roundId: string): Promise<ResponseSnapshotV2> {
     if (!isUuid(roundId)) {
       throw Errors.invalidInput([{ field: 'roundId', message: 'roundId must be a UUID' }]);
     }

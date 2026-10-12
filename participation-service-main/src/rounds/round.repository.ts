@@ -1,4 +1,5 @@
-import type { ResponseSnapshotV1 } from '../responses/decision-snapshot';
+import type { ResponseSnapshotV2 } from '../responses/decision-snapshot';
+import type { QuestionDefinitionDto } from '../responses/question-answer';
 
 export type RoundStateValue = 'COLLECTING' | 'FROZEN';
 
@@ -6,6 +7,11 @@ export type RoundStateValue = 'COLLECTING' | 'FROZEN';
 export interface RoundFacts {
   optionRevision: number;
   state: RoundStateValue;
+  questions?: QuestionDefinitionDto[];
+  memberIds?: string[];
+  currency?: string;
+  minorDigits?: number;
+  optionSnapshotId?: string | null;
 }
 
 export interface RoundRecord extends RoundFacts {
@@ -17,7 +23,7 @@ export interface RoundRecord extends RoundFacts {
   freezeOperationId: string | null;
   freezePayloadHash: string | null;
   snapshotId: string | null;
-  snapshot: ResponseSnapshotV1 | null;
+  snapshot: ResponseSnapshotV2 | null;
 }
 
 export interface NewRound {
@@ -27,6 +33,11 @@ export interface NewRound {
   activityIds: string[];
   provisionOperationId: string;
   provisionPayloadHash: string;
+  questions?: QuestionDefinitionDto[];
+  memberIds?: string[];
+  currency?: string;
+  minorDigits?: number;
+  optionSnapshotId?: string | null;
 }
 
 /**

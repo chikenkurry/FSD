@@ -1,21 +1,30 @@
 import { FieldError } from '../common/api-exception';
-import { SaveDraftDto } from './save-draft.dto';
+import { ActivityAnswerDto, AvailabilityIntervalDto, BudgetDto, SaveDraftDto } from './save-draft.dto';
+import { QuestionDefinitionDto } from './question-answer';
+import { validateQuestionAnswers } from './question-answer-rules';
 
 export const SLOT_MINUTES = 30;
 const SLOT_MS = SLOT_MINUTES * 60_000;
 
-/**
- * Cross-field rules that decorators cannot express. Pure function: no I/O, easy to unit test.
- * Returns every problem found so the UI can show them all at once.
- */
+/** Cross-field checks run after DTO validation and retain field error order. */
 export function validateDraft(
   dto: SaveDraftDto,
-  round: { activityIds: string[] },
+  round: { activityIds: string[]; questions?: QuestionDefinitionDto[] },
 ): FieldError[] {
-  const errors: FieldError[] = [];
+  if (!dto.budget || typeof dto.budget !== 'object') {
+    return [{ field: 'budget', message: 'Budget must be an object' }];
+  }
+  return [
+    ...validateAvailability(dto.availability),
+    ...validateBudget(dto.budget),
+    ...validateActivityAnswers(dto.activityAnswers, round.activityIds),
+    ...validateQuestionAnswers(dto.answers ?? [], round.questions ?? []),
+  ];
+}
 
-  // Availability: ordered, on the 30-minute grid, non-overlapping.
-  const parsed = dto.availability.map((interval, index) => ({
+function validateAvailability(intervals: AvailabilityIntervalDto[]): FieldError[] {
+  const errors: FieldError[] = [];
+  const parsed = intervals.map((interval, index) => ({
     index,
     start: Date.parse(interval.startAt),
     end: Date.parse(interval.endAt),
@@ -54,19 +63,25 @@ export function validateDraft(
       });
     }
   }
+  return errors;
+}
 
-  // Budget: a cap amount exists exactly when the kind is CAP.
-  if (dto.budget.kind === 'CAP' && dto.budget.capMinor === undefined) {
+function validateBudget(budget: BudgetDto): FieldError[] {
+  const errors: FieldError[] = [];
+  if (budget.kind === 'CAP' && (budget.capMinor == null || !Number.isInteger(budget.capMinor))) {
     errors.push({ field: 'budget.capMinor', message: 'capMinor is required when kind is CAP' });
   }
-  if (dto.budget.kind !== 'CAP' && dto.budget.capMinor !== undefined) {
+  if (budget.kind !== 'CAP' && budget.capMinor !== undefined) {
     errors.push({ field: 'budget.capMinor', message: 'capMinor is only allowed when kind is CAP' });
   }
+  return errors;
+}
 
-  // Activity answers: known activities, no duplicates, rating only with kind RATING.
-  const allowed = new Set(round.activityIds.map((id) => id.toLowerCase()));
+function validateActivityAnswers(answers: ActivityAnswerDto[], activityIds: string[]): FieldError[] {
+  const errors: FieldError[] = [];
+  const allowed = new Set(activityIds.map((id) => id.toLowerCase()));
   const seen = new Set<string>();
-  dto.activityAnswers.forEach((answer, index) => {
+  answers.forEach((answer, index) => {
     const id = answer.activityId.toLowerCase();
     if (!allowed.has(id)) {
       errors.push({
@@ -82,7 +97,7 @@ export function validateDraft(
     }
     seen.add(id);
 
-    if (answer.kind === 'RATING' && answer.rating === undefined) {
+    if (answer.kind === 'RATING' && (answer.rating == null || !Number.isInteger(answer.rating))) {
       errors.push({
         field: `activityAnswers.${index}.rating`,
         message: 'rating is required when kind is RATING',
@@ -95,6 +110,5 @@ export function validateDraft(
       });
     }
   });
-
   return errors;
 }

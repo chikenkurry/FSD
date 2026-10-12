@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsDefined,
   IsIn,
   IsInt,
   IsISO8601,
@@ -13,12 +14,14 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
+import { QuestionAnswerDto } from './question-answer';
 import { ANSWER_KINDS, AnswerKindValue, BUDGET_KINDS, BudgetKindValue } from './response.types';
 
 export const MAX_INTERVALS = 500;
 export const MAX_ACTIVITIES = 8;
-/** SGD minor units. 100,000,000 = S$1,000,000.00, far above any sensible per-person cap. */
+/** Maximum cap in the round's declared minor units; safely fits PostgreSQL Int. */
 export const MAX_BUDGET_MINOR = 100_000_000;
 /** Must carry an explicit offset so an instant is never guessed from server time. */
 const HAS_OFFSET = /(Z|[+-]\d{2}:\d{2})$/;
@@ -39,7 +42,7 @@ export class BudgetDto {
   kind!: BudgetKindValue;
 
   /** Per-person cap in minor units (cents). Required when kind = CAP, forbidden otherwise. */
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsInt()
   @Min(0)
   @Max(MAX_BUDGET_MINOR)
@@ -54,7 +57,7 @@ export class ActivityAnswerDto {
   kind!: AnswerKindValue;
 
   /** 0 strongly dislike ... 4 love. Required when kind = RATING, forbidden otherwise. */
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsInt()
   @Min(0)
   @Max(4)
@@ -79,6 +82,7 @@ export class SaveDraftDto {
   @Type(() => AvailabilityIntervalDto)
   availability!: AvailabilityIntervalDto[];
 
+  @IsDefined()
   @ValidateNested()
   @Type(() => BudgetDto)
   budget!: BudgetDto;
@@ -88,6 +92,13 @@ export class SaveDraftDto {
   @ValidateNested({ each: true })
   @Type(() => ActivityAnswerDto)
   activityAnswers!: ActivityAnswerDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => QuestionAnswerDto)
+  answers?: QuestionAnswerDto[];
 
   /** Never used by the algorithm and never shared. */
   @IsOptional()

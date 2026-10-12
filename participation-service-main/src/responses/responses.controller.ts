@@ -6,6 +6,7 @@ import { MyResponseView } from './my-response.view';
 import { ResponsesService } from './responses.service';
 import { SaveDraftDto } from './save-draft.dto';
 import { SubmitResponseDto } from './submit-response.dto';
+import { CopyResponseDto } from './copy-response.dto';
 
 /**
  * A member only ever reaches their own response: the member comes from the session,
@@ -57,5 +58,13 @@ export class ResponsesController {
     @Body() dto: SubmitResponseDto,
   ): Promise<MyResponseView> {
     return this.responses.submit(roundId, member, dto);
+  }
+
+  @Post('copy')
+  @HttpCode(200)
+  @ApiOperation({summary:'Copy the caller’s earlier answers into a new draft requiring review'})
+  copy(@Param('roundId') roundId: string, @CurrentMember() member: AuthorisedMember,
+       @Body() dto: CopyResponseDto): Promise<MyResponseView> {
+    return this.responses.copyDraft(roundId, dto.sourceRoundId, member);
   }
 }

@@ -1,4 +1,5 @@
 import type { RoundFacts, RoundRecord } from '../rounds/round.repository';
+import type { QuestionAnswerDto } from './question-answer';
 import { AnswerKindValue, BudgetKindValue, ResponseStatusValue } from './response.types';
 
 export interface AvailabilityRecord {
@@ -24,6 +25,7 @@ export interface ResponseRecord {
   updatedAt: Date;
   availability: AvailabilityRecord[];
   activityAnswers: ActivityAnswerRecord[];
+  answers?: QuestionAnswerDto[];
 }
 
 /** Everything a draft save replaces. */
@@ -34,6 +36,7 @@ export interface DraftData {
   privateNote: string | null;
   availability: AvailabilityRecord[];
   activityAnswers: ActivityAnswerRecord[];
+  answers?: QuestionAnswerDto[];
 }
 
 /**

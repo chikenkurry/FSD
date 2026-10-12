@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InternalTokenGuard } from '../auth/internal-token.guard';
-import { ResponseSnapshotV1 } from '../responses/decision-snapshot';
+import { ResponseSnapshotV2 } from '../responses/decision-snapshot';
 import { FreezeRoundDto } from './freeze-round.dto';
 import { ProvisionRoundDto } from './provision-round.dto';
 import { FreezeResult, ProgressResult, ProvisionResult, RoundsService } from './rounds.service';
@@ -42,7 +42,7 @@ export class InternalRoundsController {
     description:
       'For Decision. Snake_case fields match the algorithm input participants/constraints/preferences. Private notes are omitted.',
   })
-  getSnapshot(@Param('roundId') roundId: string): Promise<ResponseSnapshotV1> {
+  getSnapshot(@Param('roundId') roundId: string): Promise<ResponseSnapshotV2> {
     return this.rounds.getSnapshot(roundId);
   }
 

@@ -42,7 +42,8 @@ export class MemberSessionGuard implements CanActivate {
     const token = extractToken(req, this.config.sessionCookieName);
     if (!token) throw Errors.unauthenticated();
 
-    req.member = await this.authoriser.authorise(token, roundId);
+    req.params.roundId = roundId.toLowerCase();
+    req.member = await this.authoriser.authorise(token, req.params.roundId);
     return true;
   }
 }

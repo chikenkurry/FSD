@@ -66,7 +66,7 @@ export class InMemoryResponseRepository extends ResponseRepository {
   ): Promise<T | null> {
     const round = this.rounds.rounds.get(roundId);
     if (!round) return null;
-    return work(this.unitFor(roundId, { optionRevision: round.optionRevision, state: round.state }));
+    return work(this.unitFor(roundId, round));
   }
 
   private findRow(roundId: string, memberId: string): StoredResponse | undefined {
@@ -103,7 +103,7 @@ export class InMemoryResponseRepository extends ResponseRepository {
       submit: async (responseId, expectedRevision) => {
         const row = this.stored.get(responseId);
         if (!row || row.revision !== expectedRevision) return false;
-        this.stored.set(responseId, { ...row, status: 'SUBMITTED', updatedAt: new Date() });
+        this.stored.set(responseId, { ...row, status: 'SUBMITTED', revision: row.revision + 1, updatedAt: new Date() });
         return true;
       },
 
