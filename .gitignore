@@ -1,5 +1,14 @@
+node_modules/
+dist/
 __pycache__/
 *.py[cod]
+*.tsbuildinfo
 .pytest_cache/
+.coverage
+coverage/
 .venv/
-.claude/*
+venv/
+.env
+.env.*
+!.env.example
+.DS_Store

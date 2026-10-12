@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: planning_db
+    environment:
+      POSTGRES_USER: planning_user
+      POSTGRES_PASSWORD: planning_pass
+      POSTGRES_DB: planning_db
+    ports:
+      - "5433:5432"
