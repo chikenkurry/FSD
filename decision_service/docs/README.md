@@ -1,5 +1,8 @@
 # Decision preprocessing prototype
 
+The [integration guide](../../integration/README.md) documents the HTTP workflow
+connecting these functions to frozen Planning and Participation snapshots.
+
 ## Evaluation
 
 See [EVALUATION.md](EVALUATION.md) for the labelled cross-domain dataset,

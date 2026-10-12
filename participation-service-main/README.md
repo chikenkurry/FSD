@@ -1,8 +1,9 @@
 # Participation service
 
 Part of What2Do. Owns what each member answers: response drafts, availability, private budgets,
-activity answers, (later) immutable response snapshots, freeze and RSVPs.
+question answers, activity answers, immutable response snapshots and freeze. RSVPs remain deferred.
 Planning owns membership and sessions; Decision never writes here.
+The connected stack and form lifecycle are documented in [Service integration](../integration/README.md).
 
 NestJS + TypeScript, PostgreSQL via Prisma. One repo per service.
 
@@ -26,18 +27,9 @@ npx prisma migrate dev        # applies migrations to the local database
 npm run start:dev             # http://localhost:3000, OpenAPI at /docs
 ```
 
-## First-time setup: create the migrations
-
-The repo ships `prisma/schema.prisma` but no migrations yet. Generate them once, then commit them:
-
-```bash
-npx prisma migrate dev --name init
-npx prisma migrate dev --create-only --name check_constraints
-# paste the contents of prisma/check_constraints.sql into the new migration.sql, save, then:
-npx prisma migrate dev
-```
-
-Also commit `package-lock.json` (CI and the Dockerfile use `npm ci`).
+Committed migrations include question answers, published membership, currency precision
+and a constraint requiring non-null ratings for `RATING` answers. Production applies
+them with `prisma migrate deploy`; the Docker image runs that before startup.
 
 ## Tests
 
@@ -59,6 +51,7 @@ npm run test:e2e      # needs the migrated local database; deletes only rows of 
 | `GET /rounds/:roundId/my-response` | member | own draft (revision 0 and empty if never saved) |
 | `PUT /rounds/:roundId/my-response` | member | replace own draft; send back the `revision` you loaded as `expectedRevision` |
 | `POST /rounds/:roundId/my-response/submit` | member | mark a complete draft submitted |
+| `POST /rounds/:roundId/my-response/copy` | member | copy an earlier round into a draft requiring review |
 
 `/internal/*` needs the `x-internal-token` header and must not be routed through the public gateway.
 Errors follow `ApiErrorV1`: `{ code, message, retryable, requestId, fieldErrors? }`.
@@ -110,13 +103,12 @@ Testing layers: pure rules and services are unit tested against the in-memory fa
   Planning cannot be reached.
 - **Concurrency.** Saves lock the round row `FOR SHARE`; a per-response `revision` check stops two
   tabs overwriting each other; the unique `(round_id, member_id)` key settles racing first saves.
-- **Money** is integer minor units (SGD cents). `UNANSWERED`, `UNLIMITED` and a cap of `0` are three different things.
+- **Money** is integer minor units with currency and precision frozen at publication. `UNANSWERED`, `UNLIMITED` and a cap of `0` are three different things.
 - **Time** is a timestamp with an explicit offset, on the 30-minute grid. Unmarked time means unavailable.
 
 ## Open contract questions
 
-1. Planning's session-authorise endpoint (shape in `planning-session-authoriser.ts`) needs agreeing with M1 under F05.
-2. Align `ApiErrorV1` and `MemberResponseV1` with the shared examples once F02 publishes them.
-3. CSRF protection for cookie-authenticated writes: decide whether the gateway or this service enforces it.
-4. Whether provision carries the form schema, or only activity IDs as in this scaffold.
-5. Planning's freeze call should send `user_id` values as `memberIds` (the same IDs session authorise will return).
+Planning now implements session authorisation and provisions the question schema,
+published roster and snapshot identity. Its freeze call sends those same user IDs.
+The integration uses bearer tokens. Cookie-authenticated writes still need the
+team's gateway CSRF policy before using that transport in production.

@@ -27,7 +27,7 @@ flowchart TD
     L --> M
     M --> N[Validate handoff, conflicts, weights, and references]
     N --> O[Preparation packet, issues, and replay evidence]
-    O -.-> P[Generic algorithm adapter: future ranking]
+    O -.-> P[Execution adapter and matching]
 ```
 
 ## Function
@@ -263,8 +263,10 @@ This sketch omits field details. The complete frozen packet is
 The outer `status` remains `provisional` for generic decisions, or
 `needs_clarification` when member review is needed. Malformed inputs produce
 `invalid_input`; a configured provider failure produces `upstream_unavailable`.
-The existing algorithm handles activity/time input and cannot execute this
-schema yet, so `algorithm_input` is null even when preparation is ready.
+Preprocessing returns `algorithm_input: null` for generic decisions even when
+preparation is ready. The service workflow then selects a supported adapter and
+matcher. See the [integration guide](../../integration/README.md) for the API
+handoff and execution limits.
 
 For the product fixture, the output includes:
 
