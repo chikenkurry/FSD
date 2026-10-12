@@ -12,3 +12,6 @@ venv/
 .env.*
 !.env.example
 .DS_Store
+
+participation-service-main/.engine-artifacts/*
+!participation-service-main/.engine-artifacts/.gitkeep

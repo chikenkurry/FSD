@@ -1,11 +1,23 @@
 # syntax=docker/dockerfile:1
+FROM scratch AS engine-artifacts
+COPY .engine-artifacts/ /engines/
+
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY prisma ./prisma
-RUN npx prisma generate
+COPY scripts/install-engine-cache.cjs ./scripts/install-engine-cache.cjs
+# Optional verified artifacts support offline builds; binaries are ignored by Git.
+RUN --mount=type=bind,from=engine-artifacts,source=/engines,target=/engine-artifacts \
+    set -e; target=$(node -e "require('@prisma/get-platform').getBinaryTargetForCurrentPlatform().then(t=>process.stdout.write(t))"); \
+    node scripts/install-engine-cache.cjs && \
+    if [ -s /engine-artifacts/manifest.json ]; then \
+      export PRISMA_SCHEMA_ENGINE_BINARY="/app/node_modules/@prisma/engines/schema-engine-$target"; \
+      export PRISMA_QUERY_ENGINE_LIBRARY="/app/node_modules/@prisma/engines/libquery_engine-$target.so.node"; \
+    fi; \
+    npx prisma generate && cp "node_modules/@prisma/engines/schema-engine-$target" prisma/schema-engine
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 COPY src ./src
 RUN npm run build
@@ -15,6 +27,7 @@ RUN npm run build
 FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PRISMA_SCHEMA_ENGINE_BINARY=/app/prisma/schema-engine
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist

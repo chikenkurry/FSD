@@ -1,0 +1,65 @@
+name: what2do-integration
+services:
+  planning-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: planning
+      POSTGRES_PASSWORD: planning
+      POSTGRES_DB: planning
+    volumes: [planning-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U planning -d planning"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  participation-db:
+    image: postgres:16
+    ports: ["127.0.0.1:15432:5432"]
+    environment:
+      POSTGRES_USER: participation
+      POSTGRES_PASSWORD: participation
+      POSTGRES_DB: participation
+    volumes: [participation-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U participation -d participation"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  planning:
+    build: planning-service
+    depends_on:
+      planning-db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://planning:planning@planning-db:5432/planning?sslmode=disable
+      PARTICIPATION_BASE_URL: http://participation:3000
+      DECISION_BASE_URL: http://decision:8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+    ports: ["127.0.0.1:18080:8080"]
+  participation:
+    build: participation-service-main
+    depends_on:
+      participation-db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://participation:participation@participation-db:5432/participation
+      NODE_ENV: production
+      AUTH_MODE: planning
+      PLANNING_BASE_URL: http://planning:8080
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+    ports: ["127.0.0.1:13002:3000"]
+  decision:
+    build:
+      context: .
+      dockerfile: decision_service/Dockerfile
+    environment:
+      PLANNING_BASE_URL: http://planning:8080
+      PARTICIPATION_BASE_URL: http://participation:3000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+      DECISION_DB_PATH: /data/runs.sqlite
+      SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-rules}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
+    volumes: [decision-data:/data]
+volumes:
+  planning-data:
+  participation-data:
+  decision-data:
