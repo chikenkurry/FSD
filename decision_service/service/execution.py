@@ -11,7 +11,7 @@ from decision_service.generic_algorithm import run_decision as run_options
 from decision_service.preprocessing.money import minor_amount
 
 
-def execute_preparation(packet: dict, plan: dict, responses: dict) -> dict:
+def adapt_preparation(packet: dict, plan: dict, responses: dict) -> dict:
     mode = plan.get("execution_mode", "options")
     constraint_rows = {row["participant_id"]: row for row in responses.get("constraints", [])}
     if mode == "scheduled":
@@ -21,18 +21,23 @@ def execute_preparation(packet: dict, plan: dict, responses: dict) -> dict:
     else:
         adapted = adapt_generic_to_option_v1(packet)
     if adapted["status"] != "ready":
-        return {"status": adapted["status"], "issues": adapted["issues"]}
-
+        return adapted
     handoff = adapted["algorithm_input"]
-    if mode == "scheduled":
-        result = run_activity(handoff).as_dict()
-    else:
+    if mode != "scheduled":
         handoff["option_flags"] = [
             {"participant_id": pid, **flag}
             for pid, row in constraint_rows.items()
             for flag in row.get("activity_flags", [])
         ]
-        result = run_options(handoff).as_dict()
+    return adapted
+
+
+def execute_preparation(packet: dict, plan: dict, responses: dict) -> dict:
+    adapted = adapt_preparation(packet, plan, responses)
+    if adapted["status"] != "ready":
+        return {"status": adapted["status"], "issues": adapted["issues"]}
+    handoff = adapted["algorithm_input"]
+    result = (run_activity(handoff) if plan.get("execution_mode") == "scheduled" else run_options(handoff)).as_dict()
     return {
         "status": result["status"], "result": result, "algorithm_input": handoff,
         "issues": [{"code": code} for code in result.get("issues", [])],

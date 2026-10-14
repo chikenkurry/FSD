@@ -31,7 +31,7 @@ describe('MemberSessionGuard', () => {
     const authorise = jest.fn().mockResolvedValue(member);
     const req = requestWith({ authorization: 'Bearer tok-1' }, { roundId: ROUND });
     await expect(guardWith(authorise).canActivate(contextFor(req))).resolves.toBe(true);
-    expect(authorise).toHaveBeenCalledWith('tok-1', ROUND);
+    expect(authorise).toHaveBeenCalledWith('tok-1', ROUND, undefined);
     expect(req.member).toBe(member);
   });
 
@@ -39,7 +39,7 @@ describe('MemberSessionGuard', () => {
     const authorise = jest.fn().mockResolvedValue(member);
     const req = requestWith({ cookie: 'a=1; sess=cookie%2Dtok; b=2' }, { roundId: ROUND });
     await guardWith(authorise).canActivate(contextFor(req));
-    expect(authorise).toHaveBeenCalledWith('cookie-tok', ROUND);
+    expect(authorise).toHaveBeenCalledWith('cookie-tok', ROUND, undefined);
   });
 
   it('rejects a missing credential without calling the authoriser', async () => {

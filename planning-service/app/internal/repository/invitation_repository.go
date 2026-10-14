@@ -1,19 +1,22 @@
 package repository
 
 import (
-	"time"
-	"errors"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"planning-service/app/internal/database"
+	"time"
 
 	"planning-service/app/internal/model"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
+	ErrJoiningClosed      = errors.New("joining is closed for this round")
 	ErrInvitationNotFound = errors.New("invitation link not found")
 	ErrInvitationExpired  = errors.New("invitation link has expired")
 	ErrInvitationInvalid  = errors.New("invitation link is no longer valid")
@@ -27,7 +30,7 @@ func NewInvitationRepository(db *gorm.DB) *InvitationRepository {
 	return &InvitationRepository{db: db}
 }
 
-//  generates a secure random hex string
+// generates a secure random hex string
 func GenerateToken() (string, error) {
 	bytes := make([]byte, 16) // 32 char hex string
 	if _, err := rand.Read(bytes); err != nil {
@@ -36,22 +39,22 @@ func GenerateToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func (r *InvitationRepository) Create(ctx context.Context, planID, createdBy uuid.UUID, ttl time.Duration, maxUses int) (*model.Invitation, error){
+func (r *InvitationRepository) Create(ctx context.Context, planID, createdBy uuid.UUID, ttl time.Duration, maxUses int) (*model.Invitation, error) {
 	token, err := GenerateToken()
 	if err != nil {
 		return nil, err
 	}
 
 	invitation := &model.Invitation{
-		PlanID: planID,
+		PlanID:    planID,
 		CreatedBy: createdBy,
-		Token: token,
-		Status: model.InvitationStatusPending,
-		MaxUses: maxUses,
+		Token:     token,
+		Status:    model.InvitationStatusPending,
+		MaxUses:   maxUses,
 		ExpiresAt: time.Now().Add(ttl),
 	}
 
-	if err := r.db.WithContext(ctx).Create(invitation).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).Create(invitation).Error; err != nil {
 		return nil, err
 	}
 	return invitation, nil
@@ -60,7 +63,7 @@ func (r *InvitationRepository) Create(ctx context.Context, planID, createdBy uui
 // GetByToken fetches and validates an invitation token
 func (r *InvitationRepository) GetByToken(ctx context.Context, token string) (*model.Invitation, error) {
 	var invitation model.Invitation
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Preload("Plan").
 		First(&invitation, "token = ?", token).Error
 
@@ -89,9 +92,9 @@ func (r *InvitationRepository) GetByToken(ctx context.Context, token string) (*m
 func (r *InvitationRepository) AcceptInvitation(ctx context.Context, token string, userID uuid.UUID, displayName string) (*model.PlanMember, error) {
 	var member model.PlanMember
 
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := database.ContextDB(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		var invitation model.Invitation
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&invitation, "token = ?", token).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&invitation, "token = ?", token).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrInvitationNotFound
 			}
@@ -100,6 +103,30 @@ func (r *InvitationRepository) AcceptInvitation(ctx context.Context, token strin
 
 		if invitation.Status != model.InvitationStatusPending || time.Now().After(invitation.ExpiresAt) {
 			return ErrInvitationExpired
+		}
+		if invitation.MaxUses > 0 && invitation.UseCount >= invitation.MaxUses {
+			return ErrInvitationInvalid
+		}
+		var plan model.Plan
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&plan, "id = ?", invitation.PlanID).Error; err != nil {
+			return err
+		}
+		var latest model.PlanRound
+		if err := tx.Where("plan_id = ?", plan.ID).Order("round_number DESC").First(&latest).Error; err == nil {
+			var published model.PublishedRound
+			if err := tx.First(&published, "id = ?", latest.ID).Error; err == nil &&
+				(published.State != "COLLECTING" || published.RosterPolicy != "close") {
+				return ErrJoiningClosed
+			} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+		var count int64
+		if err := tx.Model(&model.PlanMember{}).Where("plan_id = ?", plan.ID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count >= 30 {
+			return errors.New("plan roster is full")
 		}
 
 		// 1. Check if user is already a member

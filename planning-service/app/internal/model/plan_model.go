@@ -18,14 +18,15 @@ const (
 
 func (c PlanState) IsValidState() bool {
 	switch c {
-		// remember to update here too!
-		case PlanStateDraft, PlanStateCollecting, PlanStateReviewing, PlanStateConfirmed, PlanStateArchived:
-			return true
+	// remember to update here too!
+	case PlanStateDraft, PlanStateCollecting, PlanStateReviewing, PlanStateConfirmed, PlanStateArchived:
+		return true
 	}
 	return false
 }
 
 type PlanCategory string
+
 // on update of categories, update the functions as well
 const (
 	CategoryMeeting PlanCategory = "MEETING"
@@ -36,9 +37,9 @@ const (
 
 func (c PlanCategory) IsValidCategory() bool {
 	switch c {
-		// remember to update here too!
-		case CategoryMeeting, CategoryTravel, CategoryDining, CategoryGeneral:
-			return true
+	// remember to update here too!
+	case CategoryMeeting, CategoryTravel, CategoryDining, CategoryGeneral:
+		return true
 	}
 	return false
 }
@@ -56,12 +57,12 @@ type Plan struct {
 	UpdatedAt       time.Time    `gorm:"type:timestamptz;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
 
 	// Relationships
-	CreatedBy          User                `gorm:"foreignKey:CreatedByUserID;constraint:OnDelete:RESTRICT" json:"created_by,omitempty"`
-	Rounds             []PlanRound         `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"rounds,omitempty"`
-	Members            []PlanMember        `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"members,omitempty"`
-	ProposedActivities []ProposedActivity  `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"proposed_activities,omitempty"`
-	Questions 		   []Question 		   `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"questions,omitempty"`
-	ConfirmedSelection *ConfirmedSelection `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"confirmed_selection,omitempty"`
+	CreatedBy          User               `gorm:"foreignKey:CreatedByUserID;constraint:OnDelete:RESTRICT" json:"created_by,omitempty"`
+	Rounds             []PlanRound        `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"rounds,omitempty"`
+	Members            []PlanMember       `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"members,omitempty"`
+	ProposedActivities []ProposedActivity `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"proposed_activities,omitempty"`
+	Questions          []Question         `gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE" json:"questions,omitempty"`
+	ConfirmedSelection *RoundSelection    `gorm:"-" json:"confirmed_selection,omitempty"`
 }
 
 func (Plan) TableName() string {

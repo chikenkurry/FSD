@@ -1,5 +1,10 @@
 # Fact collection proposal
 
+The Gemini Search collector and reviewed acceptance path are now implemented;
+see [the backend guide](../../integration/BACKEND_HARDENING.md#gemini-fact-collection).
+The research proposal below is retained as design context. Independent source
+verification and automatic acceptance policies remain separate work.
+
 Research date: 8 October 2026. No collector, network client, source connector,
 scraper, or automated approval was implemented for this proposal.
 

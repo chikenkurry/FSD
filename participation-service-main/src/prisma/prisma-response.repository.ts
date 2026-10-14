@@ -184,6 +184,8 @@ class PrismaFreezeUnitOfWork implements FreezeUnitOfWork {
       where: { id: this.round.id },
       data: {
         state: 'FROZEN',
+        ...(data.memberIds ? { memberIds: data.memberIds } : {}),
+        ...(data.optionSnapshotId ? { optionSnapshotId: data.optionSnapshotId } : {}),
         freezeOperationId: data.freezeOperationId,
         freezePayloadHash: data.freezePayloadHash,
         snapshotId: data.snapshotId,

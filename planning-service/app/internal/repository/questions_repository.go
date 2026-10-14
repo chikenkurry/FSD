@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"planning-service/app/internal/database"
 
 	"planning-service/app/internal/model"
 
@@ -20,13 +21,13 @@ func NewQuestionRepository(db *gorm.DB) *QuestionRepository {
 	return &QuestionRepository{db: db}
 }
 
-// insert a single question 
+// insert a single question
 func (r *QuestionRepository) Create(ctx context.Context, q *model.Question) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return database.ContextDB(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		// If sort_order was not provided (or is set to 0)
 		if q.SortOrder == 0 {
 			var maxSortOrder *int
-			
+
 			// COALESCE returns 0 if MAX() returns NULL (when no questions exist yet)
 			err := tx.Model(&model.Question{}).
 				Where("plan_id = ?", q.PlanID).
@@ -46,13 +47,13 @@ func (r *QuestionRepository) Create(ctx context.Context, q *model.Question) erro
 
 // CreateBatch seeds a list of questions (e.g. default form template) for a plan
 func (r *QuestionRepository) CreateBatch(ctx context.Context, questions []model.Question) error {
-	return r.db.WithContext(ctx).Create(&questions).Error
+	return database.ContextDB(ctx, r.db).Create(&questions).Error
 }
 
 // ListByPlanID returns all questions for a given plan ordered by form position
 func (r *QuestionRepository) ListByPlanID(ctx context.Context, planID uuid.UUID) ([]model.Question, error) {
 	var questions []model.Question
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Where("plan_id = ?", planID).
 		Order("sort_order ASC").
 		Find(&questions).Error
@@ -62,14 +63,14 @@ func (r *QuestionRepository) ListByPlanID(ctx context.Context, planID uuid.UUID)
 // Update modifies question title, requirement status, options, or sort order
 func (r *QuestionRepository) Update(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*model.Question, error) {
 	var q model.Question
-	if err := r.db.WithContext(ctx).First(&q, "id = ?", id).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).First(&q, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrQuestionNotFound
 		}
 		return nil, err
 	}
 
-	if err := r.db.WithContext(ctx).Model(&q).Updates(updates).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).Model(&q).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 	return &q, nil
@@ -77,7 +78,7 @@ func (r *QuestionRepository) Update(ctx context.Context, id uuid.UUID, updates m
 
 // Delete removes a question by ID
 func (r *QuestionRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	res := r.db.WithContext(ctx).Delete(&model.Question{}, "id = ?", id)
+	res := database.ContextDB(ctx, r.db).Delete(&model.Question{}, "id = ?", id)
 	if res.Error != nil {
 		return res.Error
 	}

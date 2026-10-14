@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 
+	"context"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"time"
 )
 
 type Handler struct {
@@ -17,6 +19,16 @@ type Handler struct {
 
 func NewHandler(db *gorm.DB, participation, decision, token string) *Handler {
 	return &Handler{db: db, rounds: &roundStore{db: db}, participation: participation, decision: decision, token: token}
+}
+
+func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if h.db.WithContext(ctx).Exec("SELECT 1").Error != nil {
+		fail(w, 503, "DATABASE_UNAVAILABLE")
+		return
+	}
+	respond(w, 200, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
@@ -34,37 +46,13 @@ func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "PUBLISH_CONFLICT")
 		return
 	}
-	if round.State == roundCollecting {
-		respond(w, 200, round)
-		return
-	}
-	var definition map[string]any
-	if json.Unmarshal(round.Definition, &definition) != nil {
-		fail(w, 500, "INTERNAL")
-		return
-	}
-	if _, err = h.call(r.Context(), h.decision, "POST", "/internal/planning/validate", definition); err != nil {
-		var remote RemoteError
-		if errors.As(err, &remote) && remote.Status == 400 {
-			h.rounds.abandonPublication(r.Context(), id)
+	round, err = h.completePublication(r.Context(), round)
+	if err != nil {
+		if errors.Is(err, errInvalidDefinition) {
 			fail(w, 400, "INVALID_DEFINITION")
 			return
 		}
 		fail(w, 503, "UPSTREAM_UNAVAILABLE")
-		return
-	}
-	payload, err := ProvisionPayload(round)
-	if err != nil {
-		fail(w, 500, "INTERNAL")
-		return
-	}
-	if _, err = h.call(r.Context(), h.participation, "POST", "/internal/rounds/provision", payload); err != nil {
-		fail(w, 503, "UPSTREAM_UNAVAILABLE")
-		return
-	}
-	round, err = h.rounds.finalizePublication(r.Context(), id)
-	if err != nil {
-		fail(w, 503, "RETRY_PUBLISH")
 		return
 	}
 	respond(w, 200, round)
@@ -83,6 +71,19 @@ func (h *Handler) Snapshot(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, json.RawMessage(round.Definition))
 }
 
+func (h *Handler) OptionSnapshot(w http.ResponseWriter, r *http.Request) {
+	id, ok := rowID(w, r)
+	if !ok {
+		return
+	}
+	round, err := h.rounds.find(r.Context(), id)
+	if err != nil || (round.State != roundLocking && round.State != roundReview && round.State != roundConfirmed) {
+		fail(w, 409, "FREEZE_REQUIRED")
+		return
+	}
+	respond(w, 200, json.RawMessage(round.EvaluationSnapshot()))
+}
+
 func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 	id, ok := rowID(w, r)
 	if !ok {
@@ -93,33 +94,7 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "ROUND_NOT_COLLECTING")
 		return
 	}
-	if round.ResponseSnapshotID != "" {
-		respond(w, 200, round)
-		return
-	}
-	var snapshot struct {
-		Roster []string `json:"roster"`
-	}
-	if json.Unmarshal(round.Definition, &snapshot) != nil {
-		fail(w, 500, "INTERNAL")
-		return
-	}
-	payload := map[string]any{"operationId": round.FreezeOperationID.String(), "roundId": id.String(), "memberIds": snapshot.Roster}
-	result, err := h.call(r.Context(), h.participation, "POST", "/internal/rounds/freeze", payload)
-	if err != nil {
-		fail(w, 503, "RETRY_FREEZE")
-		return
-	}
-	snapshotID, ok := result["snapshotId"].(string)
-	if !ok {
-		fail(w, 503, "INVALID_UPSTREAM_RESPONSE")
-		return
-	}
-	if _, err = uuid.Parse(snapshotID); err != nil {
-		fail(w, 503, "INVALID_UPSTREAM_RESPONSE")
-		return
-	}
-	round, err = h.rounds.finalizeFreeze(r.Context(), id, snapshotID)
+	round, err = h.completeFreeze(r.Context(), round)
 	if err != nil {
 		fail(w, 503, "RETRY_FREEZE")
 		return
@@ -128,6 +103,13 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Recommend(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Retry bool `json:"retry"`
+	}
+	if decode(w, r, &body) != nil {
+		fail(w, 400, "INVALID_INPUT")
+		return
+	}
 	id, ok := rowID(w, r)
 	if !ok {
 		return
@@ -137,7 +119,7 @@ func (h *Handler) Recommend(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "REVIEW_REQUIRED")
 		return
 	}
-	run, err := h.call(r.Context(), h.decision, "POST", "/internal/rounds/"+id.String()+"/recommendations", map[string]any{})
+	run, err := h.call(r.Context(), h.decision, "POST", "/internal/rounds/"+id.String()+"/recommendations", map[string]any{"retry": body.Retry})
 	if err != nil {
 		fail(w, 503, "UPSTREAM_UNAVAILABLE")
 		return
@@ -156,7 +138,7 @@ func (h *Handler) Recommend(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "STALE_RESULT")
 		return
 	}
-	respond(w, 200, run)
+	respondRun(w, run)
 }
 
 func (h *Handler) Result(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +156,7 @@ func (h *Handler) Result(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "UPSTREAM_UNAVAILABLE")
 		return
 	}
-	respond(w, 200, result)
+	respondRun(w, result)
 }
 
 func (h *Handler) Clarifications(w http.ResponseWriter, r *http.Request) {

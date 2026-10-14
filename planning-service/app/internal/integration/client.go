@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"planning-service/app/internal/httpapi"
 	"strings"
 	"time"
 )
@@ -19,17 +20,22 @@ type RemoteError struct {
 func (e RemoteError) Error() string { return fmt.Sprintf("upstream status %d: %s", e.Status, e.Code) }
 
 func (h *Handler) call(ctx context.Context, base, method, path string, body any) (map[string]any, error) {
-	encoded, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
+	var reader io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewReader(encoded)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(base, "/")+path, bytes.NewReader(encoded))
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(base, "/")+path, reader)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-internal-token", h.token)
-	response, err := (&http.Client{Timeout: 180 * time.Second}).Do(req)
+	req.Header.Set("x-request-id", httpapi.RequestID(ctx))
+	response, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	if err != nil {
 		return nil, err
 	}

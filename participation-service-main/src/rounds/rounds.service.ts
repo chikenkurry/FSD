@@ -50,6 +50,9 @@ export class RoundsService {
    * No cross-service calls and no long transaction: one insert guarded by unique keys.
    */
   async provision(dto: ProvisionRoundDto): Promise<ProvisionResult> {
+    if (dto.rosterPolicy === 'close' && !dto.optionSnapshotId) {
+      throw Errors.invalidInput([{ field: 'optionSnapshotId', message: 'A close-roster round needs an immutable form identity' }]);
+    }
     const ids = (dto.memberIds ?? []).map(id => id.toLowerCase());
     const qids = (dto.questions ?? []).map(q => q.questionId.toLowerCase());
     if (new Set(ids).size !== ids.length || new Set(qids).size !== qids.length
@@ -62,6 +65,7 @@ export class RoundsService {
     if (existing) return this.replay(existing, dto.operationId, hash);
 
     const created = await this.rounds.create({
+      rosterPolicy: dto.rosterPolicy ?? 'publication',
       id: dto.roundId,
       planId: dto.planId,
       optionRevision: dto.optionRevision,
@@ -126,12 +130,18 @@ export class RoundsService {
         };
       }
 
-      if (unit.round.memberIds?.length && JSON.stringify([...unit.round.memberIds].map(id => id.toLowerCase()).sort())
+      if (unit.round.rosterPolicy !== 'close' && unit.round.memberIds?.length && JSON.stringify([...unit.round.memberIds].map(id => id.toLowerCase()).sort())
           !== JSON.stringify([...dto.memberIds].map(id => id.toLowerCase()).sort())) {
         throw Errors.operationConflict('Freeze roster must match the published roster');
       }
       if (new Set(dto.memberIds.map(id => id.toLowerCase())).size !== dto.memberIds.length) {
         throw Errors.invalidInput([{ field: 'memberIds', message: 'Members must be unique' }]);
+      }
+      if (dto.optionRevision !== undefined && dto.optionRevision !== unit.round.optionRevision) {
+        throw Errors.operationConflict('Freeze option revision must match the published form');
+      }
+      if (unit.round.rosterPolicy === 'close' && (!dto.optionSnapshotId || dto.optionRevision === undefined)) {
+        throw Errors.operationConflict('A close-roster round requires final snapshot identity and revision');
       }
       const stored = await unit.listResponses();
       const snapshotId = randomUUID();
@@ -144,12 +154,17 @@ export class RoundsService {
         questions: unit.round.questions ?? [],
         currency: unit.round.currency ?? "SGD",
         minorDigits: unit.round.minorDigits ?? 2,
-        optionSnapshotId: unit.round.optionSnapshotId ?? null,
+        optionSnapshotId: dto.optionSnapshotId ?? unit.round.optionSnapshotId ?? null,
         memberIds: dto.memberIds,
         responses: stored,
         createdAt: new Date(),
       });
+      if (Buffer.byteLength(JSON.stringify(snapshot)) > 1_500_000) {
+        throw Errors.invalidInput([{ field: 'responses', message: 'Combined snapshot exceeds 1.5 MB; shorten answers or merge availability intervals' }]);
+      }
       await unit.freeze({
+        memberIds: dto.memberIds,
+        optionSnapshotId: dto.optionSnapshotId,
         freezeOperationId: dto.operationId,
         freezePayloadHash: hash,
         snapshotId,

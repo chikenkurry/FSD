@@ -5,6 +5,7 @@ export type RoundStateValue = 'COLLECTING' | 'FROZEN';
 
 /** The facts about a round that decide whether a write is allowed. */
 export interface RoundFacts {
+  rosterPolicy?: 'publication' | 'close';
   optionRevision: number;
   state: RoundStateValue;
   questions?: QuestionDefinitionDto[];
@@ -27,6 +28,7 @@ export interface RoundRecord extends RoundFacts {
 }
 
 export interface NewRound {
+  rosterPolicy?: 'publication' | 'close';
   id: string;
   planId: string;
   optionRevision: number;

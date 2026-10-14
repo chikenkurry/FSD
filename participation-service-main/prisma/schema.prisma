@@ -38,6 +38,7 @@ enum ActivityAnswerKind {
 /// One row per Planning round, created by the idempotent provision handshake.
 /// id is Planning's round_id. activity_ids are the activities members may answer.
 model ResponseRound {
+  rosterPolicy         String     @default("publication") @map("roster_policy")
   id                   String     @id @db.Uuid
   planId               String     @map("plan_id") @db.Uuid
   optionRevision       Int        @map("option_revision")
@@ -116,4 +117,17 @@ model ActivityAnswer {
 
   @@unique([responseId, activityId])
   @@map("activity_answers")
+}
+
+/// Attendance belongs to an immutable Planning selection, never to predicted availability.
+model Rsvp {
+  roundId          String   @map("round_id") @db.Uuid
+  memberId         String   @map("member_id") @db.Uuid
+  selectionVersion Int      @map("selection_version")
+  revision         Int      @default(1)
+  status           String
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([roundId, memberId])
+  @@map("rsvps")
 }

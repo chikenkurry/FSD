@@ -3,8 +3,10 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 
 	"planning-service/app/internal/model"
 
@@ -15,6 +17,19 @@ import (
 
 // Transactions serialize round transitions; upstream calls remain outside locks.
 type roundStore struct{ db *gorm.DB }
+
+// All lifecycle commands acquire plan before published-round, matching definition
+// edits and invitation admission. Consistent order prevents confirm/reopen deadlocks.
+func lockPublishedRound(tx *gorm.DB, id uuid.UUID, target *Round) error {
+	if err := tx.First(target, "id = ?", id).Error; err != nil {
+		return err
+	}
+	var plan model.Plan
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&plan, "id = ?", target.PlanID).Error; err != nil {
+		return err
+	}
+	return tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(target, "id = ?", id).Error
+}
 
 func (s *roundStore) find(ctx context.Context, id uuid.UUID) (Round, error) {
 	var round Round
@@ -30,7 +45,11 @@ func (s *roundStore) preparePublication(ctx context.Context, id uuid.UUID, setti
 	var round Round
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var source model.PlanRound
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&source, "id = ?", id).Error; err != nil {
+		if err := tx.First(&source, "id = ?", id).Error; err != nil {
+			return err
+		}
+		var gate model.Plan
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&gate, "id = ?", source.PlanID).Error; err != nil {
 			return err
 		}
 		existing := tx.First(&round, "id = ?", id).Error
@@ -69,7 +88,7 @@ func (s *roundStore) preparePublication(ctx context.Context, id uuid.UUID, setti
 		if err != nil {
 			return err
 		}
-		round = Round{ID: id, PlanID: plan.ID, State: roundPublishing, OptionRevision: source.RoundNumber, OptionSnapshotID: snapshotID,
+		round = Round{ID: id, PlanID: plan.ID, State: roundPublishing, RosterPolicy: "close", OptionRevision: source.RoundNumber, OptionSnapshotID: snapshotID,
 			Definition: encoded(snapshot), Settings: encoded(settings), PublishOperationID: uuid.New(), FreezeOperationID: uuid.New()}
 		return tx.Create(&round).Error
 	}, &sql.TxOptions{Isolation: sql.LevelSerializable})
@@ -79,7 +98,7 @@ func (s *roundStore) preparePublication(ctx context.Context, id uuid.UUID, setti
 func (s *roundStore) finalizePublication(ctx context.Context, id uuid.UUID) (Round, error) {
 	var round Round
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&round, "id = ?", id).Error; err != nil {
+		if err := lockPublishedRound(tx, id, &round); err != nil {
 			return err
 		}
 		if round.State != roundPublishing {
@@ -99,7 +118,7 @@ func (s *roundStore) finalizePublication(ctx context.Context, id uuid.UUID) (Rou
 func (s *roundStore) beginFreeze(ctx context.Context, id uuid.UUID) (Round, error) {
 	var round Round
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&round, "id = ?", id).Error; err != nil {
+		if err := lockPublishedRound(tx, id, &round); err != nil {
 			return err
 		}
 		if round.State == roundReview || round.State == roundConfirmed {
@@ -107,6 +126,35 @@ func (s *roundStore) beginFreeze(ctx context.Context, id uuid.UUID) (Round, erro
 		}
 		if round.State != roundCollecting && round.State != roundLocking {
 			return fmt.Errorf("round not collecting")
+		}
+		if round.State == roundLocking {
+			return nil
+		}
+		// The plan row also serializes invitation admission. A join committed first is included.
+		var plan model.Plan
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Members").First(&plan, "id = ?", round.PlanID).Error; err != nil {
+			return err
+		}
+		if round.RosterPolicy == "close" {
+			roster := make([]string, 0, len(plan.Members))
+			for _, member := range plan.Members {
+				roster = append(roster, member.UserID.String())
+			}
+			sort.Strings(roster)
+			if len(roster) == 0 || len(roster) > 30 {
+				return fmt.Errorf("invalid final roster")
+			}
+			var evaluation map[string]any
+			if err := json.Unmarshal(round.Definition, &evaluation); err != nil {
+				return err
+			}
+			round.OptionSnapshotID = uuid.New()
+			evaluation["roster"], evaluation["option_snapshot_id"] = roster, round.OptionSnapshotID.String()
+			evaluation["roster_is_final"] = true
+			round.EvaluationDefinition = encoded(evaluation)
+			if err := tx.Model(&round).Updates(map[string]any{"option_snapshot_id": round.OptionSnapshotID, "evaluation_definition": round.EvaluationDefinition}).Error; err != nil {
+				return err
+			}
 		}
 		return tx.Model(&round).Update("state", roundLocking).Error
 	})
@@ -116,7 +164,7 @@ func (s *roundStore) beginFreeze(ctx context.Context, id uuid.UUID) (Round, erro
 func (s *roundStore) finalizeFreeze(ctx context.Context, id uuid.UUID, snapshotID string) (Round, error) {
 	var round Round
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&round, "id = ?", id).Error; err != nil {
+		if err := lockPublishedRound(tx, id, &round); err != nil {
 			return err
 		}
 		if round.State != roundLocking {
@@ -140,7 +188,7 @@ func (s *roundStore) saveRecommendation(ctx context.Context, round Round, runID 
 	id := round.ID
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var current Round
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&current, "id = ?", id).Error; err != nil {
+		if err := lockPublishedRound(tx, id, &current); err != nil {
 			return err
 		}
 		var plan model.Plan

@@ -21,5 +21,5 @@ export abstract class SessionAuthoriser {
    * Must throw ApiException: UNAUTHENTICATED (bad credential), FORBIDDEN (not a member),
    * UPSTREAM_UNAVAILABLE (cannot decide: fail closed).
    */
-  abstract authorise(sessionToken: string, roundId: string): Promise<AuthorisedMember>;
+  abstract authorise(sessionToken: string, roundId: string, requestId?: string): Promise<AuthorisedMember>;
 }

@@ -1,7 +1,7 @@
 # Participation service
 
 Part of What2Do. Owns what each member answers: response drafts, availability, private budgets,
-question answers, activity answers, immutable response snapshots and freeze. RSVPs remain deferred.
+question answers, activity answers, immutable response snapshots, freeze and versioned RSVPs.
 Planning owns membership and sessions; Decision never writes here.
 The connected stack and form lifecycle are documented in [Service integration](../integration/README.md).
 
@@ -13,14 +13,14 @@ NestJS + TypeScript, PostgreSQL via Prisma. One repo per service.
 | --- | --- |
 | R01 provision a round, save and read a private draft | Implemented |
 | R02 submit, immutable snapshot, freeze | Implemented |
-| R03-R06 | Not started |
+| Versioned RSVP and final-roster freeze | Implemented |
 
 ## Run it locally
 
 Requires Node 22 and Docker.
 
 ```bash
-cp .env.example .env
+cp .env_example .env
 npm install
 docker compose up -d db
 npx prisma migrate dev        # applies migrations to the local database

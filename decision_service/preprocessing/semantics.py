@@ -10,6 +10,7 @@ from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+from decision_service.deadlines import remaining_timeout
 
 from .common import InputError, require_in, require_object, require_text
 
@@ -387,7 +388,7 @@ class OpenAISemanticProvider:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            with urlopen(request, timeout=remaining_timeout(self.timeout)) as response:
                 data = json.load(response)
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
             raise SemanticServiceError("Semantic model request failed") from exc
@@ -472,7 +473,7 @@ class OllamaSemanticProvider:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            with urlopen(request, timeout=remaining_timeout(self.timeout)) as response:
                 data = json.load(response)
         except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
             raise SemanticServiceError("Local semantic model request failed") from exc

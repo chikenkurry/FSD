@@ -11,6 +11,7 @@ export interface ProvisionPayload {
   currency?: string;
   minorDigits?: number;
   optionSnapshotId?: string;
+  rosterPolicy?: 'publication' | 'close';
 }
 
 /**
@@ -19,6 +20,7 @@ export interface ProvisionPayload {
  */
 export function hashProvisionPayload(payload: ProvisionPayload): string {
   const canonical = JSON.stringify({
+    ...(payload.rosterPolicy === 'close' ? { rosterPolicy: 'close' } : {}),
     roundId: payload.roundId.toLowerCase(),
     planId: payload.planId.toLowerCase(),
     optionRevision: payload.optionRevision,

@@ -1,7 +1,8 @@
 """Validate frozen inputs and preprocess them before invoking a supported matcher."""
+from copy import deepcopy
 from decision_service.preprocessing import preprocess
 
-from .execution import execute_preparation
+from .execution import execute_preparation, adapt_preparation
 from .snapshots import map_snapshots
 from .views import member_review, public_result
 
@@ -25,3 +26,31 @@ def execute(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
     if not packet or packet["status"] != "ready":
         return {**base, "status": packet["status"] if packet else processed["status"], "issues": processed["issues"]}
     return {**base, **execute_preparation(packet, plan, responses)}
+
+
+def preview(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
+    """Interpret one member's current draft without ranking or freezing it."""
+    if len(responses.get("participants", [])) != 1 or type(responses.get("response_revision")) is not int:
+        from .snapshots import SnapshotError
+        raise SnapshotError("A preview needs one member and an exact response revision")
+    planning, responses = deepcopy(planning), deepcopy(responses)
+    member = responses["participants"][0]
+    planning["roster"] = [member["participant_id"]]
+    # Draft status does not prevent extraction; missing required answers still produce issues.
+    member["response_status"] = "complete"
+    plan, reply = map_snapshots(planning, responses)
+    policy = {"group_objective": plan["group_objective"]} if plan.get("group_objective") else None
+    processed = preprocess(plan, reply, policy=policy, semantic_provider=semantic_provider)
+    refs = {key: planning[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
+    refs["response_snapshot_id"] = responses["snapshot_id"]
+    packet = processed.get("preparation", {})
+    status = packet.get("status", processed["status"])
+    issues = list(processed["issues"])
+    if status == "ready":
+        adapted = adapt_preparation(packet, plan, responses)
+        status = adapted["status"]
+        issues.extend(adapted.get("issues", []))
+    return {"status": status,
+            "input_refs": refs, "member_states": {member["participant_id"]: "draft"},
+            "processing": processed, "issues": issues,
+            "preview_member_id": member["participant_id"], "response_revision": responses["response_revision"]}

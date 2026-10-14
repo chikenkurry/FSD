@@ -1,24 +1,28 @@
 # What2Do
 
-Planning, Participation and Decision are integrated on `feat/service-integration`
-for the supported backend flow:
+Planning, Participation and Decision provide this integrated backend flow:
 
 ```text
 Create plan, options and questions
-  → Publish a frozen form, facts and roster
-  → Members save and submit private answers
-  → Close collection and freeze responses
-  → Preprocess answers and rank supported candidates
-  → Review and confirm a result, or reopen a new round
+  → Publish a frozen form and facts
+  → Invite members, collect answers and review private interpretations
+  → Close collection and freeze the final roster and responses
+  → Evaluate a durable recommendation job
+  → Confirm a local selection snapshot and RSVP, or reopen a new round
 ```
 
-This checkout provides backend APIs. Frontend form and review screens, automated
-web fact collection and RSVPs remain to be implemented. Organisers currently
-supply reviewed option facts. Legacy per-activity ratings return
+This checkout provides backend APIs, durable recommendation jobs, private draft
+previews, Gemini Search fact collection with evidence review, and versioned RSVPs.
+Frontend form and review screens remain to be implemented. Legacy per-activity ratings return
 `ACTIVITY_RATINGS_NOT_SUPPORTED`; the connected form uses question answers for
 preferences. Activity participation flags and structured budgets are supported.
 
 ## Run all services
+
+Copy [.env_example](.env_example) to `.env` in this directory and set `GEMINI_API_KEY`
+to enable fact collection. Compose passes the key only to Decision. See the
+[backend lifecycle guide](integration/BACKEND_HARDENING.md) for job polling,
+private previews, reviewed fact acceptance, RSVPs and service-specific local env files.
 
 Requirements:
 
@@ -71,8 +75,9 @@ review, confirmation and reopening. They also check that missing responses or
 facts prevent an authoritative result, and that scheduled budgets and participation
 flags reach the matcher. Test records remain in the local volumes.
 
-The checks use explicit question definitions and synthetic facts. They do not
-measure live LLM interpretation accuracy.
+The checks use explicit question definitions and synthetic facts. They cover late
+joins, stale previews, concurrent recommendations, confirm/reopen races, sessions,
+guest replacement and RSVP history. They do not measure live LLM interpretation accuracy.
 
 ## Use the APIs
 
@@ -113,7 +118,7 @@ docker compose -f compose.integration.yaml up -d --build --wait
 
 Change the URL and model to match your Ollama installation. Model outputs still
 pass preprocessing validation before ranking. This enables interpretation of
-answers; web fact collection remains separate work.
+answers. Gemini Search collects option facts separately when GEMINI_API_KEY is configured.
 
 ## Logs and shutdown
 

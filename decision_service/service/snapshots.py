@@ -137,3 +137,55 @@ def validate_planning_snapshot(snapshot: dict) -> None:
     result = preprocess(planning, reply, policy=policy)
     if result["status"] == "invalid_input":
         raise SnapshotError(result["issues"][0]["message"])
+    validate_capabilities(snapshot)
+
+
+def validate_capabilities(snapshot: dict) -> None:
+    """Reject known unrepresentable form definitions before collecting answers."""
+    mode = snapshot.get("execution_mode", "options")
+    if mode != "scheduled":
+        return
+    from datetime import datetime
+    candidates = snapshot.get("execution_context", {}).get("candidates", [])
+    if not candidates or len(candidates) > 10000:
+        raise SnapshotError("Scheduled mode needs 1-10000 concrete candidates")
+    seen, covered = set(), set()
+    options = {row["option_id"] for row in snapshot["options"]}
+    for candidate in candidates:
+        identity = candidate.get("candidate_id")
+        if not isinstance(identity, str) or not identity or identity in seen or candidate.get("option_id") not in options:
+            raise SnapshotError("Invalid or duplicate scheduled candidate identity")
+        seen.add(identity)
+        covered.add(candidate["option_id"])
+        try:
+            start, end = (datetime.fromisoformat(candidate[key].replace("Z", "+00:00")) for key in ("start_at", "end_at"))
+            if not start.tzinfo or not end.tzinfo or end <= start or start.timestamp() % 1800 or end.timestamp() % 1800:
+                raise ValueError()
+        except (KeyError, TypeError, ValueError):
+            raise SnapshotError("Scheduled times need explicit offsets, positive duration and a 30-minute grid") from None
+    if covered != options:
+        raise SnapshotError("Every scheduled option needs a concrete candidate")
+    for question in snapshot["questions"]:
+        mapping = question.get("mapping", {})
+        if question.get("role") == "importance":
+            raise SnapshotError("Scheduled mode does not support member importance changes")
+        if question.get("answer_format") == "date_intervals":
+            raise SnapshotError("Scheduled mode requires timestamp availability, not date-only answers")
+        if question.get("role") == "soft" and (question.get("numeric_intent") or
+                mapping.get("comparison_rule") not in {None, "attribute_match_v1", "neutral_v1"}):
+            raise SnapshotError("Numeric and overlap utilities require options or scenarios mode")
+
+
+def inspect_definition(snapshot: dict) -> dict:
+    from decision_service.preprocessing import preprocess
+    planning = deepcopy(snapshot)
+    planning["option_revision"] = str(snapshot["option_revision"])
+    reply = {"round_id": planning["round_id"], "option_revision": planning["option_revision"],
+             "response_snapshot_id": "definition-readiness", "participants": [
+                 {"participant_id": pid, "response_status": "complete", "answers": []} for pid in planning["roster"]]}
+    result = preprocess(planning, reply)
+    return {"status": "valid", "capabilities_version": "execution-capabilities-v1",
+            "execution_mode": snapshot.get("execution_mode", "options"),
+            "issues": [{"code": row["code"]} for row in result.get("issues", [])
+                       if row["code"] not in {"MISSING_ANSWER", "EXECUTION_ADAPTER_REQUIRED"}],
+            "fact_requests": result.get("preparation", {}).get("fact_requests", [])}

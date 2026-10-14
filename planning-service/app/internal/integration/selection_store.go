@@ -8,6 +8,7 @@ import (
 	"planning-service/app/internal/model"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -18,12 +19,12 @@ func (s *roundStore) findSelection(ctx context.Context, id uuid.UUID) (Selection
 	return selection, err
 }
 
-func (s *roundStore) confirm(ctx context.Context, round Round, request confirmationRequest, user uuid.UUID) (Selection, error) {
+func (s *roundStore) confirm(ctx context.Context, round Round, request confirmationRequest, user uuid.UUID, details datatypes.JSON) (Selection, error) {
 	id := round.ID
-	selection := Selection{RoundID: id, OperationID: request.OperationID, RunID: request.RunID, CandidateID: request.CandidateID, ConfirmedBy: user, ConfirmedAt: time.Now().UTC().Truncate(time.Microsecond)}
+	selection := Selection{RoundID: id, PlanID: round.PlanID, Version: round.OptionRevision, OptionSnapshotID: round.OptionSnapshotID, ResponseSnapshotID: round.ResponseSnapshotID, Details: details, OperationID: request.OperationID, RunID: request.RunID, CandidateID: request.CandidateID, ConfirmedBy: user, ConfirmedAt: time.Now().UTC().Truncate(time.Microsecond)}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var current Round
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&current, "id = ?", id).Error; err != nil {
+		if err := lockPublishedRound(tx, id, &current); err != nil {
 			return err
 		}
 		var plan model.Plan
@@ -34,7 +35,7 @@ func (s *roundStore) confirm(ctx context.Context, round Round, request confirmat
 			if err := tx.First(&selection, "round_id = ?", id).Error; err != nil {
 				return err
 			}
-			if !selection.matches(request) {
+			if !selectionMatches(selection, request) {
 				return fmt.Errorf("operation conflict")
 			}
 			return nil
@@ -64,7 +65,7 @@ func (s *roundStore) reopen(ctx context.Context, id uuid.UUID, operationID uuid.
 	var created model.PlanRound
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var source Round
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&source, "id = ?", id).Error; err != nil {
+		if err := lockPublishedRound(tx, id, &source); err != nil {
 			return err
 		}
 		if source.State != roundReview && source.State != roundConfirmed {
@@ -100,6 +101,6 @@ func (s *roundStore) reopen(ctx context.Context, id uuid.UUID, operationID uuid.
 	return created, err
 }
 
-func (s Selection) matches(request confirmationRequest) bool {
+func selectionMatches(s Selection, request confirmationRequest) bool {
 	return s.OperationID == request.OperationID && s.RunID == request.RunID && s.CandidateID == request.CandidateID
 }

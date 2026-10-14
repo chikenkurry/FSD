@@ -15,7 +15,9 @@ a product fixture that needs no model or manual mappings, confirmation examples,
 and the generic comparison declarations your teammate needs to implement.
 
 `preparation.status: ready` means preprocessing is complete. The outer status
-stays provisional until the generic algorithm supports the packet. Member
+stays provisional until an execution adapter and matcher finish. The connected
+service supports generic options, scheduled candidates and whole-day scenarios,
+and provides durable jobs and private previews. See [the backend guide](../../integration/BACKEND_HARDENING.md). Member
 interpretations and evidence remain private.
 
 Generic preprocessing supports multiple criteria from one answer, numeric

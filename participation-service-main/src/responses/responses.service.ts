@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { AuthorisedMember } from '../auth/session-authoriser';
 import { Errors } from '../common/api-exception';
 import { RoundFacts, RoundRecord, RoundRepository } from '../rounds/round.repository';
@@ -9,6 +10,7 @@ import { DraftData, DraftUnitOfWork, ResponseRepository } from './response.repos
 import { validateDraft } from './response-rules';
 import { SaveDraftDto } from './save-draft.dto';
 import { SubmitResponseDto } from './submit-response.dto';
+import { toDecisionSnapshot } from './decision-snapshot';
 
 /**
  * Member-facing draft use cases. Holds the business rules; storage and locking sit behind
@@ -45,7 +47,8 @@ export class ResponsesService {
       privateNote: stored.privateNote,
       availability: structuredClone(stored.availability),
       activityAnswers: stored.activityAnswers.filter(a => knownActivities.has(a.activityId)),
-      answers: structuredClone((stored.answers ?? []).filter(a => knownQuestions.has(a.question_id))),
+      answers: (stored.answers ?? []).filter(a => knownQuestions.has(a.question_id))
+        .map(a => ({ question_id: a.question_id, value: structuredClone(a.value) })),
     };
     const view = await this.responses.withRoundWriteLock(roundId, async unit => {
       if (unit.round.state !== 'COLLECTING') throw Errors.roundClosed();
@@ -77,12 +80,44 @@ export class ResponsesService {
     const data = toDraftData(dto);
     const view = await this.responses.withRoundWriteLock(roundId, async (unit) => {
       this.assertAcceptingResponses(unit.round, data.acknowledgedOptionRevision);
+      if (unit.round.rosterPolicy === 'close' && (data.answers ?? []).some(a => a.confirmed_requirement !== undefined || a.confirmed_requirements !== undefined)) {
+        const existingId = await unit.findExistingId(member.memberId);
+        const current = existingId ? await unit.load(existingId) : null;
+        for (const answer of data.answers ?? []) {
+          if (answer.confirmed_requirement === undefined && answer.confirmed_requirements === undefined) continue;
+          const previous = current?.answers?.find(a => a.question_id === answer.question_id);
+          if (answer.reviewed_revision !== dto.expectedRevision || !previous ||
+              JSON.stringify(previous.value) !== JSON.stringify(answer.value)) {
+            throw Errors.staleVersion('Save the answer, preview its current revision, then confirm that interpretation');
+          }
+        }
+      }
       const responseId = await this.writeDraft(unit, member.memberId, dto.expectedRevision, data);
       return toView(roundId, unit.round, await unit.load(responseId));
     });
 
     if (!view) throw Errors.notFound('Round not found');
     return view;
+  }
+
+  /** Internal-only projection; identity is supplied by Planning, never by a public caller. */
+  async previewSnapshot(roundId: string, memberId: string) {
+    const round = await this.rounds.findById(roundId);
+    if (!round) throw Errors.notFound('Round not found');
+    const snapshot = await this.responses.withRoundWriteLock(roundId, async unit => {
+      if (unit.round.state !== 'COLLECTING') throw Errors.roundClosed();
+      const responseId = await unit.findExistingId(memberId);
+      const current = responseId ? await unit.load(responseId) : null;
+      const revision = current?.revision ?? 0;
+      const snapshotId = createHash('sha256').update(`${roundId}:${memberId}:${revision}`).digest('hex');
+      return { ...toDecisionSnapshot({snapshotId, roundId, planId: round.planId,
+        optionRevision: round.optionRevision, activityIds: round.activityIds, memberIds: [memberId],
+        responses: current ? [current] : [], createdAt: current?.updatedAt ?? new Date(0),
+        questions: round.questions, currency: round.currency, minorDigits: round.minorDigits,
+        optionSnapshotId: round.optionSnapshotId}), response_revision: revision };
+    });
+    if (!snapshot) throw Errors.notFound('Round not found');
+    return snapshot;
   }
 
   /**
@@ -158,7 +193,7 @@ export class ResponsesService {
     const round = await this.rounds.findById(roundId);
     if (!round) throw Errors.notFound('This round is not open for responses');
     if (round.planId !== member.planId) throw Errors.forbidden();
-    if (round.memberIds?.length && !round.memberIds.some(id => id.toLowerCase() === member.memberId.toLowerCase())) {
+    if ((round.rosterPolicy !== 'close' || round.state === 'FROZEN') && round.memberIds?.length && !round.memberIds.some(id => id.toLowerCase() === member.memberId.toLowerCase())) {
       throw Errors.forbidden();
     }
     return round;

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"planning-service/app/internal/database"
 
 	"planning-service/app/internal/model"
 
@@ -27,7 +28,7 @@ func NewConfirmedSelectionRepository(db *gorm.DB) *ConfirmedSelectionRepository 
 func (r *ConfirmedSelectionRepository) Create(ctx context.Context, selection *model.ConfirmedSelection) error {
 	var count int64
 
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Model(&model.ConfirmedSelection{}).
 		Where("plan_id = ?", selection.PlanID).
 		Count(&count).Error
@@ -40,14 +41,14 @@ func (r *ConfirmedSelectionRepository) Create(ctx context.Context, selection *mo
 		return ErrConfirmedSelectionExists
 	}
 
-	return r.db.WithContext(ctx).Create(selection).Error
+	return database.ContextDB(ctx, r.db).Create(selection).Error
 }
 
 // GetByID fetches a confirmed selection by its ID
 func (r *ConfirmedSelectionRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.ConfirmedSelection, error) {
 	var selection model.ConfirmedSelection
 
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Preload("SelectedActivity").
 		First(&selection, "id = ?", id).Error
 
@@ -66,7 +67,7 @@ func (r *ConfirmedSelectionRepository) GetByID(ctx context.Context, id uuid.UUID
 func (r *ConfirmedSelectionRepository) GetByPlanID(ctx context.Context, planID uuid.UUID) (*model.ConfirmedSelection, error) {
 	var selection model.ConfirmedSelection
 
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Preload("SelectedActivity").
 		First(&selection, "plan_id = ?", planID).Error
 

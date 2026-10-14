@@ -3,11 +3,12 @@ package repository
 import (
 	"context"
 	"errors"
+	"planning-service/app/internal/database"
 
 	"planning-service/app/internal/model"
 
-	"gorm.io/gorm"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var ErrProposedActivityNotFound = errors.New("proposed activity not found")
@@ -21,14 +22,14 @@ func NewProposedActivityRepository(db *gorm.DB) *ProposedActivityRepository {
 }
 
 func (r *ProposedActivityRepository) Create(ctx context.Context, activity *model.ProposedActivity) error {
-	return r.db.WithContext(ctx).Create(activity).Error
+	return database.ContextDB(ctx, r.db).Create(activity).Error
 }
 
 func (r *ProposedActivityRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.ProposedActivity, error) {
 	var activity model.ProposedActivity
 
-	err := r.db.WithContext(ctx).First(&activity, "id = ?", id).Error
-	
+	err := database.ContextDB(ctx, r.db).First(&activity, "id = ?", id).Error
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProposedActivityNotFound
@@ -43,7 +44,7 @@ func (r *ProposedActivityRepository) GetByID(ctx context.Context, id uuid.UUID) 
 func (r *ProposedActivityRepository) ListByPlanID(ctx context.Context, planID uuid.UUID) ([]model.ProposedActivity, error) {
 	var activities []model.ProposedActivity
 
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Where("plan_id = ?", planID).
 		Order("created_at ASC").
 		Find(&activities).Error
@@ -54,14 +55,14 @@ func (r *ProposedActivityRepository) ListByPlanID(ctx context.Context, planID uu
 func (r *ProposedActivityRepository) Update(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*model.ProposedActivity, error) {
 	var activity model.ProposedActivity
 
-	if err := r.db.WithContext(ctx).First(&activity, "id = ?", id).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).First(&activity, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProposedActivityNotFound
 		}
 		return nil, err
 	}
 
-	if err := r.db.WithContext(ctx).Model(&activity).Updates(updates).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).Model(&activity).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
@@ -69,7 +70,7 @@ func (r *ProposedActivityRepository) Update(ctx context.Context, id uuid.UUID, u
 }
 
 func (r *ProposedActivityRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Delete(&model.ProposedActivity{}, "id = ?", id)
+	result := database.ContextDB(ctx, r.db).Delete(&model.ProposedActivity{}, "id = ?", id)
 
 	if result.Error != nil {
 		return result.Error

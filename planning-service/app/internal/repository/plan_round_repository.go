@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"planning-service/app/internal/database"
 
 	"planning-service/app/internal/model"
 
@@ -26,7 +27,7 @@ func NewPlanRoundRepository(db *gorm.DB) *PlanRoundRepository {
 // Create creates a new round for a plan.
 // Round number is automatically assigned based on the latest round.
 func (r *PlanRoundRepository) Create(ctx context.Context, round *model.PlanRound) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return database.ContextDB(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		var plan model.Plan
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&plan, "id = ?", round.PlanID).Error; err != nil {
 			return err
@@ -56,7 +57,7 @@ func (r *PlanRoundRepository) Create(ctx context.Context, round *model.PlanRound
 func (r *PlanRoundRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.PlanRound, error) {
 	var round model.PlanRound
 
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		First(&round, "id = ?", id).Error
 
 	if err != nil {
@@ -74,7 +75,7 @@ func (r *PlanRoundRepository) GetByID(ctx context.Context, id uuid.UUID) (*model
 func (r *PlanRoundRepository) ListByPlanID(ctx context.Context, planID uuid.UUID) ([]model.PlanRound, error) {
 	var rounds []model.PlanRound
 
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Where("plan_id = ?", planID).
 		Order("round_number ASC").
 		Find(&rounds).Error
@@ -86,7 +87,7 @@ func (r *PlanRoundRepository) ListByPlanID(ctx context.Context, planID uuid.UUID
 func (r *PlanRoundRepository) Update(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*model.PlanRound, error) {
 	var round model.PlanRound
 
-	if err := r.db.WithContext(ctx).First(&round, "id = ?", id).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).First(&round, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrPlanRoundNotFound
 		}
@@ -94,7 +95,7 @@ func (r *PlanRoundRepository) Update(ctx context.Context, id uuid.UUID, updates 
 		return nil, err
 	}
 
-	if err := r.db.WithContext(ctx).Model(&round).Updates(updates).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).Model(&round).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
@@ -103,7 +104,7 @@ func (r *PlanRoundRepository) Update(ctx context.Context, id uuid.UUID, updates 
 
 // Delete deletes a plan round
 func (r *PlanRoundRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Delete(&model.PlanRound{}, "id = ?", id)
+	result := database.ContextDB(ctx, r.db).Delete(&model.PlanRound{}, "id = ?", id)
 
 	if result.Error != nil {
 		return result.Error

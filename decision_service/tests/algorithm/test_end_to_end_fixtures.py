@@ -1,4 +1,4 @@
-from app.algorithm import ExplanationCode, Feasibility, Status, run_decision_algorithm
+from decision_service.app.algorithm import ExplanationCode, Feasibility, Status, run_decision_algorithm
 
 from .fixtures import project_plan_fixture
 

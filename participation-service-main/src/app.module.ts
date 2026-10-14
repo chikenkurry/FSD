@@ -5,8 +5,9 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ResponsesModule } from './responses/responses.module';
 import { RoundsModule } from './rounds/rounds.module';
+import { RsvpsModule } from './rsvps/rsvps.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, AuthModule, HealthModule, RoundsModule, ResponsesModule],
+  imports: [ConfigModule, PrismaModule, AuthModule, HealthModule, RoundsModule, ResponsesModule, RsvpsModule],
 })
 export class AppModule {}

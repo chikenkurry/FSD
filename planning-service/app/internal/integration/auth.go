@@ -43,13 +43,15 @@ func (h *Handler) Guard(next http.Handler) http.Handler {
 			fail(w, 403, "FORBIDDEN")
 			return
 		}
-		if planID != uuid.Nil && !h.member(user, planID, write) {
+		memberWrite := len(parts) == 4 && parts[1] == "rounds" && parts[3] == "preview"
+		if planID != uuid.Nil && !h.member(user, planID, write && !memberWrite) {
 			fail(w, 403, "FORBIDDEN")
 			return
 		}
 		if planID != uuid.Nil && write && !h.allowPlanMutation(w, r, parts, planID) {
 			return
 		}
+		r = r.WithContext(context.WithValue(r.Context(), planKey{}, planID))
 		next.ServeHTTP(w, r)
 	})
 }

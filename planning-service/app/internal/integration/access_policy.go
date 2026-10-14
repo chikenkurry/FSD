@@ -10,6 +10,10 @@ import (
 )
 
 func validateMutationBody(w http.ResponseWriter, r *http.Request, parts []string, user uuid.UUID) (uuid.UUID, bool) {
+	if len(parts) < 2 {
+		fail(w, 400, "INVALID_INPUT")
+		return uuid.Nil, false
+	}
 	var bodyPlanID uuid.UUID
 	payload, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 2_000_000))
 	if err != nil {
@@ -44,6 +48,10 @@ func (h *Handler) allowPlanMutation(w http.ResponseWriter, r *http.Request, part
 		if err == nil {
 			var frozen Round
 			if h.db.First(&frozen, "id = ?", latest.ID).Error == nil && frozen.State != "DRAFT" {
+				rosterEdit := parts[1] == "members" || (parts[1] == "plans" && len(parts) > 3 && parts[3] == "members")
+				if rosterEdit && frozen.State == roundCollecting && frozen.RosterPolicy == "close" {
+					return true
+				}
 				fail(w, 409, "REOPEN_REQUIRED")
 				return false
 			}
@@ -71,6 +79,9 @@ func (h *Handler) planForPath(parts []string, user uuid.UUID) (uuid.UUID, bool) 
 		return uuid.Nil, false
 	}
 	resource := parts[1]
+	if resource == "session" {
+		return uuid.Nil, true
+	}
 	if resource == "users" {
 		if len(parts) == 2 {
 			return uuid.Nil, true
@@ -123,5 +134,6 @@ func (h *Handler) planForPath(parts []string, user uuid.UUID) (uuid.UUID, bool) 
 func editsDefinition(parts []string) bool {
 	resource := parts[1]
 	return resource == "question" || resource == "proposed_activity" || resource == "members" ||
+		(resource == "plans" && len(parts) == 3) ||
 		(resource == "plans" && len(parts) > 3 && parts[3] == "members")
 }

@@ -6,6 +6,7 @@ import { NewRound, RoundRecord, RoundRepository } from '../rounds/round.reposito
 import { PrismaService } from './prisma.service';
 
 export function toRoundRecord(row: {
+  rosterPolicy?: string;
   id: string;
   planId: string;
   optionRevision: number;
@@ -24,6 +25,7 @@ export function toRoundRecord(row: {
   snapshot: Prisma.JsonValue | null;
 }): RoundRecord {
   return {
+    rosterPolicy: row.rosterPolicy === 'close' ? 'close' : 'publication',
     id: row.id,
     planId: row.planId,
     optionRevision: row.optionRevision,

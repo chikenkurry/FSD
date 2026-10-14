@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"planning-service/app/internal/database"
 
 	"planning-service/app/internal/model"
 
@@ -25,7 +26,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 
 // Create inserts a new user
 func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
-	err := r.db.WithContext(ctx).Create(user).Error
+	err := database.ContextDB(ctx, r.db).Create(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrUsernameDuplicate
@@ -38,7 +39,7 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 // GetByID fetches a user by primary key
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var user model.User
-	err := r.db.WithContext(ctx).First(&user, "id = ?", id).Error
+	err := database.ContextDB(ctx, r.db).First(&user, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -51,7 +52,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 // GetByIDWithRelations fetches a user and preloads their created plans and memberships
 func (r *UserRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var user model.User
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Preload("CreatedPlans").
 		Preload("Memberships").
 		First(&user, "id = ?", id).Error
@@ -70,7 +71,7 @@ func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]model.U
 	var users []model.User
 	var total int64
 
-	db := r.db.WithContext(ctx).Model(&model.User{})
+	db := database.ContextDB(ctx, r.db).Model(&model.User{})
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -86,7 +87,7 @@ func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]model.U
 
 // Update updates a user's username
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
-	result := r.db.WithContext(ctx).
+	result := database.ContextDB(ctx, r.db).
 		Model(user).
 		Where("id = ?", user.ID).
 		Update("username", user.Username)
@@ -102,7 +103,7 @@ func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 
 // Delete removes a user by ID
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Delete(&model.User{}, "id = ?", id)
+	result := database.ContextDB(ctx, r.db).Delete(&model.User{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error
 	}

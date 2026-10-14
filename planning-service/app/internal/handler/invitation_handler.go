@@ -30,7 +30,6 @@ type InvitationLinkResponse struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-
 type InvitationHandler struct {
 	repo    *repository.InvitationRepository
 	baseURL string // e.g. "https://app.yourdomain.com/join"
@@ -62,7 +61,6 @@ func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Requ
 
 	invitation, err := h.repo.Create(r.Context(), planID, req.CreatedBy, time.Duration(ttlHours)*time.Hour, req.MaxUses)
 	if err != nil {
-		fmt.Println(err)
 		WriteError(w, http.StatusInternalServerError, "Failed to create invitation link")
 		return
 	}
@@ -94,6 +92,10 @@ func (h *InvitationHandler) AcceptInvitation(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		if errors.Is(err, repository.ErrInvitationNotFound) {
 			WriteError(w, http.StatusNotFound, "Invitation link not found")
+			return
+		}
+		if errors.Is(err, repository.ErrJoiningClosed) {
+			WriteError(w, http.StatusConflict, "Joining is closed for this round")
 			return
 		}
 		if errors.Is(err, repository.ErrInvitationExpired) || errors.Is(err, repository.ErrInvitationInvalid) {

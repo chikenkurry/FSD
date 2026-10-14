@@ -3,23 +3,24 @@ package repository
 import (
 	"context"
 	"errors"
+	"planning-service/app/internal/database"
 
 	"planning-service/app/internal/model"
 
-	"gorm.io/gorm"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var (
-	ErrMemberNotFound  = errors.New("plan member not found")
-	ErrMemberExists    = errors.New("user is already a member of this plan")
+	ErrMemberNotFound = errors.New("plan member not found")
+	ErrMemberExists   = errors.New("user is already a member of this plan")
 )
 
 type PlanMemberRepository struct {
 	db *gorm.DB
 }
 
-func NewPlanMemberRepository(db *gorm.DB) *PlanMemberRepository{
+func NewPlanMemberRepository(db *gorm.DB) *PlanMemberRepository {
 	return &PlanMemberRepository{db: db}
 }
 
@@ -27,11 +28,11 @@ func NewPlanMemberRepository(db *gorm.DB) *PlanMemberRepository{
 func (r *PlanMemberRepository) AddMember(ctx context.Context, member *model.PlanMember) error {
 	// check if user is already a member of this plan
 	var count int64
-	err := r.db.WithContext(ctx).
-			Model(&model.PlanMember{}).
-			Where("plan_id = ? AND user_id = ?", member.PlanID, member.UserID).
-			Count(&count).Error
-	
+	err := database.ContextDB(ctx, r.db).
+		Model(&model.PlanMember{}).
+		Where("plan_id = ? AND user_id = ?", member.PlanID, member.UserID).
+		Count(&count).Error
+
 	if err != nil {
 		return err
 	}
@@ -39,13 +40,13 @@ func (r *PlanMemberRepository) AddMember(ctx context.Context, member *model.Plan
 		return ErrMemberExists
 	}
 
-	return r.db.WithContext(ctx).Create(member).Error
+	return database.ContextDB(ctx, r.db).Create(member).Error
 }
 
 // GetMemberByID fetches a single plan member record by its primary key
 func (r *PlanMemberRepository) GetMemberByID(ctx context.Context, id uuid.UUID) (*model.PlanMember, error) {
 	var member model.PlanMember
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Preload("User").
 		First(&member, "id = ?", id).Error
 
@@ -61,7 +62,7 @@ func (r *PlanMemberRepository) GetMemberByID(ctx context.Context, id uuid.UUID) 
 // ListByPlanID retrieves all members for a specific plan
 func (r *PlanMemberRepository) ListByPlanID(ctx context.Context, planID uuid.UUID) ([]model.PlanMember, error) {
 	var members []model.PlanMember
-	err := r.db.WithContext(ctx).
+	err := database.ContextDB(ctx, r.db).
 		Preload("User").
 		Where("plan_id = ?", planID).
 		Order("joined_at ASC").
@@ -73,15 +74,15 @@ func (r *PlanMemberRepository) ListByPlanID(ctx context.Context, planID uuid.UUI
 // UpdateMember updates display name and/or role of a plan member
 func (r *PlanMemberRepository) UpdateMember(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*model.PlanMember, error) {
 	var member model.PlanMember
-	
-	if err := r.db.WithContext(ctx).First(&member, "id = ?", id).Error; err != nil {
+
+	if err := database.ContextDB(ctx, r.db).First(&member, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrMemberNotFound
 		}
 		return nil, err
 	}
 
-	if err := r.db.WithContext(ctx).Model(&member).Updates(updates).Error; err != nil {
+	if err := database.ContextDB(ctx, r.db).Model(&member).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
@@ -90,7 +91,7 @@ func (r *PlanMemberRepository) UpdateMember(ctx context.Context, id uuid.UUID, u
 
 // RemoveMember removes a member from a plan by primary key
 func (r *PlanMemberRepository) RemoveMember(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Delete(&model.PlanMember{}, "id = ?", id)
+	result := database.ContextDB(ctx, r.db).Delete(&model.PlanMember{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -102,7 +103,7 @@ func (r *PlanMemberRepository) RemoveMember(ctx context.Context, id uuid.UUID) e
 
 // RemoveMemberByPlanAndUser removes a member using plan_id and user_id
 func (r *PlanMemberRepository) RemoveMemberByPlanAndUser(ctx context.Context, planID, userID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
+	result := database.ContextDB(ctx, r.db).
 		Where("plan_id = ? AND user_id = ?", planID, userID).
 		Delete(&model.PlanMember{})
 

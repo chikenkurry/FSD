@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 export interface FreezePayload {
   roundId: string;
   memberIds: string[];
+  optionSnapshotId?: string;
+  optionRevision?: number;
 }
 
 /**
@@ -11,6 +13,8 @@ export interface FreezePayload {
  */
 export function hashFreezePayload(payload: FreezePayload): string {
   const canonical = JSON.stringify({
+    ...(payload.optionSnapshotId ? { optionSnapshotId: payload.optionSnapshotId.toLowerCase() } : {}),
+    ...(payload.optionRevision !== undefined ? { optionRevision: payload.optionRevision } : {}),
     roundId: payload.roundId.toLowerCase(),
     memberIds: payload.memberIds.map((id) => id.toLowerCase()).sort(),
   });

@@ -62,6 +62,8 @@ export interface DraftUnitOfWork {
 }
 
 export interface FreezeWrite {
+  memberIds?: string[];
+  optionSnapshotId?: string;
   freezeOperationId: string;
   freezePayloadHash: string;
   snapshotId: string;

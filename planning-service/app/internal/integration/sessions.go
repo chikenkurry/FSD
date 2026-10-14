@@ -39,7 +39,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Username string `json:"username"`
 	}
-	if decode(w, r, &body) != nil || strings.TrimSpace(body.Username) == "" {
+	if decode(w, r, &body) != nil || strings.TrimSpace(body.Username) == "" || len(body.Username) > 255 {
 		fail(w, 400, "INVALID_INPUT")
 		return
 	}
@@ -97,11 +97,11 @@ func (h *Handler) AuthoriseSession(w http.ResponseWriter, r *http.Request) {
 	var snapshot struct {
 		Roster []string `json:"roster"`
 	}
-	if json.Unmarshal(round.Definition, &snapshot) != nil {
+	if json.Unmarshal(round.EvaluationSnapshot(), &snapshot) != nil {
 		fail(w, 500, "INTERNAL")
 		return
 	}
-	allowed := false
+	allowed := round.RosterPolicy == "close" && round.State == roundCollecting
 	for _, id := range snapshot.Roster {
 		if id == user.String() {
 			allowed = true
@@ -117,4 +117,38 @@ func (h *Handler) member(user, plan uuid.UUID, organiser bool) bool {
 	}
 	var count int64
 	return query.Count(&count).Error == nil && count == 1
+}
+
+func (h *Handler) RevokeSession(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if h.db.WithContext(r.Context()).Delete(&Session{}, "token_hash = ? AND user_id = ?", digest(token), currentUser(r)).Error != nil {
+		fail(w, 500, "INTERNAL")
+		return
+	}
+	respond(w, 200, map[string]string{"status": "revoked"})
+}
+
+func (h *Handler) RotateSession(w http.ResponseWriter, r *http.Request) {
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		fail(w, 500, "INTERNAL")
+		return
+	}
+	token := base64.RawURLEncoding.EncodeToString(secret)
+	old := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	err := h.db.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
+		deleted := tx.Delete(&Session{}, "token_hash = ? AND user_id = ?", digest(old), currentUser(r))
+		if deleted.Error != nil {
+			return deleted.Error
+		}
+		if deleted.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		return tx.Create(&Session{TokenHash: digest(token), UserID: currentUser(r), ExpiresAt: time.Now().Add(30 * 24 * time.Hour)}).Error
+	})
+	if err != nil {
+		fail(w, 409, "SESSION_CHANGED")
+		return
+	}
+	respond(w, 200, map[string]any{"session_token": token, "user_id": currentUser(r)})
 }

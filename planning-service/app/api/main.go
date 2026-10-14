@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"planning-service/app/internal/httpapi"
+	"syscall"
+	"time"
 
 	"planning-service/app/internal/config"
 	"planning-service/app/internal/database"
 	"planning-service/app/internal/handler"
 	"planning-service/app/internal/integration"
-	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
 	"gorm.io/driver/postgres"
@@ -27,6 +31,18 @@ var ctx = context.Background()
 var joinBaseURL = "http://localhost:8080/join"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		client := &http.Client{Timeout: 2 * time.Second}
+		response, err := client.Get("http://127.0.0.1:8080/health/ready")
+		if err != nil {
+			os.Exit(1)
+		}
+		defer response.Body.Close()
+		if response.StatusCode != 200 {
+			os.Exit(1)
+		}
+		return
+	}
 	cfg, err := config.Load()
 
 	if err != nil {
@@ -42,26 +58,9 @@ func main() {
 	log.Println("Successfully connected to PostgreSQL database!")
 	_ = db
 
-	// run migrations
-	err = db.AutoMigrate(
-		&model.User{},
-		&integration.Session{},
-		&integration.Round{},
-		&integration.Selection{},
-		&integration.ReopenOperation{},
-		&model.Plan{},
-		&model.Invitation{},
-		&model.Question{},
-		&model.QuestionPreset{},
-		&model.PlanRound{},
-		&model.PlanMember{},
-		&model.ProposedActivity{},
-		&model.ConfirmedSelection{},
-	)
-	if err != nil {
-		log.Fatalf("AutoMigrate failed: %v", err)
+	if err := database.Migrate(db); err != nil {
+		log.Fatalf("Migration failed: %v", err)
 	}
-	log.Println("Database migration completed for all tables!")
 
 	// seed preset templates
 	if err := database.SeedQuestionPresets(db); err != nil {
@@ -90,9 +89,6 @@ func main() {
 	planRoundRepo := repository.NewPlanRoundRepository(db)
 	planRoundHandler := handler.NewPlanRoundHandler(planRoundRepo)
 
-	selectionRepo := repository.NewConfirmedSelectionRepository(db)
-	selectionHandler := handler.NewConfirmedSelectionHandler(selectionRepo)
-
 	mux := http.NewServeMux()
 	flow := integration.NewHandler(db, cfg.ParticipationBaseURL, cfg.DecisionBaseURL, cfg.InternalAPIToken)
 	if len(cfg.InternalAPIToken) < 16 {
@@ -100,62 +96,79 @@ func main() {
 	}
 
 	mux.HandleFunc("GET /health", GetHealth)
+	mux.HandleFunc("GET /health/ready", flow.Ready)
 
 	// plans CRUD methods
 	mux.HandleFunc("POST /v1/plans", planHandler.CreatePlan) //👌
 	mux.HandleFunc("GET /v1/plans/{id}", planHandler.GetPlanById)
 	mux.HandleFunc("GET /v1/plans/details/{id}", planHandler.GetByIDWithDetails)
 	mux.HandleFunc("GET /v1/plans/organiser/{id}", planHandler.ListPlansByOrganiser)
-	mux.HandleFunc("PATCH /v1/plans/{id}", planHandler.UpdatePlan)
-	mux.HandleFunc("DELETE /v1/plans/{id}", planHandler.DeletePlan)
+	mux.HandleFunc("PATCH /v1/plans/{id}", flow.DefinitionCommand(planHandler.UpdatePlan))
+	mux.HandleFunc("DELETE /v1/plans/{id}", flow.DefinitionCommand(planHandler.DeletePlan))
 
 	// users CRUD methods
 	mux.HandleFunc("POST /v1/users", flow.RegisterUser) //👌
+	mux.HandleFunc("POST /v1/session/revoke", flow.RevokeSession)
+	mux.HandleFunc("POST /v1/session/rotate", flow.RotateSession)
 	mux.HandleFunc("GET /v1/users/{id}", userHandler.GetUserByID)
 	mux.HandleFunc("PUT /v1/users/{id}", userHandler.UpdateUser)
 
 	// question CRUD methods
-	mux.HandleFunc("POST /v1/question", questionHandler.Create) //👌
+	mux.HandleFunc("POST /v1/question", flow.DefinitionCommand(questionHandler.Create)) //👌
 	mux.HandleFunc("GET /v1/plans/question/{plan_id}", questionHandler.GetQuestionByPlanId)
-	mux.HandleFunc("PATCH /v1/question/{question_id}", questionHandler.UpdateQuestion)
-	mux.HandleFunc("DELETE /v1/question/{question_id}", questionHandler.Delete)
+	mux.HandleFunc("PATCH /v1/question/{question_id}", flow.DefinitionCommand(questionHandler.UpdateQuestion))
+	mux.HandleFunc("DELETE /v1/question/{question_id}", flow.DefinitionCommand(questionHandler.Delete))
 
 	// invitation CRUD methods
 	mux.HandleFunc("POST /v1/plans/{plan_id}/invites", invitationHandler.CreateInvitation)
 	mux.HandleFunc("POST /v1/invites/{token}/join", invitationHandler.AcceptInvitation)
 
 	// plan member CRUD methods
-	mux.HandleFunc("POST /v1/plans/{plan_id}/members", planMemberHandler.AddMember)
+	mux.HandleFunc("POST /v1/plans/{plan_id}/members", flow.DefinitionCommand(planMemberHandler.AddMember))
+	mux.HandleFunc("POST /v1/plans/{plan_id}/replace-member", flow.DefinitionCommand(flow.ReplaceGuest))
 	mux.HandleFunc("GET /v1/plan_members/{plan_id}", planMemberHandler.ListMembers)
-	mux.HandleFunc("PATCH /v1/members/{id}", planMemberHandler.UpdateMember)
-	mux.HandleFunc("DELETE /v1/members/{id}", planMemberHandler.RemoveMember)
-	mux.HandleFunc("DELETE /v1/plans/{plan_id}/members/{user_id}", planMemberHandler.RemoveMemberByPlanAndUser)
+	mux.HandleFunc("PATCH /v1/members/{id}", flow.DefinitionCommand(planMemberHandler.UpdateMember))
+	mux.HandleFunc("DELETE /v1/members/{id}", flow.DefinitionCommand(planMemberHandler.RemoveMember))
+	mux.HandleFunc("DELETE /v1/plans/{plan_id}/members/{user_id}", flow.DefinitionCommand(planMemberHandler.RemoveMemberByPlanAndUser))
 
 	// proposed activity CRUD methods
-	mux.HandleFunc("POST /v1/proposed_activity/plans/{plan_id}", proposedActivityHandler.CreateActivity)
+	mux.HandleFunc("POST /v1/proposed_activity/plans/{plan_id}", flow.DefinitionCommand(proposedActivityHandler.CreateActivity))
 	mux.HandleFunc("GET /v1/proposed_activity/plans/{plan_id}", proposedActivityHandler.ListActivitiesByPlan)
 	mux.HandleFunc("GET /v1/proposed_activity/{id}", proposedActivityHandler.GetActivityByID)
-	mux.HandleFunc("PATCH /v1/proposed_activity/{id}", proposedActivityHandler.UpdateActivity)
-	mux.HandleFunc("DELETE /v1/proposed_activity/{id}", proposedActivityHandler.DeleteActivity)
+	mux.HandleFunc("PATCH /v1/proposed_activity/{id}", flow.DefinitionCommand(proposedActivityHandler.UpdateActivity))
+	mux.HandleFunc("DELETE /v1/proposed_activity/{id}", flow.DefinitionCommand(proposedActivityHandler.DeleteActivity))
 
 	// round CRUD methods
 	mux.HandleFunc("GET /v1/rounds/{id}", planRoundHandler.GetRoundByID)
-	mux.HandleFunc("PATCH /v1/rounds/{id}", planRoundHandler.UpdateRound)
-	mux.HandleFunc("DELETE /v1/rounds/{id}", planRoundHandler.DeleteRound)
+	mux.HandleFunc("PATCH /v1/rounds/{id}", flow.DefinitionCommand(planRoundHandler.UpdateRound))
+	mux.HandleFunc("DELETE /v1/rounds/{id}", flow.DefinitionCommand(planRoundHandler.DeleteRound))
 	mux.HandleFunc("POST /v1/rounds/open/{id}", flow.Publish)
 
 	mux.HandleFunc("POST /internal/sessions/authorise", flow.Internal(flow.AuthoriseSession))
-	mux.HandleFunc("GET /internal/rounds/{id}/option-snapshot", flow.Internal(flow.Snapshot))
+	mux.HandleFunc("GET /internal/rounds/{id}/option-snapshot", flow.Internal(flow.OptionSnapshot))
+	mux.HandleFunc("GET /internal/rounds/{id}/selection", flow.Internal(flow.SelectionContext))
 
 	flow.RegisterRoundRoutes(mux, planRoundHandler.CreateRound, planRoundHandler.ListRoundsByPlan)
 
 	// selection CRUD methods
-	mux.HandleFunc("POST /v1/confirmed-selection/plans/{plan_id}", selectionHandler.CreateConfirmedSelection)
-	mux.HandleFunc("GET /v1/confirmed-selection/plans/{plan_id}", selectionHandler.GetConfirmedSelectionByPlan)
+	mux.HandleFunc("POST /v1/confirmed-selection/plans/{plan_id}", func(w http.ResponseWriter, r *http.Request) {
+		httpapi.Error(w, 409, "USE_ROUND_LIFECYCLE", "Confirm an eligible candidate through its round")
+	})
+	mux.HandleFunc("GET /v1/confirmed-selection/plans/{plan_id}", flow.GetPlanSelection)
 
 	// start Server
 	log.Println("Planning Service running on :8080...")
-	if err := http.ListenAndServe(":8080", flow.Guard(mux)); err != nil {
+	server := &http.Server{Addr: ":8080", Handler: httpapi.Middleware(httpapi.Limits(flow.Guard(mux))), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
+	shutdown, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+	go flow.Reconcile(shutdown)
+	go func() {
+		<-shutdown.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		server.Shutdown(ctx)
+	}()
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server stopped: %v", err)
 	}
 }

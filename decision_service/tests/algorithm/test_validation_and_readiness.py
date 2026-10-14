@@ -1,6 +1,6 @@
 from dataclasses import replace
 
-from app.algorithm import (
+from decision_service.app.algorithm import (
     BudgetConstraint,
     ExplanationCode,
     Participant,

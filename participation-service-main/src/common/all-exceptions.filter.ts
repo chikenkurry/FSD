@@ -75,7 +75,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (unexpected) {
       // Log the error and request id only. Never log request bodies: they hold private responses.
       const err = exception instanceof Error ? exception : new Error(String(exception));
-      this.logger.error(`[${requestId}] ${req.method} ${req.path}: ${err.message}`, err.stack);
+      this.logger.error(`[${requestId}] ${req.method}: ${err.name}`);
     }
 
     res.status(status).json(body);

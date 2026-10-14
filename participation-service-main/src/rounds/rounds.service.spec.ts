@@ -154,3 +154,41 @@ describe('RoundsService.freeze', () => {
     ).rejects.toMatchObject({ code: 'OPERATION_CONFLICT' });
   });
 });
+
+
+describe('Final roster admission', () => {
+  const formId = '10101010-1010-4010-8010-101010101010';
+  const evaluationId = '20202020-2020-4020-8020-202020202020';
+  const question = { questionId: ACTIVITY_A, required: true, answerFormat: 'number' };
+
+  it('accepts an authorised late member and freezes the exact final roster and identity', async () => {
+    const {service, members} = setup();
+    await service.provision(request({rosterPolicy:'close', optionSnapshotId:formId, memberIds:[MEMBER_1], questions:[question]}));
+    await members.saveDraft(ROUND_ID, {memberId:MEMBER_2,planId:PLAN_ID}, {
+      expectedRevision:0, acknowledgedOptionRevision:1, availability:[],budget:{kind:'UNANSWERED'},
+      activityAnswers:[],answers:[{question_id:ACTIVITY_A,value:1.2}],
+    });
+    await members.submit(ROUND_ID,{memberId:MEMBER_2,planId:PLAN_ID},{expectedRevision:1});
+    const body = {operationId:'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1',roundId:ROUND_ID,
+      memberIds:[MEMBER_1,MEMBER_2],optionSnapshotId:evaluationId,optionRevision:1};
+    const frozen = await service.freeze(body);
+    expect(frozen.snapshot.option_snapshot_id).toBe(evaluationId);
+    expect(frozen.snapshot.participants).toEqual(expect.arrayContaining([
+      expect.objectContaining({participant_id:MEMBER_2,response_status:'complete'}),
+    ]));
+    expect((await service.freeze(body)).snapshotId).toBe(frozen.snapshotId);
+    await expect(service.freeze({...body,optionSnapshotId:formId})).rejects.toMatchObject({code:'OPERATION_CONFLICT'});
+    await expect(members.saveDraft(ROUND_ID,{memberId:MEMBER_2,planId:PLAN_ID},{
+      expectedRevision:2,acknowledgedOptionRevision:1,availability:[],budget:{kind:'UNANSWERED'},
+      activityAnswers:[],answers:[{question_id:ACTIVITY_A,value:1.2}],
+    }))
+      .rejects.toMatchObject({code:'ROUND_CLOSED'});
+  });
+
+  it('rejects a final snapshot with a different form revision', async () => {
+    const {service}=setup();
+    await service.provision(request({rosterPolicy:'close',optionSnapshotId:formId,memberIds:[MEMBER_1]}));
+    await expect(service.freeze({operationId:'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1',roundId:ROUND_ID,
+      memberIds:[MEMBER_1],optionSnapshotId:evaluationId,optionRevision:2})).rejects.toMatchObject({code:'OPERATION_CONFLICT'});
+  });
+});

@@ -58,6 +58,11 @@ services:
       SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-rules}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_FACT_MODEL: ${GEMINI_FACT_MODEL:-gemini-3.8-flash}
+      SEMANTIC_MODEL_REVISION: ${SEMANTIC_MODEL_REVISION:-}
+      DECISION_WORKERS: ${DECISION_WORKERS:-2}
+      DECISION_JOB_TIMEOUT_SECONDS: ${DECISION_JOB_TIMEOUT_SECONDS:-180}
     volumes: [decision-data:/data]
 volumes:
   planning-data:

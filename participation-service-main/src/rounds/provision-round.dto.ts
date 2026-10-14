@@ -1,9 +1,12 @@
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsInt, IsUUID, IsOptional, IsString, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsInt, IsUUID, IsOptional, IsString, IsIn, Matches, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { QuestionDefinitionDto } from '../responses/question-answer';
 
 /** Body of Planning's idempotent "provision round" command (P02). */
 export class ProvisionRoundDto {
+  @IsOptional()
+  @IsIn(['publication', 'close'])
+  rosterPolicy?: 'publication' | 'close';
   /** Idempotency key. Retries reuse it; reusing it with a different payload is rejected. */
   @IsUUID('all')
   operationId!: string;

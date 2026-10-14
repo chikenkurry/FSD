@@ -25,7 +25,7 @@ export class PlanningSessionAuthoriser extends SessionAuthoriser {
     super();
   }
 
-  async authorise(sessionToken: string, roundId: string): Promise<AuthorisedMember> {
+  async authorise(sessionToken: string, roundId: string, requestId = ''): Promise<AuthorisedMember> {
     let response: Response;
     try {
       response = await fetch(`${this.config.planningBaseUrl}/internal/sessions/authorise`, {
@@ -33,6 +33,7 @@ export class PlanningSessionAuthoriser extends SessionAuthoriser {
         headers: {
           'content-type': 'application/json',
           'x-internal-token': this.config.internalApiToken,
+          'x-request-id': requestId,
         },
         body: JSON.stringify({ sessionToken, roundId }),
         signal: AbortSignal.timeout(TIMEOUT_MS),

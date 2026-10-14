@@ -1,7 +1,15 @@
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsUUID } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsUUID, IsOptional, IsInt, Min } from 'class-validator';
 
 /** Body of Planning's idempotent "freeze round" command. */
 export class FreezeRoundDto {
+  @IsOptional()
+  @IsUUID('all')
+  optionSnapshotId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  optionRevision?: number;
   /** Idempotency key. Retries reuse it; reusing it with a different roster is rejected. */
   @IsUUID('all')
   operationId!: string;

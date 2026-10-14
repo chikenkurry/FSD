@@ -9,7 +9,7 @@ const SLOT_MS = SLOT_MINUTES * 60_000;
 /** Cross-field checks run after DTO validation and retain field error order. */
 export function validateDraft(
   dto: SaveDraftDto,
-  round: { activityIds: string[]; questions?: QuestionDefinitionDto[] },
+  round: { activityIds: string[]; questions?: QuestionDefinitionDto[]; optionSnapshotId?: string | null },
 ): FieldError[] {
   if (!dto.budget || typeof dto.budget !== 'object') {
     return [{ field: 'budget', message: 'Budget must be an object' }];
@@ -18,6 +18,8 @@ export function validateDraft(
     ...validateAvailability(dto.availability),
     ...validateBudget(dto.budget),
     ...validateActivityAnswers(dto.activityAnswers, round.activityIds),
+    ...(round.optionSnapshotId && dto.activityAnswers.some(a => a.kind === 'RATING' || a.kind === 'NO_PREFERENCE')
+      ? [{ field: 'activityAnswers', message: 'ACTIVITY_RATINGS_NOT_SUPPORTED: use published question answers for preferences' }] : []),
     ...validateQuestionAnswers(dto.answers ?? [], round.questions ?? []),
   ];
 }

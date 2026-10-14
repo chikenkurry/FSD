@@ -1,6 +1,6 @@
 from dataclasses import replace
 
-from app.algorithm import (
+from decision_service.app.algorithm import (
     BudgetConstraint,
     CandidateAttribute,
     CandidateFlag,
@@ -10,7 +10,7 @@ from app.algorithm import (
     RequiredAttributeConstraint,
     TimeInterval,
 )
-from app.algorithm.feasibility import evaluate_candidate
+from decision_service.app.algorithm.feasibility import evaluate_candidate
 
 from .fixtures import dt, project_plan_fixture
 

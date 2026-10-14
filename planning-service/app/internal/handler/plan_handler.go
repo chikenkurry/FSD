@@ -30,7 +30,7 @@ type PlanResponse struct {
 	Title           string             `json:"title"`
 	Description     *string            `json:"description,omitempty"`
 	Category        model.PlanCategory `json:"plan_category"`
-	State          	model.PlanState    `json:"state"`
+	State           model.PlanState    `json:"state"`
 	CreatedByUserID uuid.UUID          `json:"created_by_user_id"`
 	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
 	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
@@ -46,7 +46,7 @@ type PlanResponse struct {
 type UpdatePlanRequest struct {
 	Title           *string          `json:"title,omitempty"`
 	Description     *string          `json:"description,omitempty"`
-	State          *model.PlanState  `json:"state,omitempty"`
+	State           *model.PlanState `json:"state,omitempty"`
 	TimeWindowStart *time.Time       `json:"time_window_start,omitempty"`
 	TimeWindowEnd   *time.Time       `json:"time_window_end,omitempty"`
 }
@@ -56,7 +56,7 @@ type PlanHandler struct {
 }
 
 type JsonResponse struct {
-	State  string `json:"state"`
+	State   string `json:"state"`
 	Message string `json:"message"`
 }
 
@@ -110,7 +110,7 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Content-Type", "application/json")
 	id := r.PathValue("id")
 	if id == "" {
-		http.Error(w, "Plan id is required", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "Plan id is required")
 		return
 	}
 
@@ -118,10 +118,10 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if err.Error() == "plan not found" {
-			http.Error(w, "Plan not found", http.StatusNotFound)
+			WriteError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		http.Error(w, "Fail to retreieve plan", http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Fail to retreieve plan")
 		return
 	}
 
@@ -140,10 +140,10 @@ func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request)
 
 	if err != nil {
 		if err.Error() == "plan not found" {
-			http.Error(w, "Plan not found", http.StatusNotFound)
+			WriteError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		http.Error(w, "Fail to retreieve plan", http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Fail to retreieve plan")
 		return
 	}
 
@@ -249,7 +249,7 @@ func toPlanResponse(p *model.Plan) PlanResponse {
 		ID:              p.ID,
 		Title:           p.Title,
 		Description:     p.Description,
-		State:          p.State,
+		State:           p.State,
 		CreatedByUserID: p.CreatedByUserID,
 		TimeWindowStart: p.TimeWindowStart,
 		TimeWindowEnd:   p.TimeWindowEnd,

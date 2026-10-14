@@ -54,7 +54,7 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 		if option.Description != nil {
 			description = *option.Description
 		}
-		options = append(options, map[string]any{"option_id": option.ID.String(), "title": option.Title, "description": description, "facts": facts})
+		options = append(options, map[string]any{"option_id": option.ID.String(), "title": option.Title, "description": description, "facts": facts, "identity": metadata["identity"]})
 		if entries, ok := metadata["candidates"].([]any); ok {
 			for _, entry := range entries {
 				c, ok := entry.(map[string]any)
@@ -100,6 +100,7 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 		questions = append(questions, question)
 	}
 	snapshot := map[string]any{"schema_version": "planning-snapshot-v1", "plan_id": plan.ID.String(), "round_id": round.ID.String(),
+		"roster_policy": "close", "roster_is_final": false,
 		"option_revision": round.RoundNumber, "option_snapshot_id": id.String(), "decision_question": plan.Title,
 		"currency": settings.Currency, "currency_minor_digits": digits, "cost_scope": settings.CostScope,
 		"timezone": settings.Timezone, "execution_mode": mode, "roster": roster, "options": options, "questions": questions,
@@ -115,6 +116,9 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 	}
 	if settings.GroupObjective != nil {
 		snapshot["group_objective"] = settings.GroupObjective
+	}
+	if len(encoded(snapshot)) > 1_500_000 {
+		return nil, fmt.Errorf("published form exceeds snapshot size limit")
 	}
 	return snapshot, nil
 }
@@ -137,9 +141,13 @@ func ProvisionPayload(round Round) (map[string]any, error) {
 		}
 		questions = append(questions, map[string]any{"questionId": q["question_id"], "required": q["required"], "answerFormat": q["answer_format"], "choices": choices})
 	}
-	return map[string]any{"operationId": round.PublishOperationID.String(), "roundId": round.ID.String(), "planId": round.PlanID.String(),
+	payload := map[string]any{"operationId": round.PublishOperationID.String(), "roundId": round.ID.String(), "planId": round.PlanID.String(),
 		"optionRevision": round.OptionRevision, "optionSnapshotId": round.OptionSnapshotID.String(), "activityIds": ids,
-		"memberIds": snapshot["roster"], "questions": questions, "currency": snapshot["currency"], "minorDigits": snapshot["currency_minor_digits"]}, nil
+		"memberIds": snapshot["roster"], "questions": questions, "currency": snapshot["currency"], "minorDigits": snapshot["currency_minor_digits"]}
+	if round.RosterPolicy == "close" {
+		payload["rosterPolicy"] = "close"
+	}
+	return payload, nil
 }
 
 func sameJSON(a, b []byte) bool {

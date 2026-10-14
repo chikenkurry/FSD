@@ -12,6 +12,9 @@ def public_result(run: dict) -> dict:
     scenarios = [{key: row[key] for key in ("option_id", "duration_days", "earliest_start_date", "latest_start_date", "cost_evidence_status") if key in row}
                  for row in preparation.get("scenario_requests", [])]
     return {"run_id": run["run_id"], "status": run["status"], "input_refs": run["input_refs"],
+            **({"collection": deepcopy(run["collection"])} if "collection" in run else {}),
+            "job_state": run.get("job_state", "completed"),
+            "execution_specification": run.get("execution_specification", {}),
             "result": result, "fact_requests": facts, "scenario_requests": scenarios,
             "issues": [{"code": issue.get("code", "PROCESSING_ISSUE")} for issue in run.get("issues", [])]}
 
@@ -34,5 +37,6 @@ def member_review(run: dict, member_id: str) -> dict:
             if ".answers." in path:
                 record["question_id"] = path.split(".answers.", 1)[1]
         issues.append(record)
-    own.update(status=run["status"], response_status=run["member_states"][member_id], issues=issues)
+    own.update(status=run["status"], response_status=run["member_states"][member_id], issues=issues,
+               run_id=run.get("run_id"), response_revision=run.get("response_revision"))
     return own

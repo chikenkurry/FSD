@@ -3,6 +3,7 @@ package integration
 import (
 	"encoding/json"
 	"net/http"
+	"planning-service/app/internal/httpapi"
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
@@ -14,7 +15,15 @@ func respond(w http.ResponseWriter, status int, body any) {
 	json.NewEncoder(w).Encode(body)
 }
 func fail(w http.ResponseWriter, status int, code string) {
-	respond(w, status, map[string]any{"code": code})
+	httpapi.Error(w, status, code, code)
+}
+func respondRun(w http.ResponseWriter, run map[string]any) {
+	status := 200
+	if run["status"] == "pending" {
+		status = 202
+		w.Header().Set("Retry-After", "1")
+	}
+	respond(w, status, run)
 }
 func decode(w http.ResponseWriter, r *http.Request, value any) error {
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2_000_000))

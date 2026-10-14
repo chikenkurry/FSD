@@ -43,7 +43,7 @@ export class MemberSessionGuard implements CanActivate {
     if (!token) throw Errors.unauthenticated();
 
     req.params.roundId = roundId.toLowerCase();
-    req.member = await this.authoriser.authorise(token, req.params.roundId);
+    req.member = await this.authoriser.authorise(token, req.params.roundId, req.requestId);
     return true;
   }
 }

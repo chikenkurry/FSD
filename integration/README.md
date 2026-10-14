@@ -1,9 +1,13 @@
 # Service integration
 
+See [backend hardening](BACKEND_HARDENING.md) for the new close-roster policy,
+202 job polling, private previews, Gemini collection/review, migrations and RSVPs.
+Older rounds retain their publication-roster policy and immutable history.
+
 Planning owns form definitions, option facts, membership and round transitions.
 Participation owns private answers and freezes them. Decision reads both frozen
 snapshots, preprocesses answers, adapts supported inputs and stores recommendation
-artifacts. Web fact collection remains deferred; organisers supply reviewed facts.
+artifacts. Gemini Search can collect candidate claims for organiser review.
 
 ## Code structure
 
@@ -130,7 +134,7 @@ or leader-declared scale.
 | Request | Purpose |
 | --- | --- |
 | `POST /v1/rounds/plans/{plan_id}` | Create a draft round. |
-| `POST /v1/rounds/{id}/publish` | Freeze the form, facts and roster; validate; provision Participation. |
+| `POST /v1/rounds/{id}/publish` | Freeze the form and facts; validate; provision Participation and open membership collection. |
 | `GET /v1/rounds/{id}/form` | Read the published definition. |
 | `PUT /rounds/{id}/my-response` on Participation | Replace the caller's draft with revision checking. |
 | `POST /rounds/{id}/my-response/submit` on Participation | Submit and advance the response revision. |
@@ -148,7 +152,8 @@ Optional criterion declarations, aliases, scenario costs and group objective are
 frozen with the definition. Retries reuse stored operation IDs and the original
 definition; changing publish settings requires a new round.
 
-Option, question and roster edits after publication require a new draft round.
+Option and question edits after publication require a new draft round. New rounds
+allow roster changes during collection and freeze the final roster at closing.
 Reopening accepts `{"operation_id":"<uuid>"}`. Confirmation accepts
 `{"operation_id":"<uuid>","run_id":"<uuid>","candidate_id":"<returned ID>"}`.
 It checks the current round, input references, run and eligibility before committing
@@ -170,6 +175,10 @@ on the corresponding answer, with `attribute_id`, `required_value`,
 `constraint_rule` and `unit`. Preprocessing verifies that the review matches its
 interpretation. Saving after submission returns to draft. An old revision cannot
 undo submission; retrying the same submit remains valid.
+
+For new rounds, confirmations also carry `reviewed_revision` equal to the draft
+revision being saved, and the reviewed value must match the previously saved answer.
+Use the private preview before confirming; see [the review flow](BACKEND_HARDENING.md#private-review-before-closing).
 
 Copying accepts `{"sourceRoundId":"<earlier round UUID>"}` and never overwrites
 an existing draft. Copied answers retain the old acknowledged option revision.
@@ -205,8 +214,6 @@ if supplied; they are not silently discarded. Activity participation flags and
 structured budgets are supported.
 
 This branch implements backend APIs. Frontend form, review and confirmation
-screens still need to call them. Web fact collection, RSVP, external identity
-providers and asynchronous recommendation jobs remain separate work. Planning
-uses its existing GORM startup migrations; deployment should follow the team's
-migration process. Participation's new rating constraint refuses existing invalid
+screens still need to call them. Gemini collection, RSVP and durable jobs are documented in the backend guide.
+External identity providers remain separate work. Planning uses checked-in, versioned SQL migrations. Participation's new rating constraint refuses existing invalid
 null-rating rows rather than guessing their meaning.
