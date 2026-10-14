@@ -104,8 +104,9 @@ func main() {
 	mux.HandleFunc("DELETE /v1/plans/{id}", planHandler.DeletePlan)
 
 	// users CRUD methods
-	mux.HandleFunc("POST /v1/users", userHandler.CreateUser) //👌
-	mux.HandleFunc("GET /v1/users/{id}", userHandler.GetUserByID)
+	mux.HandleFunc("POST /v1/users", enableCORS(userHandler.CreateUser)) //👌
+	mux.HandleFunc("GET /v1/users/{id}", enableCORS(userHandler.GetUserByID))
+	mux.HandleFunc("GET /v1/usersbyname/{username}", enableCORS(userHandler.GetUserByUsername))
 	mux.HandleFunc("PUT /v1/users/{id}", userHandler.UpdateUser)
 
 	// question CRUD methods
@@ -156,4 +157,20 @@ func GetHealth(w http.ResponseWriter, r *http.Request) {
 	result := JsonResponse{Status: "okay", Message: "service be alive"}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight OPTIONS requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
+	}
 }

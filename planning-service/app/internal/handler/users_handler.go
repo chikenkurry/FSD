@@ -6,28 +6,32 @@ import (
 	"net/http"
 	"strconv"
 
-	"planning-service/app/internal/repository"
 	"planning-service/app/internal/model"
+	"planning-service/app/internal/repository"
 
 	"github.com/google/uuid"
 )
 
 type CreateUserRequest struct {
 	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 }
 
 type UpdateUserRequest struct {
-	Username string `json:"username" binding:"required"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
 }
 
 type UserResponse struct {
 	ID       uuid.UUID `json:"id"`
 	Username string    `json:"username"`
+	Email    string    `json:"email"`
 }
 
 type UserDetailResponse struct {
 	ID           uuid.UUID `json:"id"`
 	Username     string    `json:"username"`
+	Email        string    `json:"email"`
 	CreatedPlans int       `json:"created_plans_count,omitempty"`
 	Memberships  int       `json:"memberships_count,omitempty"`
 }
@@ -39,7 +43,6 @@ type UserHandler struct {
 func NewUserHandler(repo *repository.UserRepository) *UserHandler {
 	return &UserHandler{repo: repo}
 }
-
 
 // POST /users - Create user
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +59,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	user := &model.User{
 		Username: req.Username,
+		Email:    req.Email,
 	}
 
 	if err := h.repo.Create(r.Context(), user); err != nil {
@@ -70,10 +74,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	WriteJSONResponse(w, http.StatusCreated, UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
+		Email:    user.Email,
 	})
 }
 
-// GET /users/{id} - Get single user
+// GET /v1/users/{id} - Get single user
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	userID, err := uuid.Parse(idStr)
@@ -95,8 +100,33 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	WriteJSONResponse(w, http.StatusOK, UserDetailResponse{
 		ID:           user.ID,
 		Username:     user.Username,
+		Email:        user.Email,
 		CreatedPlans: len(user.CreatedPlans),
 		Memberships:  len(user.Memberships),
+	})
+}
+
+// GET /v1/usersbyname/{username} - get single user by email
+func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	if username == "" {
+		WriteError(w, http.StatusBadRequest, "username query parameter is required")
+		return
+	}
+
+	user, err := h.repo.GetByUsername(r.Context(), username)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			WriteError(w, http.StatusNotFound, "User not found with this username")
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, "Failed to fetch user")
+		return
+	}
+
+	WriteJSONResponse(w, http.StatusOK, UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
 	})
 }
 
@@ -157,6 +187,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	user := &model.User{
 		ID:       userID,
 		Username: req.Username,
+		Email:    req.Email,
 	}
 
 	if err := h.repo.Update(r.Context(), user); err != nil {
