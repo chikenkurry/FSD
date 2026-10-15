@@ -1,5 +1,10 @@
 # Decision HTTP load and worker recovery
 
+Subsequent targeted changes and before/after measurements are in the
+[efficiency report](DECISION_EFFICIENCY_REPORT.md). The load timings below are
+the original PostgreSQL/process-splitting measurements, retained as historical
+evidence; the efficiency report explains the new idle/reaper cadence.
+
 Measured locally on 15 October 2026 using Docker Desktop on macOS ARM64,
 Python 3.12 and PostgreSQL 16. These are single-run development measurements,
 not production capacity guarantees or a statistically controlled comparison.

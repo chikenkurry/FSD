@@ -49,6 +49,7 @@ class RunStore:
                 db.execute('ALTER TABLE jobs ADD COLUMN started_at REAL')
             db.execute('CREATE TABLE IF NOT EXISTS worker_presence (id TEXT PRIMARY KEY, specifications TEXT NOT NULL, slots INTEGER NOT NULL, last_seen REAL NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS import_markers (source TEXT PRIMARY KEY, summary TEXT NOT NULL)')
+            db.execute("CREATE INDEX IF NOT EXISTS jobs_expired_leases ON jobs(lease_until) WHERE state='running'")
 
     def close(self):
         pass
@@ -94,11 +95,6 @@ class RunStore:
         with self.connect() as db:
             self._write(db)
             now = self._now(db)
-            exhausted = "SELECT id FROM jobs WHERE state='running' AND lease_until < ? AND attempts >= ?"
-            if self.postgres:
-                exhausted += ' FOR UPDATE SKIP LOCKED'
-            db.execute("UPDATE jobs SET state='failed', error_code='EXECUTION_RETRY_EXHAUSTED', lease_token=NULL, completed_at=? WHERE id IN (" + exhausted + ")",
-                       (now, now, max_attempts))
             query = f"""SELECT * FROM jobs WHERE specification IN ({placeholders}) AND attempts < ? AND
                 ((state='queued' AND available_at <= ?) OR (state='running' AND lease_until < ?))
                 {"AND id=?" if job_id else ""} ORDER BY created_at, id LIMIT 1
@@ -114,6 +110,20 @@ class RunStore:
                        (now + lease_seconds, token, now, row["id"]))
             return {**dict(row), "lease_token": token, "attempts": row["attempts"] + 1,
                     "inputs": json.loads(row["inputs"]), "specification": json.loads(row["specification"])}
+
+    def reap_exhausted(self, *, max_attempts: int = 3) -> int:
+        """Periodic maintenance; reclaimable leases stay on the normal claim path."""
+        with self.connect() as db:
+            self._write(db)
+            now = self._now(db)
+            exhausted = "SELECT id FROM jobs WHERE state='running' AND lease_until < ? AND attempts >= ?"
+            if self.postgres:
+                exhausted += ' FOR UPDATE SKIP LOCKED'
+            return db.execute(
+                "UPDATE jobs SET state='failed', error_code='EXECUTION_RETRY_EXHAUSTED', "
+                "lease_token=NULL, completed_at=? WHERE id IN (" + exhausted + ")",
+                (now, now, max_attempts),
+            ).rowcount
 
     def renew(self, job: dict, lease_seconds: float = 300) -> bool:
         with self.connect() as db:
@@ -152,13 +162,20 @@ class RunStore:
             return self._get(db, run_id)
 
     def _get(self, db, run_id):
-        # Read queue state first: once completion is visible, its artifact was
-        # committed atomically and the next read must see it at READ COMMITTED.
-        row = db.execute("SELECT * FROM jobs WHERE id = ?", (run_id,)).fetchone()
-        artifact = db.execute("SELECT payload FROM runs WHERE id = ?", (run_id,)).fetchone()
-        if artifact:
-            return json.loads(artifact["payload"])
-        if row is None:
+        # One statement sees a consistent completion snapshot. CASE avoids
+        # transferring frozen inputs when an artifact already exists. Starting
+        # from the requested ID also supports historical runs without job rows.
+        row = db.execute("""
+            SELECT runs.payload AS artifact, jobs.state, jobs.specification,
+                   jobs.error_code,
+                   CASE WHEN runs.id IS NULL THEN jobs.inputs END AS inputs
+            FROM (SELECT ? AS id) AS requested
+            LEFT JOIN runs ON runs.id = requested.id
+            LEFT JOIN jobs ON jobs.id = requested.id
+        """, (run_id,)).fetchone()
+        if row['artifact'] is not None:
+            return json.loads(row['artifact'])
+        if row['state'] is None:
             return None
         inputs = json.loads(row["inputs"])
         plan, response = inputs["planning"], inputs["responses"]
@@ -191,9 +208,14 @@ class RunStore:
             db.execute("INSERT INTO semantic_cache VALUES (?, ?) ON CONFLICT DO NOTHING", (key, canonical(payload)))
             return json.loads(db.execute("SELECT payload FROM semantic_cache WHERE key=?", (key,)).fetchone()["payload"])
 
-    def health(self) -> dict:
+    def ping(self) -> None:
+        """Constant-size readiness probe, independent of historical job count."""
         with self.connect() as db:
             db.execute("SELECT 1")
+
+    def health(self) -> dict:
+        """Diagnostic counts, kept off the readiness path."""
+        with self.connect() as db:
             return {row['state']: row['total'] for row in db.execute("SELECT state, count(*) AS total FROM jobs GROUP BY state")}
 
     def retry(self, run_id: str, specification: dict) -> dict:

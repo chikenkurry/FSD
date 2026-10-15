@@ -112,6 +112,7 @@ class JobWorkers(JobQueue):
 
     def start(self):
         self.register()
+        self.store.reap_exhausted()
         for thread in self.threads:
             thread.start()
         self.presence_thread.start()
@@ -125,6 +126,7 @@ class JobWorkers(JobQueue):
             try:
                 if all(thread.is_alive() for thread in self.threads):
                     self.register()
+                    self.store.reap_exhausted()
             except Exception as error:
                 logging.error('worker_presence_failed type=%s', type(error).__name__)
 
@@ -147,6 +149,7 @@ class JobWorkers(JobQueue):
         self.store.unregister_worker(self.worker_id)
 
     def work(self):
+        idle_delay = 0.25
         while not self.stop.is_set():
             try:
                 job = self.store.claim(list(self.specifications.values()), lease_seconds=self.lease_seconds)
@@ -155,9 +158,13 @@ class JobWorkers(JobQueue):
                 self.stop.wait(1)
                 continue
             if job is None:
-                self.wake.wait(timeout=0.25)
+                notified = self.wake.wait(timeout=idle_delay)
                 self.wake.clear()
+                # Local admission wakes this process; remote API processes are
+                # detected by a bounded poll, at most one second after enqueue.
+                idle_delay = 0.25 if notified else min(1.0, idle_delay * 2)
                 continue
+            idle_delay = 0.25
             with self.active_lock:
                 if self.stop.is_set():
                     self.store.release(job)

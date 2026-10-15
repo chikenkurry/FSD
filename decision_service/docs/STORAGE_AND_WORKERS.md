@@ -4,6 +4,9 @@ Status: implemented on `feat/decision-postgres-workers`, 15 October 2026.
 This document records the scope, alternatives, operating procedures and evidence
 for PostgreSQL persistence and independently deployable Decision processes.
 It supplements the [lifecycle guide](../../integration/BACKEND_HARDENING.md).
+The subsequent [efficiency report](../../integration/DECISION_EFFICIENCY_REPORT.md)
+records scoring setup reuse, lightweight reads/readiness, and adaptive idle polling
+with before/after measurements and their latency trade-offs.
 
 ## Problem and scope
 
@@ -276,6 +279,13 @@ recent 500 terminal jobs, so they are bounded samples rather than lifetime count
 Queue wait means creation to the latest claim, including any retry/backoff time.
 Last-attempt duration is latest claim to terminal completion/failure. Neither is
 a complete per-attempt tracing history. Metric polling does not invoke providers.
+
+Readiness uses a constant-size database ping; historical counts are diagnostic
+only. Completed result reads use one consistent join and exclude frozen input
+payloads. Idle polls back off from 250 ms to a maximum one second and reset after
+work/local notification. This can add up to one second of polling delay when an
+independent API admits work to an idle worker. Exhausted expired leases are failed
+at startup and every five seconds; reclaimable leases stay on the claim path.
 
 Workers refresh presence every five seconds. Registrations are considered active
 for 30 seconds; worker readiness becomes unhealthy if its own presence cannot be

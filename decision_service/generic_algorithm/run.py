@@ -1,4 +1,4 @@
-"""Rank equality-based generic option decisions."""
+"""Rank generic options using declared constraints, utilities and group objectives."""
 
 from __future__ import annotations
 
@@ -139,21 +139,26 @@ def _pareto_frontier(scored: list[tuple]) -> tuple[dict, ...]:
     return tuple(sorted(frontier, key=lambda row: row["option_id"]))
 
 
-def _score(candidate: dict, handoff: dict, required: list[str]) -> tuple[dict[str, float], tuple[str, ...]]:
-    facts = _facts(candidate)
-    preferences = handoff["preferences"]
-    member_weights = handoff["scoring_model"]["member_weights"]
+def _scoring_rows(handoff: dict, required: list[str]) -> dict[str, list[tuple[dict, list[dict]]]]:
+    """Index candidate-independent answers/weights once, preserving their order."""
     by_member_criterion = {}
-    for preference in preferences:
+    for preference in handoff["preferences"]:
         by_member_criterion.setdefault((preference["participant_id"], preference["source_question_id"], preference["attribute_id"]), []).append(preference)
+    rows = {participant_id: [] for participant_id in required}
+    for weight in handoff["scoring_model"]["member_weights"]:
+        participant_id = weight.get("participant_id")
+        if participant_id in rows and weight.get("status") == "resolved":
+            key = (participant_id, weight["source_question_id"], weight["attribute_id"])
+            rows[participant_id].append((weight, by_member_criterion.get(key, [])))
+    return rows
+
+
+def _score(candidate: dict, rows_by_member: dict) -> tuple[dict[str, float], tuple[str, ...]]:
+    facts = _facts(candidate)
     scores = {}
-    for participant_id in required:
+    for participant_id, rows in rows_by_member.items():
         total = 0.0
-        for row in member_weights:
-            if row.get("participant_id") != participant_id or row.get("status") != "resolved":
-                continue
-            key = (participant_id, row["source_question_id"], row["attribute_id"])
-            answers = by_member_criterion.get(key, [])
+        for row, answers in rows:
             if not answers:
                 return {}, ("MISSING_SOFT_ANSWER",)
             if all(answer.get("kind") == "indifferent" for answer in answers):
@@ -185,18 +190,22 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
         return GenericDecisionResult("invalid_input", run_id, "generic-option-baseline-v2", handoff["context"].get("policy_version"), (), (), ("NO_REQUIRED_PARTICIPANTS",))
     if any(p.get("response_status", "complete") != "complete" for p in handoff["participants"] if p["participant_id"] in required):
         return GenericDecisionResult("blocked", run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"), (), (), ("INCOMPLETE_RESPONSE",))
+    required_set = set(required)
+    scoring_rows = None
     results, scored = [], []
     for candidate in handoff["candidates"]:
-        state, codes = _feasibility(candidate, handoff["constraints"], set(required))
+        state, codes = _feasibility(candidate, handoff["constraints"], required_set)
         flags = {flag["flag"] for flag in handoff.get("option_flags", [])
-                 if flag["participant_id"] in required and flag["activity_id"] == candidate.get("source_option_id", candidate["option_id"])}
+                 if flag["participant_id"] in required_set and flag["activity_id"] == candidate.get("source_option_id", candidate["option_id"])}
         if "cannot_join" in flags:
             state, codes = "infeasible", tuple(sorted(set(codes) | {"CANNOT_JOIN"}))
         elif "needs_information" in flags and state != "infeasible":
             state, codes = "unresolved", tuple(sorted(set(codes) | {"NEEDS_INFORMATION"}))
         result = {"option_id": candidate["option_id"], "feasibility": state, "explanation_codes": list(codes)}
         if state == "feasible":
-            scores, score_codes = _score(candidate, handoff, required)
+            if scoring_rows is None:
+                scoring_rows = _scoring_rows(handoff, required)
+            scores, score_codes = _score(candidate, scoring_rows)
             if score_codes:
                 result.update(feasibility="unresolved", explanation_codes=list(score_codes))
             else:

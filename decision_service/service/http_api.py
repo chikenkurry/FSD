@@ -116,7 +116,7 @@ class DecisionHandler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"status": "ok"})
             if self.path == "/health/ready" and self.command == "GET":
                 try:
-                    self.server.store.health()
+                    self.server.store.ping()
                     ready = (self.server.jobs.ready() if self.server.worker_health else self.server.store.supports(
                         [spec for kind, spec in self.server.jobs.specifications.items() if kind != 'fact_collection']))
                 except Exception:

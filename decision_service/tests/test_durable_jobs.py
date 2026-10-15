@@ -181,3 +181,32 @@ class DurableJobTests(unittest.TestCase):
                 remaining_timeout(120)
         finally:
             deadline.reset(token)
+
+    def test_periodic_reaper_only_fails_exhausted_expired_leases(self):
+        ids = [self.store.enqueue(self.plan,{**self.responses,'snapshot_id':str(n)},self.spec)['run_id'] for n in range(3)]
+        claims = [self.store.claim(self.spec) for _ in ids]
+        with self.store.connect() as db:
+            db.execute('UPDATE jobs SET attempts=3,lease_until=0 WHERE id=?',(ids[0],))
+            db.execute('UPDATE jobs SET lease_until=0 WHERE id=?',(ids[1],))
+            db.execute('UPDATE jobs SET attempts=3,lease_until=9999999999 WHERE id=?',(ids[2],))
+        self.assertEqual(self.store.reap_exhausted(),1)
+        self.assertEqual(self.store.get(ids[0])['issues'][0]['code'],'EXECUTION_RETRY_EXHAUSTED')
+        replacement = self.store.claim(self.spec)
+        self.assertEqual(replacement['id'],ids[1])
+        self.assertEqual(replacement['attempts'],2)
+        self.assertEqual(self.store.get(ids[2])['job_state'],'running')
+        self.assertFalse(self.store.renew(claims[0]))
+
+    def test_idle_polling_is_bounded_and_resets_on_local_notification(self):
+        workers = JobWorkers(self.store,workers=1)
+        delays = []
+        def wait(timeout):
+            delays.append(timeout)
+            if len(delays) == 6:
+                workers.stop.set()
+            return len(delays) == 4
+        with patch.object(workers.wake,'wait',side_effect=wait):
+            workers.work()
+        self.assertTrue(all(.25 <= delay <= 1 for delay in delays))
+        self.assertGreater(delays[2],delays[0])
+        self.assertEqual(delays[4],delays[0])

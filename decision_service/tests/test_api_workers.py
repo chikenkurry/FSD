@@ -66,10 +66,19 @@ class SeparateWorkerTests(unittest.TestCase):
         self.assertEqual(self.call('/health/ready')[0],503)
 
     def test_readiness_returns_503_when_database_unavailable(self):
-        with patch.object(self.store,'health',side_effect=RuntimeError('private connection details')):
+        with patch.object(self.store,'ping',side_effect=RuntimeError('private connection details')):
             status,body = self.call('/health/ready')
         self.assertEqual(status,503)
         self.assertNotIn('private',json.dumps(body))
+
+    def test_readiness_does_not_aggregate_job_history(self):
+        workers = JobWorkers(self.store,workers=1)
+        workers.start()
+        try:
+            with patch.object(self.store,'health',side_effect=AssertionError('Diagnostic aggregation on readiness path')):
+                self.assertEqual(self.call('/health/ready')[0],200)
+        finally:
+            workers.close()
 
     def test_preview_pool_does_not_claim_recommendations(self):
         plan, responses = snapshots()

@@ -215,3 +215,34 @@ class PostgresStoreTests(unittest.TestCase):
             self.assertEqual(other.health(), {})
         finally:
             other.close()
+
+    def test_reaper_fences_only_exhausted_expired_claims(self):
+        ids = [self.store.enqueue(self.plan,{**self.responses,'snapshot_id':str(n)},self.spec)['run_id'] for n in range(3)]
+        original = [self.store.claim(self.spec) for _ in ids]
+        with self.store.connect() as db:
+            db.execute('UPDATE jobs SET attempts=3,lease_until=0 WHERE id=?',(ids[0],))
+            db.execute('UPDATE jobs SET lease_until=0 WHERE id=?',(ids[1],))
+            db.execute('UPDATE jobs SET attempts=3,lease_until=9999999999 WHERE id=?',(ids[2],))
+        self.assertEqual(self.store.reap_exhausted(),1)
+        self.assertEqual(self.store.get(ids[0])['job_state'],'failed')
+        self.assertEqual(self.store.claim(self.spec)['id'],ids[1])
+        self.assertEqual(self.store.get(ids[2])['job_state'],'running')
+        self.assertFalse(self.store.complete(original[0],execute(self.plan,self.responses)))
+
+    def test_completed_get_does_not_return_frozen_inputs_and_uses_one_statement(self):
+        from decision_service.tests.sql_metrics import SQLCounter
+        artifact = self.store.save(execute(self.plan,self.responses),self.plan,self.responses)
+        # Large or corrupt source inputs are irrelevant to an immutable artifact.
+        with self.store.connect() as db:
+            db.execute('UPDATE jobs SET inputs=? WHERE id=?',('private-input-'+'x'*1000000,artifact['run_id']))
+        with SQLCounter(self.store) as count:
+            self.assertEqual(self.store.get(artifact['run_id']),artifact)
+        self.assertEqual(count.statements,1)
+        self.assertLess(count.returned_bytes,100000)
+
+    def test_get_reads_historical_artifact_without_job_and_missing_id(self):
+        artifact = {'run_id':'pre-queue-history','status':'ranked'}
+        with self.store.connect() as db:
+            db.execute('INSERT INTO runs VALUES (?,?,?)',(artifact['run_id'],'historical-hash',json.dumps(artifact)))
+        self.assertEqual(self.store.get(artifact['run_id']),artifact)
+        self.assertIsNone(self.store.get('missing-run'))

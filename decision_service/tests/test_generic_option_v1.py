@@ -62,6 +62,28 @@ class GenericOptionV1Tests(unittest.TestCase):
         self.assertEqual(result.ranked_candidates[0]["min_member_score"], 0.0)
         self.assertEqual({row["option_id"] for row in result.pareto_frontier}, {"a", "b"})
 
+    def test_same_attribute_in_different_questions_keeps_each_members_weights(self):
+        source = preparation()
+        source['scoring_model']['questions'][1]['weight'] = .5
+        source['scoring_model']['questions'].append({'question_id':'q_alternative','role':'soft','weight':.5})
+        source['preferences'] = [
+            {'participant_id':pid,'source_question_id':question,'attribute_id':'keyboard',
+             'kind':'attribute_preference','preferred_value':value,'utility_rule':'attribute_match_v1','polarity':'prefer'}
+            for pid in ('p1','p2') for question,value in (('q_keyboard','quiet'),('q_alternative','clicky'))
+        ]
+        source['scoring_model']['member_weights'] = [
+            {'participant_id':pid,'source_question_id':question,'attribute_id':'keyboard',
+             'effective_weight':weight,'status':'resolved'}
+            for pid,question,weight in [('p2','q_alternative',.75),('p1','q_keyboard',.75),
+                                        ('p2','q_keyboard',.25),('p1','q_alternative',.25)]
+        ]
+        result = run_decision(self.handoff(source))
+        self.assertEqual(result.status,'ranked')
+        self.assertEqual([row['option_id'] for row in result.ranked_candidates],['a','b'])
+        for row in result.ranked_candidates:
+            self.assertEqual(row['min_member_score'],.25)
+            self.assertEqual(row['average_member_score'],.5)
+
     def test_contract_rejects_malformed_rules_types_and_objective(self):
         handoff = self.handoff()
         handoff['constraints'][0].update(constraint_rule='maximum_v1', required_value=1)

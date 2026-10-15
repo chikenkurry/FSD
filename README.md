@@ -22,6 +22,8 @@ recommendation/fact workers and reserved preview workers. See the
 [storage and worker design](decision_service/docs/STORAGE_AND_WORKERS.md) for the
 architecture, alternatives, migration/rollback procedures and scaling limits, and
 the [load/recovery report](integration/DECISION_LOAD_REPORT.md) for measured evidence.
+Targeted scoring, database-read and idle-work improvements are measured in the
+[Decision efficiency report](integration/DECISION_EFFICIENCY_REPORT.md).
 
 ## Run all services
 
