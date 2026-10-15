@@ -1,5 +1,13 @@
 # Decision preprocessing prototype
 
+## Shared persistence and process roles
+
+The integrated stack uses PostgreSQL and separate API/worker processes.
+Read [Storage and worker design](STORAGE_AND_WORKERS.md) for the decisions,
+alternatives, first SQLite migration, rollback, operation and scaling contracts.
+The [load report](../../integration/DECISION_LOAD_REPORT.md) includes HTTP/process
+measurements and forced worker-crash recovery. SQLite remains a standalone fallback.
+
 The [integration guide](../../integration/README.md) documents the HTTP workflow
 connecting these functions to frozen Planning and Participation snapshots.
 

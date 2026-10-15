@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import threading
 import time
+from uuid import uuid4
 
 from decision_service.preprocessing.sparse import VERSION as PROCESSING_VERSION
 from .store import canonical
@@ -27,7 +28,7 @@ def execution_specification(provider=None, *, kind="recommendation") -> dict:
     revision = (os.environ.get(revision_key) or getattr(provider,"model","rules")) if provider else "rules"
     return {"kind": kind, "processing_version": PROCESSING_VERSION,
             "implementation_hash": digest.hexdigest(),
-            "semantic_provider": type(provider).__name__ if provider else "rules",
+            "semantic_provider": getattr(provider, 'provider_name', type(provider).__name__) if provider else "rules",
             "model": getattr(provider, "model", None),
             "job_timeout_seconds": int(os.environ.get("DECISION_JOB_TIMEOUT_SECONDS", "180")),
             "model_revision": revision}
@@ -62,10 +63,9 @@ class CachedSemanticProvider:
         return cached
 
 
-class JobWorkers:
-    def __init__(self, store, provider=None, *, workers=2, fact_collector=None):
-        if not 1 <= workers <= 8:
-            raise ValueError("DECISION_WORKERS must be between 1 and 8")
+class JobQueue:
+    """Admission only: safe to run in independently scaled API processes."""
+    def __init__(self, store, provider=None, *, fact_collector=None):
         self.store = store
         self.timeout = int(os.environ.get("DECISION_JOB_TIMEOUT_SECONDS", "180"))
         if not 30 <= self.timeout <= 900:
@@ -74,16 +74,63 @@ class JobWorkers:
         self.fact_collector = fact_collector
         if fact_collector:
             self.specifications["fact_collection"] = execution_specification(fact_collector,kind="fact_collection")
-        self.provider = CachedSemanticProvider(provider, store, self.specifications["recommendation"]) if provider else None
+        self.wake = threading.Event()
+
+    def close(self):
+        pass
+
+    def enqueue(self, planning, responses, *, kind="recommendation", retry=False):
+        run = self.store.enqueue(planning, responses, self.specifications[kind])
+        if retry and run["status"] == "failed":
+            run = self.store.retry(run["run_id"],self.specifications[kind])
+        self.wake.set()
+        return run
+
+
+class JobWorkers(JobQueue):
+    def __init__(self, store, provider=None, *, workers=2, fact_collector=None, kinds=None, lease_seconds=300):
+        super().__init__(store, provider, fact_collector=fact_collector)
+        if not 1 <= workers <= 8:
+            raise ValueError("DECISION_WORKERS must be between 1 and 8")
+        if not 5 <= lease_seconds <= 1800:
+            raise ValueError('Decision lease must be between 5 and 1800 seconds')
+        kinds = kinds or list(self.specifications)
+        if len(set(kinds)) != len(kinds) or any(kind not in {'recommendation', 'preview', 'fact_collection'} for kind in kinds):
+            raise ValueError('Unknown or duplicate worker job kinds')
+        self.specifications = {kind: spec for kind, spec in self.specifications.items() if kind in kinds}
+        if not self.specifications:
+            raise ValueError('No configured job kinds for this worker')
+        self.provider = CachedSemanticProvider(provider, store, execution_specification(provider)) if provider else None
+        self.worker_id = str(uuid4())
+        self.lease_seconds = lease_seconds
+        self.last_presence = 0
         self.stop = threading.Event()
         self.active = {}
         self.active_lock = threading.Lock()
-        self.wake = threading.Event()
         self.threads = [threading.Thread(target=self.work, daemon=True, name=f"decision-worker-{i}") for i in range(workers)]
+        self.presence_thread = threading.Thread(target=self.presence, daemon=True, name='decision-presence')
 
     def start(self):
+        self.register()
         for thread in self.threads:
             thread.start()
+        self.presence_thread.start()
+
+    def register(self):
+        self.store.register_worker(self.worker_id, list(self.specifications.values()), len(self.threads))
+        self.last_presence = time.monotonic()
+
+    def presence(self):
+        while not self.stop.wait(5):
+            try:
+                if all(thread.is_alive() for thread in self.threads):
+                    self.register()
+            except Exception as error:
+                logging.error('worker_presence_failed type=%s', type(error).__name__)
+
+    def ready(self):
+        return (not self.stop.is_set() and all(thread.is_alive() for thread in self.threads)
+                and time.monotonic() - self.last_presence < 15)
 
     def close(self):
         self.stop.set()
@@ -95,22 +142,14 @@ class JobWorkers:
             active = list(self.active.values())
         for job in active:
             self.store.release(job)
-
-    def enqueue(self, planning, responses, *, kind="recommendation", retry=False):
-        run = self.store.enqueue(planning, responses, self.specifications[kind])
-        if retry and run["status"] == "failed":
-            run = self.store.retry(run["run_id"],self.specifications[kind])
-        self.wake.set()
-        return run
+        if self.presence_thread.is_alive():
+            self.presence_thread.join(timeout=1)
+        self.store.unregister_worker(self.worker_id)
 
     def work(self):
-        checked = 0
         while not self.stop.is_set():
             try:
-                if time.monotonic() - checked > 30:
-                    self.store.fail_obsolete(list(self.specifications.values()))
-                    checked = time.monotonic()
-                job = self.store.claim(list(self.specifications.values()))
+                job = self.store.claim(list(self.specifications.values()), lease_seconds=self.lease_seconds)
             except Exception as error:
                 logging.error("queue_unavailable type=%s", type(error).__name__)
                 self.stop.wait(1)
@@ -126,9 +165,9 @@ class JobWorkers:
                 self.active[job["id"]] = job
             done = threading.Event()
             def heartbeat(claim=job, finished=done):
-                while not finished.wait(30):
+                while not finished.wait(min(30, self.lease_seconds / 3)):
                     try:
-                        if not self.store.renew(claim):
+                        if not self.store.renew(claim, self.lease_seconds):
                             return
                     except Exception:
                         return

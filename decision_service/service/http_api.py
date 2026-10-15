@@ -42,15 +42,19 @@ def read_snapshot(base: str, path: str, token: str, request_id: str = "") -> dic
 
 class DecisionServer(ThreadingHTTPServer):
     daemon_threads = True
+    request_queue_size = 128
 
     def __init__(self, address: tuple[str, int], *, token: str, store: RunStore,
-                 planning_url: str, participation_url: str, semantic_provider=None, workers=2, fact_collector=None):
+                 planning_url: str, participation_url: str, semantic_provider=None, workers=2, fact_collector=None,
+                 jobs=None, worker_health=False):
         self.token, self.store = token, store
         self.planning_url, self.participation_url = planning_url, participation_url
         self.slots = threading.BoundedSemaphore(32)
-        self.jobs = JobWorkers(store, semantic_provider, workers=workers, fact_collector=fact_collector)
+        self.jobs = jobs or JobWorkers(store, semantic_provider, workers=workers, fact_collector=fact_collector)
+        self.worker_health = worker_health
         super().__init__(address, DecisionHandler)
-        self.jobs.start()
+        if isinstance(self.jobs, JobWorkers):
+            self.jobs.start()
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):
@@ -111,7 +115,14 @@ class DecisionHandler(BaseHTTPRequestHandler):
             if self.path == "/health" and self.command == "GET":
                 return self.send_json(200, {"status": "ok"})
             if self.path == "/health/ready" and self.command == "GET":
-                self.server.store.health()
+                try:
+                    self.server.store.health()
+                    ready = (self.server.jobs.ready() if self.server.worker_health else self.server.store.supports(
+                        [spec for kind, spec in self.server.jobs.specifications.items() if kind != 'fact_collection']))
+                except Exception:
+                    return self.send_json(503, {'code': 'DATABASE_UNAVAILABLE'})
+                if not ready:
+                    return self.send_json(503, {'code': 'WORKERS_UNAVAILABLE'})
                 return self.send_json(200, {"status": "ok"})
             if not hmac.compare_digest(self.headers.get("x-internal-token", ""), self.server.token):
                 return self.send_json(401, {"code": "UNAUTHENTICATED"})
@@ -143,7 +154,9 @@ class DecisionHandler(BaseHTTPRequestHandler):
     def dispatch(self, body: dict) -> None:
         parts = self.path.strip('/').split('/')
         if self.path == "/internal/metrics" and self.command == "GET":
-            return self.send_json(200, {"jobs": self.server.store.health()})
+            return self.send_json(200, self.server.store.metrics())
+        if self.server.worker_health:
+            return self.send_json(404, {'code': 'NOT_FOUND'})
         if self.path == "/internal/planning/validate" and self.command == "POST":
             validate_planning_snapshot(body)
             return self.send_json(200, inspect_definition(body))
@@ -158,7 +171,8 @@ class DecisionHandler(BaseHTTPRequestHandler):
             run = self.server.jobs.enqueue(mapped, response, kind="preview", retry=body.get("retry") is True)
             return self.send_run(run)
         if self.path == "/internal/facts/collections" and self.command == "POST":
-            if not self.server.jobs.fact_collector:
+            if ('fact_collection' not in self.server.jobs.specifications or not self.server.store.supports(
+                    [self.server.jobs.specifications['fact_collection']])):
                 return self.send_json(503,{"code":"FACT_COLLECTOR_NOT_CONFIGURED"})
             from .fact_collection import public_collection_input
             planning = body.get("planning")

@@ -1,5 +1,10 @@
 # Service integration
 
+Decision now uses shared PostgreSQL persistence and separate API/worker roles.
+See [the design and alternatives](../decision_service/docs/STORAGE_AND_WORKERS.md)
+for first-upgrade instructions, version compatibility, operations and scaling,
+and [the load/recovery report](DECISION_LOAD_REPORT.md) for measured evidence.
+
 See [backend hardening](BACKEND_HARDENING.md) for the new close-roster policy,
 202 job polling, private previews, Gemini collection/review, migrations and RSVPs.
 Older rounds retain their publication-roster policy and immutable history.

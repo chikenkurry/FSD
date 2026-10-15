@@ -86,12 +86,12 @@ class DurableJobTests(unittest.TestCase):
         self.assertNotIn("participants", json.dumps(failed["issues"]))
         self.assertIsNone(self.store.claim(self.spec))
 
-    def test_changed_runtime_fails_obsolete_work_explicitly(self):
+    def test_rolling_versions_only_claim_their_own_work(self):
         run = self.store.enqueue(self.plan, self.responses, self.spec)
-        self.store.fail_obsolete([{**self.spec, "implementation_hash": "test-v2"}])
-        failed = self.store.get(run["run_id"])
-        self.assertEqual(failed["status"], "failed")
-        self.assertEqual(failed["issues"][0]["code"], "EXECUTION_VERSION_CHANGED")
+        replacement = {**self.spec, 'implementation_hash': 'test-v2'}
+        self.assertIsNone(self.store.claim(replacement))
+        self.assertEqual(self.store.get(run['run_id'])['status'], 'pending')
+        self.assertEqual(self.store.claim(self.spec)['id'], run['run_id'])
 
     def test_pending_admission_is_bounded_but_duplicates_remain_readable(self):
         original = self.store.enqueue(self.plan, self.responses, self.spec)

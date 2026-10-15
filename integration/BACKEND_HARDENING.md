@@ -1,5 +1,9 @@
 # Backend lifecycle and execution
 
+Decision's PostgreSQL/process-splitting milestone is described in
+[Storage and worker design](../decision_service/docs/STORAGE_AND_WORKERS.md),
+including alternatives, first migration, rollback and measured scaling evidence.
+
 New rounds use: draft → publish form → collect and review → freeze final roster/responses
 → evaluate a durable run → confirm a local selection snapshot → RSVP.
 Planning owns identity and lifecycle; Participation owns private answers and attendance;
@@ -8,7 +12,7 @@ Decision owns interpretation, supported adapters, execution and evidence.
 ## Environment files
 
 For the integrated stack, copy `FSD/.env_example` to `FSD/.env`. Compose reads
-this root file and explicitly projects variables into each container. Only Decision
+this root file and explicitly projects variables into each container. Only Decision's recommendation/fact worker
 receives `GEMINI_API_KEY`. Planning and Participation receive their own database
 URLs and internal connection settings. Do not use `env_file: .env` for every service.
 
@@ -84,21 +88,26 @@ model identity/revision and execution policy. Duplicates are found before comput
 Accepted model replies are cached privately by exact method/input/version, including
 across previews and recommendations. Completed artifacts retain their semantic evidence.
 
-Workers share a FIFO queue across previews, recommendations and fact collection.
-SQLite claims, lease heartbeats and fenced completion prevent two workers from
+Jobs share a durable store; each worker pool claims available compatible kinds
+in creation order, with a separate preview pool in Compose.
+Transactional claims, lease heartbeats and fenced completion prevent two workers from
 publishing competing artifacts. Expired work is recovered after restart. There are
-at most 128 pending jobs, 1–8 configured workers, and three automatic attempts.
+at most 128 pending jobs and three automatic attempts. Each worker process has
+1–8 slots; the integrated stack reserves a separate preview worker pool.
 The default job budget is 180 seconds; individual provider requests respect the
-remaining budget. Work from an obsolete implementation fails explicitly instead
-of being recomputed under the wrong version.
+remaining budget. The initial SQLite import explicitly fails pending work from
+the previous implementation instead of recomputing it under the wrong version.
+Later rolling releases retain version-specific queues; old workers drain their
+own jobs, or an operator explicitly retires their implementation after shutdown.
 
 Resend the original POST with `"retry": true` to retry an exhausted job after
 resolving its cause. Successful results remain immutable. A new implementation or
 model revision creates a new input key. Change `SEMANTIC_MODEL_REVISION` when
 replacing local model weights under the same name.
 
-SQLite is a single-deployment queue/store. Independently hosted replicas require a
-shared persistence adapter; this change does not claim distributed SQLite support.
+The integrated deployment uses PostgreSQL for the shared queue, results and
+semantic cache. SQLite remains a single-deployment fallback for standalone local
+work. See the storage design for cache limitations and multi-replica operations.
 
 ## Confirmation and RSVP
 
@@ -192,8 +201,9 @@ identity provider; it cannot safely be inferred from a lost guest credential.
 
 Planning uses checked-in SQL migrations with checksums and an advisory transaction
 lock. Complete existing schemas are adopted as the baseline; partial schemas fail
-validation. Participation uses Prisma migrations; Decision preserves its historical
-SQLite artifact table and adds the queue/cache tables.
+validation. Participation uses Prisma migrations. Decision uses checked-in,
+checksummed PostgreSQL migrations and an atomic read-only SQLite import preserving
+historical IDs/artifacts; runtime processes verify the migrated schema.
 
 All services have database readiness checks, request IDs and safe error envelopes.
 Planning propagates request IDs to its peers; Participation propagates them during
@@ -213,7 +223,7 @@ synthetic timing measurements, not live-model latency or accuracy evidence.
 Independent human labelling/review of held-out semantic examples remains required;
 the collector and regression suite do not establish arbitrary-input accuracy.
 
-## Verification on this branch
+## Verification before the PostgreSQL milestone
 
 Decision: 299 tests; Participation: 64 unit tests and 17 database tests;
 connected lifecycle: 12 HTTP journeys; Planning tests run during image builds.

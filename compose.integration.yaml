@@ -1,5 +1,44 @@
 name: what2do-integration
+x-decision-environment: &decision-environment
+  DECISION_DATABASE_URL: postgresql://decision:decision@decision-db:5432/decision
+  INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+  SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-rules}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
+  SEMANTIC_MODEL_REVISION: ${SEMANTIC_MODEL_REVISION:-}
+  GEMINI_FACT_MODEL: ${GEMINI_FACT_MODEL:-gemini-3.8-flash}
+  GEMINI_FACT_MODEL_REVISION: ${GEMINI_FACT_MODEL_REVISION:-}
+  DECISION_JOB_TIMEOUT_SECONDS: ${DECISION_JOB_TIMEOUT_SECONDS:-180}
+  DECISION_LEASE_SECONDS: ${DECISION_LEASE_SECONDS:-300}
+  DECISION_DB_POOL_SIZE: ${DECISION_DB_POOL_SIZE:-8}
+x-decision-build: &decision-build
+  context: .
+  dockerfile: decision_service/Dockerfile
+x-decision-dependencies: &decision-dependencies
+  decision-db: {condition: service_healthy}
+  decision-migrate: {condition: service_completed_successfully}
 services:
+  decision-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: decision
+      POSTGRES_PASSWORD: decision
+      POSTGRES_DB: decision
+    volumes: [decision-postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U decision -d decision"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  decision-migrate:
+    build: *decision-build
+    depends_on:
+      decision-db: {condition: service_healthy}
+    environment:
+      DECISION_DATABASE_URL: postgresql://decision:decision@decision-db:5432/decision
+    command: [python, -m, decision_service.service, --role, migrate, --import-sqlite, /legacy/runs.sqlite]
+    volumes: [decision-data:/legacy:ro]
+    healthcheck: {disable: true}
   planning-db:
     image: postgres:16
     environment:
@@ -47,24 +86,30 @@ services:
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
     ports: ["127.0.0.1:13002:3000"]
   decision:
-    build:
-      context: .
-      dockerfile: decision_service/Dockerfile
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, api]
     environment:
+      <<: *decision-environment
       PLANNING_BASE_URL: http://planning:8080
       PARTICIPATION_BASE_URL: http://participation:3000
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
-      DECISION_DB_PATH: /data/runs.sqlite
-      SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-rules}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
+  decision-worker:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, worker, --kinds, 'recommendation,fact_collection']
+    environment:
+      <<: *decision-environment
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_FACT_MODEL: ${GEMINI_FACT_MODEL:-gemini-3.8-flash}
-      SEMANTIC_MODEL_REVISION: ${SEMANTIC_MODEL_REVISION:-}
       DECISION_WORKERS: ${DECISION_WORKERS:-2}
-      DECISION_JOB_TIMEOUT_SECONDS: ${DECISION_JOB_TIMEOUT_SECONDS:-180}
-    volumes: [decision-data:/data]
+  decision-preview:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, worker, --kinds, preview]
+    environment:
+      <<: *decision-environment
+      DECISION_WORKERS: ${DECISION_PREVIEW_WORKERS:-1}
 volumes:
   planning-data:
   participation-data:
   decision-data:
+  decision-postgres-data:

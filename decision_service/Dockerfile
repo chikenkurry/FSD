@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
 WORKDIR /app
+COPY decision_service/requirements.txt /app/decision_service/requirements.txt
+RUN pip install --no-cache-dir -r /app/decision_service/requirements.txt
 COPY decision_service /app/decision_service
 RUN mkdir -p /data && chown nobody:nogroup /data
 USER nobody

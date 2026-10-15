@@ -17,10 +17,16 @@ Frontend form and review screens remain to be implemented. Legacy per-activity r
 `ACTIVITY_RATINGS_NOT_SUPPORTED`; the connected form uses question answers for
 preferences. Activity participation flags and structured budgets are supported.
 
+Decision uses PostgreSQL in the integrated stack, with separate API,
+recommendation/fact workers and reserved preview workers. See the
+[storage and worker design](decision_service/docs/STORAGE_AND_WORKERS.md) for the
+architecture, alternatives, migration/rollback procedures and scaling limits, and
+the [load/recovery report](integration/DECISION_LOAD_REPORT.md) for measured evidence.
+
 ## Run all services
 
 Copy [.env_example](.env_example) to `.env` in this directory and set `GEMINI_API_KEY`
-to enable fact collection. Compose passes the key only to Decision. See the
+to enable fact collection. Compose passes the key only to Decision's recommendation/fact worker. See the
 [backend lifecycle guide](integration/BACKEND_HARDENING.md) for job polling,
 private previews, reviewed fact acceptance, RSVPs and service-specific local env files.
 
@@ -34,12 +40,17 @@ Run these commands from the directory containing this README and
 `compose.integration.yaml`. If your terminal opens in the parent workspace,
 run `cd FSD` first.
 
+When upgrading a running SQLite-based stack, stop the old writer first with
+`docker compose -f compose.integration.yaml stop decision`. Startup imports its
+retained volume read-only; do not delete it. Fresh installations need no old database.
+
 ```sh
 docker compose -f compose.integration.yaml up -d --build --wait
 docker compose -f compose.integration.yaml ps
 ```
 
-The stack starts all three services and two PostgreSQL databases. It configures
+The stack starts the three application services, separate Decision workers and
+three PostgreSQL databases. It configures
 their internal URLs and shared token, applies database migrations at startup,
 and stores databases and Decision artifacts in named volumes. Local Go, Node
 and PostgreSQL installations are not required for this setup.
@@ -48,7 +59,8 @@ and PostgreSQL installations are not required for this setup.
 | --- | --- | --- |
 | Planning | Plans, options, questions, membership, guest sessions and round lifecycle | `http://127.0.0.1:18080` |
 | Participation | Private drafts, submissions and frozen response snapshots | `http://127.0.0.1:13002` |
-| Decision | Preprocessing, execution adapters, ranking and stored results | Internal Docker network: `http://decision:8000` |
+| Decision API | Snapshot validation, job admission and filtered results | Internal Docker network: `http://decision:8000` |
+| Decision workers | Preprocessing, ranking and evidence collection; reserved preview pool | Internal health endpoints only |
 | Participation PostgreSQL | Participation data; also available for database tests | `127.0.0.1:15432` |
 
 Participation's Swagger UI is at [http://127.0.0.1:13002/docs](http://127.0.0.1:13002/docs).
