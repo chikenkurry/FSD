@@ -10,7 +10,7 @@ export const apiService = {
   async getForms(userID: string): Promise<Form[]> {
     try {
       const encodedUserID = encodeURIComponent(userID)
-      const response = await fetch(`${API_BASE_URL}/users/${encodedUserID}`);
+      const response = await fetch(`${API_BASE_URL}/plans/organiser/${encodedUserID}`);
       if (!response.ok) {
         throw new Error('Failed to fetch forms from server');
       }
@@ -54,6 +54,20 @@ export const apiService = {
       return await response.json();
     } catch (error) {
       console.error('API Error (fakeLogin):', error);
+      throw error;
+    }
+  },
+
+  async getOrganiserName(userID: string): Promise<any> {
+    try {
+      const encodedUserID = encodeURIComponent(userID)
+      const response = await fetch(`${API_BASE_URL}/users/${encodedUserID}`);
+      if (!response.ok){
+        throw new Error('Failed to fetch user from server')
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('API Error (getOrganiserName):', error);
       throw error;
     }
   },

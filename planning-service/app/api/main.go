@@ -99,7 +99,7 @@ func main() {
 	mux.HandleFunc("POST /v1/plans", planHandler.CreatePlan) //👌
 	mux.HandleFunc("GET /v1/plans/{id}", planHandler.GetPlanById)
 	mux.HandleFunc("GET /v1/plans/details/{id}", planHandler.GetByIDWithDetails)
-	mux.HandleFunc("GET /v1/plans/organiser/{id}", planHandler.ListPlansByOrganiser)
+	mux.HandleFunc("GET /v1/plans/organiser/{id}", enableCORS(planHandler.ListPlansByOrganiser))
 	mux.HandleFunc("PATCH /v1/plans/{id}", planHandler.UpdatePlan)
 	mux.HandleFunc("DELETE /v1/plans/{id}", planHandler.DeletePlan)
 
