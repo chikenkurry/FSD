@@ -6,12 +6,15 @@
       <button :class="{ active: currentFrame === 'login' }" @click="currentFrame = 'login'">Frame 2</button>
       <button :class="{ active: currentFrame === 'dashboard' }" @click="currentFrame = 'dashboard'">Frame 3</button>
       <button :class="{ active: currentFrame === 'creator' }" @click="currentFrame = 'creator'">Frame 4</button>
+      <button :class="{ active: currentFrame === 'published' }" @click="currentFrame = 'published'">Frame 5</button>
     </nav>
 
     <!-- Dynamically rendered active frame component -->
     <component 
-      :is="activeFrameComponent" 
+      :is="activeFrameComponent"
+      v-bind="frameProps"
       @navigate="handleNavigation"
+      @published="onPublished"
     />
   </div>
 </template>
@@ -21,8 +24,21 @@ import { ref, computed, type Component } from 'vue';
 import Login from '@/components/Login.vue';
 import FormsDashboard from '@/components/FormsDashboard.vue';
 import FormCreator from '@/components/FormCreator.vue';
+import FormPublishedView from '@/components/FormPublishedView.vue';
+import type { Form } from '@/types/form';
 
 const currentFrame = ref<string>("login"); 
+
+const publishedForm = ref<Form | null>(null);
+
+const frameProps = computed(() =>
+  currentFrame.value === 'published' ? { form: publishedForm.value } : {}
+);
+
+const onPublished = (form: Form) => {
+  publishedForm.value = form;
+  currentFrame.value = 'published';
+};
 
 // Computed property to select component based on active frame number
 const activeFrameComponent = computed<Component>(() => {
@@ -30,6 +46,7 @@ const activeFrameComponent = computed<Component>(() => {
     case "login": return Login;
     case "dashboard": return FormsDashboard;
     case "creator": return FormCreator;
+    case "published": return FormPublishedView
     default: return FormsDashboard;
   }
 });
@@ -42,6 +59,8 @@ const handleNavigation = (target: number | string): void => {
     currentFrame.value = "creator";
   } else if (target === 'dashboard') {
     currentFrame.value = "dashboard";
+  } else if (target === 'published') {
+    currentFrame.value = "published";
   }
 };
 </script>

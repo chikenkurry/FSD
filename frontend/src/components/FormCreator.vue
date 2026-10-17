@@ -4,7 +4,7 @@
     <div class="creator-wrapper">
       <div class="creator-header">
         <h2>Create Form</h2>
-        <button class="btn-secondary" @click="emit('navigate', 3)">Back to Dashboard</button>
+        <button class="btn-secondary" @click="emit('navigate', 'dashboard')">Back to Dashboard</button>
       </div>
 
       <!-- Step nvagiation indicator bar -->
@@ -27,7 +27,7 @@
           </div>
           <div class="input-group">
             <label>Description</label>
-            <input type="text" v-model="form.description" placeholder="Provide context or details" rows="3" />
+            <textarea v-model="form.description" placeholder="Provide context or details" rows="3" class="textarea-multiline" ></textarea>
           </div>
         </div>
 
@@ -51,12 +51,12 @@
           <h3 class="step-title">Step 3: Scheduling</h3>
           <div class="input-row">
             <div class="input-group flex-1">
-              <label>Date *</label>
-              <input type="date" v.model="form.meetingTime" required />
+              <label>Date range start *</label>
+              <input type="date" v-model="form.startDateRange" required />
             </div>
-
             <div class="input-group flex-1">
-              <label>Time *</label>
+              <label>Date range end *</label>
+              <input type="date" v-model="form.endDateRange" :min="form.startDateRange" required />
             </div>
           </div>
         </div>
@@ -76,9 +76,11 @@
           <div class="summary-card">
             <h4>Plan Details Overview</h4>
             <div class="summary-grid">
-              <div><strong>Title:</strong>{{ form.title }}</div>
-              <div><strong>Category:</strong>{{ form.category }}</div>
-              <!-- <div><strong>Schedule:</strong>{{ form.title }}</div> -->
+              <div><strong>Title:</strong> {{ form.title }}</div>
+              <div><strong>Category:</strong> {{ form.category }}</div>
+              <div v-if="form.description" class="full-width multiline-summary"><strong>Description:</strong> {{ form.description }}</div>
+              <div><strong>Date range:</strong> {{ form.startDateRange }} to {{ form.endDateRange }}</div>
+              <div class="full-width"><strong>Location:</strong> {{ form.location }}</div>
             </div>
           </div>
 
@@ -101,22 +103,42 @@
               </div>
             </div>
             <div class="input-group">
-              <input type="text" v-model="question.description" placeholder="Provide a description"
+              <input type="text" v-model="question.description" placeholder="Provide a description (optional)"
                 class="question-description-input" />
             </div>
 
             <!-- multiple choice option builder -->
             <div v-if="question.type === 'Multiple choice'" class="options-container">
               <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
-                <span class="radio-indicator">○</span>
+                <span class="checkbox-indicator">☐</span>
                 <input type="text" v-model="question.options[oIndex]" :placeholder="`Option ${oIndex + 1}`" />
-              </div>
+                <button v-if="question.options.length > 1"
+                  type="button"
+                  class="btn-remove-option"
+                  @click="removeOption(qIndex, oIndex)">×</button>
+                </div>
+                <button type="button" 
+                  class="btn-add-option"
+                  @click="addOption(qIndex)"><span class="radio-indicator active">☑</span> Add option
+                </button>
+            </div>
 
-              <!-- Add Option button using Green Crayon palette tone -->
+            <!-- single choice option builder -->
+             <div v-if="question.type === 'Single choice'" class="options-container">
+              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
+                <span class="radio-indicator">○</span> 
+                <input type="text" v-model="question.options[oIndex]" :placeholder="`Option ${oIndex + 1}`" />
+                <button 
+                  v-if="question.options.length > 1" 
+                  type="button" 
+                  class="btn-remove-option" 
+                  @click="removeOption(qIndex, oIndex)">×
+                </button>
+              </div> 
               <button type="button" class="btn-add-option" @click="addOption(qIndex)">
                 <span class="radio-indicator active">◎</span> Add option
               </button>
-            </div>
+             </div>
 
             <!-- short answer view -->
             <div v-if="question.type === 'Short answer'" class="short-answer-container">
@@ -125,20 +147,63 @@
 
             <!-- duration / calender view -->
             <div v-if="question.type === 'Duration'" class="duration-container">
+              <p class="helper-subtitle" v-if="form.startDateRange &amp;&amp; form.endDateRange">
+                Select between: <strong>{{ form.startDateRange }}</strong> and <strong>{{ form.endDateRange }}</strong>
+              </p>
               <div class="calender-widget">
                 <div class="calender-header">
-                  <button type="button" class="cal-nav">&lt;</button>
+                  <button type="button" class="cal-nav"> < </button>
                   <span class="cal-month-title">Oct 2026</span>
-                  <button type="button" class="cal-nav">&gt;</button>
+                  <button type="button" class="cal-nav"> > </button>
                 </div>
                 <div class="calendar-grid">
-                  <span class="cal-day-header" v-for="day in ['M', 'T', 'W', 'Th', 'F', 'S', 'Su']" :key="day">{{ day
-                    }}</span>
+                  <span class="cal-day-header" v-for="day in ['M', 'T', 'W', 'Th', 'F', 'S', 'Su']" :key="day">{{ day}}</span>
                   <!-- Calendar grid cells representation -->
                   <span v-for="n in 31" :key="n" class="cal-date" :class="{ selected: n === 26 }">{{ n }}</span>
                 </div>
               </div>
             </div>
+
+            <!-- location suggestions builder -->
+             <div v-if="question.type === 'Location'" class="options-container">
+              <label class="field-section-label">Suggested Locations:</label>
+              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
+                <span class="location-icon">📍</span>
+                <input type="text" v-model="question.options[oIndex]" :placeholder="`Location ${oIndex + 1} (e.g. Vivocity)`" />
+                <button 
+                  v-if="question.options.length > 1" 
+                  type="button" 
+                  class="btn-remove-option" 
+                  @click="removeOption(qIndex, oIndex)">×</button>
+              </div>
+              <button type="button" class="btn-add-option" @click="addOption(qIndex)">
+                <span class="location-icon">📍</span> Add location suggestion
+              </button>
+
+              <div class="checkbox-setting">
+                <label class="checkbox-label" >
+                  <input type="checkbox" v-model="question.allowCustomSuggestions" />
+                  Allow memebers to suggest their own custom location
+                </label>
+              </div>
+             </div>
+            <!-- Budget options builder -->
+             <div v-if="question.type === 'Budget'" class="options-container">
+              <label class="field-section-label">Budget Range Choices:</label>
+              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
+                <span class="currency-badge">$</span>
+                <input type="text" v-model="question.options[oIndex]" :placeholder="`Budget option ${oIndex + 1} (e.g. $20 - $50)`" />
+                <button 
+                  v-if="question.options.length > 1" 
+                  type="button" 
+                  class="btn-remove-option" 
+                  @click="removeOption(qIndex, oIndex)"
+                >×</button>
+              </div>
+              <button type="button" class="btn-add-option" @click="addOption(qIndex)">
+                <span class="currency-badge">$</span> Add budget tier
+              </button>
+             </div>
           </div>
 
           <!-- add question button -->
@@ -173,7 +238,8 @@ import TopBar from './TopBar.vue';
 import { apiService } from '@/services/api.ts';
 
 const emit = defineEmits<{
-  (e: 'navigate', frame: number): void;
+  (e: 'navigate', frame: string): void;
+  (e: 'published', form: Form): void;
 }>();
 
 // track active step 
@@ -183,6 +249,9 @@ const form = reactive<Form>({
   id: '',
   title: '',
   description: '',
+  startDateRange: '',
+  endDateRange: '',
+  location: '',
   category: '',
   questions: [
     {
@@ -211,13 +280,22 @@ const getStepLabel = (step: number): string => {
 const isStepValid = (step: number): boolean => {
   if (step === 1) return form.title.trim().length > 0;
   if (step === 2) return form.category !== '';
-  // if (step === 3) return form.meetingDate !== '' && form.meetingTime !== '';
-  // if (step === 4) return form.location.trim().length > 0;
+  if (step === 3) {
+    if (!form.startDateRange || !form.endDateRange) {
+      return false;
+    }
+    return form.endDateRange >= form.startDateRange;
+  }
+  if (step === 4) return form.location.trim().length > 0;
   return true;
 };
 
 // wizard navigation handlers
 const nextStep = () => {
+  if (currentStep.value === 3 && form.startDateRange && form.endDateRange && form.endDateRange < form.startDateRange){
+    alert('End Date cannot be earlier than Start Date.');
+    return;
+  }
   if (!isStepValid(currentStep.value)) {
     alert('Please complete the required fields in this step before proceeding.');
     return;
@@ -261,12 +339,25 @@ const addOption = (qIndex: number): void => {
   form.questions[qIndex].options.push(`Option ${optionNum}`);
 };
 
+const removeOption = (qIndex: number, oIndex: number) => {
+  if (form.questions[qIndex].options.length > 1) {
+    form.questions[qIndex].options.splice(oIndex, 1);
+  }
+};
+
 // form submission to backend
 const submitForm = async (): Promise<void> => {
   // Transmit Form payload to Golang server endpoint via fetch
+  // try {
+  //   const savedForm = await apiService.createForm(form)
+  //   emit('navigate', 'published');
+  // } catch (error) {
+  //   alert('Failted to save form to backend')
+  // }
   console.log('Transmitting Typed Form Payload to Go Server:', JSON.stringify(form, null, 2));
+  emit('published', JSON.parse(JSON.stringify(form)));
+  emit('navigate', 'published');
   alert('Form successfully sent to backend!');
-  emit('navigate', 3);
 };
 </script>
 
@@ -379,6 +470,12 @@ const submitForm = async (): Promise<void> => {
   background-color: #F8FAFC;
 }
 
+.textarea-multiline{
+  white-space: pre-wrap;
+  resize: vertical;
+  line-height: 1.5;
+}
+
 .input-row {
   display: flex;
   gap: 16px;
@@ -404,6 +501,19 @@ const submitForm = async (): Promise<void> => {
   gap: 8px;
   font-size: 0.85rem;
   color: #4A5568;
+}
+
+.full-width {
+  grid-column: span 2;
+}
+
+.multiline-summary .description-text {
+  margin-top: 4px;
+  white-space: pre-wrap;
+  background: #EDF2F7;
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: #2D3748;
 }
 
 .section-heading {
@@ -475,11 +585,29 @@ const submitForm = async (): Promise<void> => {
   color: #38A169;
 }
 
+.question-description-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  background-color: #F8FAFC;
+  font-size: 0.875rem;
+  margin-top: 8px;
+}
+
+.field-section-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4A5568;
+  margin-bottom: 6px;
+  display: block;
+}
+
 .btn-add-option {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background-color: #38A169;
+  background-color: #2799B2;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -633,6 +761,50 @@ const submitForm = async (): Promise<void> => {
 
 .btn-secondary:hover {
   background-color: #EDF2F7;
+}
+
+.btn-remove-option {
+  background: none;
+  border: none;
+  color: #E53E3E;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.btn-remove-option:hover {
+  color: #C53030;
+}
+
+.currency-badge {
+  font-weight: bold;
+  color: #2F855A;
+  padding: 0 4px;
+}
+
+.location-icon {
+  font-size: 0.9rem;
+}
+
+.checkbox-setting {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed #E2E8F0;
+}
+
+.checkbox-label {
+  font-size: 0.85rem;
+  color: #4A5568;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.helper-subtitle {
+  font-size: 0.85rem;
+  color: #4A5568;
+  margin-bottom: 8px;
 }
 
 /* Wizard Navigation Actions */

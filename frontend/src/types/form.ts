@@ -3,8 +3,16 @@ export type FormStatus = 'Draft' | 'Collecting' | 'Reviewing' | 'Confirmed' | 'A
 export interface Question {
   title: string;
   description: string;
+  isRequired?: boolean;
+  sortOrder?: number;
   type: 'Multiple choice' | 'Short answer' | 'Single choice' | 'Duration' | 'Location' | 'Budget';
-  options: string[];
+  options: string[]; // options list or JSON metadata string
+  metadata?: {
+    currency?: string;
+    allowCustomSuggestions?: boolean;
+    minDate?: string;
+    maxDate?: string;
+  }
 }
 
 export interface Form {
@@ -14,6 +22,9 @@ export interface Form {
   description: string;
   category: string;
   state: FormStatus;
+  startDateRange: string;
+  endDateRange: string;
+  location: string;
   membersCount?: number;
   createdBy?: string;
   questions: Question[];
