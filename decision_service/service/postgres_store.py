@@ -106,7 +106,10 @@ class PostgresRunStore(RunStore):
         with self.connect() as db:
             installed = {row['version']: row['checksum'] for row in db.execute('SELECT * FROM decision_schema_migrations')}
         for path in sorted((Path(__file__).parent / 'migrations').glob('*.sql')):
-            if installed.get(path.name) != hashlib.sha256(path.read_bytes()).hexdigest():
+            # ``migrate`` reads text before hashing, which normalizes CRLF on
+            # Windows. Verify the same canonical representation so a fresh
+            # Windows Compose migration does not immediately look modified.
+            if installed.get(path.name) != hashlib.sha256(path.read_text().encode()).hexdigest():
                 raise ValueError('Decision schema requires migration or has a changed checksum')
 
     def import_sqlite(self, path):
