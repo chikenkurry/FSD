@@ -87,6 +87,29 @@ class ServiceIntegrationTests(unittest.TestCase):
             public = public_result(a)
             self.assertNotIn('processing', public)
             self.assertNotIn('participants', json.dumps(public))
+            view = public['recommendation_view']
+            self.assertEqual(view['schema_version'], 'recommendation-view-v1')
+            self.assertEqual(view['status'], 'ranked')
+            self.assertEqual(view['recommendation']['candidate_id'], 'device-a')
+            self.assertTrue(view['recommendation']['is_recommended'])
+            self.assertNotIn('explanation_codes', json.dumps(view))
+
+    def test_shared_recommendation_view_hides_member_specific_failure_reasons(self):
+        run = {
+            'run_id': 'run-1', 'input_refs': {}, 'status': 'ranked',
+            'result': {'ranked_candidates': [{'option_id': 'a', 'rank': 1, 'group_score': .8,
+                                                'min_member_score': .6, 'average_member_score': .8,
+                                                'fairness_penalty': .01}],
+                       'candidate_results': [{'option_id': 'b', 'feasibility': 'infeasible',
+                                              'explanation_codes': ['CANNOT_JOIN']}],
+                       'pareto_frontier': []},
+            'algorithm_input': {'candidates': [{'option_id': 'a', 'title': 'Option A'},
+                                                {'option_id': 'b', 'title': 'Option B'}]},
+        }
+        view = public_result(run)['recommendation_view']
+        self.assertEqual(view['recommendation']['title'], 'Option A')
+        self.assertEqual(view['unavailable_candidates'], [{'candidate_id': 'b', 'title': 'Option B', 'status': 'infeasible'}])
+        self.assertNotIn('CANNOT_JOIN', json.dumps(view))
 
     def test_structured_budget_conversion_is_exact_and_checks_scope(self):
         plan, replies = snapshots()
