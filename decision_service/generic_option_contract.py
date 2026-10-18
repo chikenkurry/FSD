@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import math
 from typing import Any
 
-from decision_service.contract import ContractError as ActivityContractError, group_objective
+from decision_service.contract import ContractError as ActivityContractError, group_objective, ranking_order
 
 
 SCHEMA_VERSION = "generic-option-v1"
@@ -61,6 +62,7 @@ def _validate_handoff(handoff: dict[str, Any]) -> None:
     definitions = _criterion_definitions(handoff.get("criteria", []))
     questions = {q["question_id"] for q in handoff["scoring_model"]["questions"]}
     _validate_objective(handoff["scoring_model"])
+    _validate_ranking_policy(handoff["scoring_model"])
     _validate_facts(handoff["candidates"], definitions)
     _validate_participants(handoff["participants"])
     _validate_answer_references(
@@ -99,8 +101,32 @@ def _validate_objective(model: dict) -> None:
         raise ContractError("Group objective must specify all policy fields")
 
 
+def _validate_ranking_policy(model: dict) -> None:
+    policy = model.get("ranking_policy")
+    if not isinstance(policy, dict) or not {"sort_order"} <= set(policy) or set(policy) - {"sort_order", "feasibility_policy"}:
+        raise ContractError("Invalid generic ranking policy")
+    if "feasibility_policy" in policy and policy["feasibility_policy"] != "all_required_participants":
+        raise ContractError("Unsupported generic feasibility policy")
+    objective = model["group_objective"]
+    if policy.get("sort_order") != ranking_order(objective):
+        raise ContractError("Ranking order conflicts with group objective")
+
+
 def _validate_facts(candidates: list[dict], definitions: dict) -> None:
     for candidate in candidates:
+        cost = candidate.get("estimated_cost_minor")
+        if cost is not None and (type(cost) is not int or cost < 0):
+            raise ContractError("Candidate cost tie-breaker must be a nonnegative integer")
+        start_at = candidate.get("start_at")
+        if start_at is not None:
+            if not isinstance(start_at, str):
+                raise ContractError("Candidate start tie-breaker must be an ISO timestamp")
+            try:
+                parsed = datetime.fromisoformat(start_at.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ContractError("Candidate start tie-breaker must be an ISO timestamp") from exc
+            if parsed.tzinfo is None:
+                raise ContractError("Candidate start tie-breaker needs a timezone")
         seen = set()
         for fact in candidate.get("facts", []):
             aid = fact["attribute_id"]

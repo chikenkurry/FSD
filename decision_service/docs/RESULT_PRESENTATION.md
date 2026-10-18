@@ -33,6 +33,8 @@ reveal another member's private answer or constraint.
     "candidate_id": "option-a",
     "title": "Option A",
     "rank": 1,
+    "primary_rank": 1,
+    "primary_objective_tie_size": 1,
     "group_score": 0.74,
     "minimum_member_score": 0.62,
     "average_member_score": 0.78,
@@ -51,6 +53,9 @@ reveal another member's private answer or constraint.
 | `status` | Decision status: `ranked`, `blocked`, `no_feasible_candidate`, or another execution status. |
 | `recommendation` | The first ranked candidate, or `null` when no authoritative recommendation is available. |
 | `alternatives` | Remaining ranked candidates in rank order. |
+| `rank` | Deterministic display order after policy tie-breakers. |
+| `primary_rank` | Dense rank using only the substantive group objective, before cost, time, or ID tie-breakers. |
+| `primary_objective_tie_size` | Number of candidates tied at this primary rank. A value above one means there is no substantive winner between those candidates. |
 | `pareto_alternatives` | Ranked alternatives on the Pareto frontier, excluding the recommendation. |
 | `unavailable_candidates` | Candidates that cannot currently be recommended, with a non-private feasibility state only. |
 | `next_action` | A broad action state for the shared UI, or `null` when none is required. |
@@ -63,9 +68,11 @@ presentation enhancement adds scenario date/duration fields explicitly.
 `minimum_member_score` and `average_member_score` are normalized values in the
 inclusive range `0` to `1`. `group_score` is the declared policy objective and
 may be lower when a weighted-fairness policy applies its penalty. Clients should
-round only for display and retain the server ordering. A higher `group_score`,
-`minimum_member_score`, or `average_member_score` is better. A lower
-`fairness_penalty` represents less variation among member scores.
+round only for display and retain the server ordering. When
+`primary_objective_tie_size` is above one, clients should present the tied
+candidates as equally suitable and use `rank` only for a stable display order.
+A higher `group_score`, `minimum_member_score`, or `average_member_score` is
+better. A lower `fairness_penalty` represents less variation among member scores.
 
 ## Pareto alternatives
 

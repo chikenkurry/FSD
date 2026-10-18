@@ -137,6 +137,26 @@ class ServiceIntegrationTests(unittest.TestCase):
         self.assertEqual(view['unavailable_candidates'], [{'candidate_id': 'b', 'title': 'Option B', 'status': 'infeasible'}])
         self.assertNotIn('CANNOT_JOIN', json.dumps(view))
 
+    def test_recommendation_view_keeps_primary_objective_ties_visible(self):
+        run = {
+            'status': 'ranked',
+            'result': {'ranked_candidates': [
+                {'option_id': 'a', 'rank': 1, 'primary_rank': 1, 'primary_objective_tie_size': 2,
+                 'group_score': .5, 'min_member_score': .5, 'average_member_score': .5, 'fairness_penalty': 0},
+                {'option_id': 'b', 'rank': 2, 'primary_rank': 1, 'primary_objective_tie_size': 2,
+                 'group_score': .5, 'min_member_score': .5, 'average_member_score': .5, 'fairness_penalty': 0},
+            ], 'candidate_results': [], 'pareto_frontier': []},
+            'algorithm_input': {'candidates': [{'option_id': 'a', 'title': 'Lower-cost tie'},
+                                                {'option_id': 'b', 'title': 'Later tie'}]},
+        }
+        view = recommendation_view(run)
+        self.assertEqual(view['recommendation']['rank'], 1)
+        self.assertEqual(view['recommendation']['primary_rank'], 1)
+        self.assertEqual(view['recommendation']['primary_objective_tie_size'], 2)
+        self.assertEqual(view['alternatives'][0]['rank'], 2)
+        self.assertEqual(view['alternatives'][0]['primary_rank'], 1)
+        self.assertEqual(view['alternatives'][0]['primary_objective_tie_size'], 2)
+
     def test_structured_budget_conversion_is_exact_and_checks_scope(self):
         plan, replies = snapshots()
         replies['constraints'] = [{'participant_id':'p1','budget':{'kind':'limited','max_cost_minor':120050}}]

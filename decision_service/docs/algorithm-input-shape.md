@@ -207,18 +207,25 @@ group_score = (minimum_weight * minimum + average_weight * average)
               - fairness_weight * population_variance(member_scores)
 ```
 
-It sorts by group score, then minimum and average. Both use lower cost, earlier
-start instant, and stable candidate ID to break ties. Unknown costs sort last.
-The contract validates the declared sort order against the objective.
+It sorts by group score, then minimum and average. Both use lower supplied
+`estimated_cost_minor`, earlier `start_at`, and stable candidate ID to break
+ties when the generic candidate supplies those optional fields. Missing cost
+and start metadata sort last; the stable candidate ID remains the final
+deterministic fallback. The contract validates the declared sort order against
+the objective.
 
 ## Algorithm output
 
 `run_decision` returns `ranked`, `blocked`, `no_feasible_candidate`, or
 `invalid_input`, along with run/policy/algorithm versions. A ranked result
 contains candidate IDs, ranks, minimum and average member scores, group score,
-fairness penalty (population variance), estimated cost, start time, and a Pareto
-frontier across minimum/average/cost. Candidate results contain feasibility
-and aggregate explanation codes.
+fairness penalty (population variance), and a Pareto frontier across minimum
+and average satisfaction. `rank` is the deterministic display ordering after
+the policy tie-breakers. `primary_rank` groups candidates by the substantive
+group objective before cost, time, or ID tie-breakers; candidates with the same
+`primary_objective_tie_size` greater than one are equally suitable under that
+objective. Candidate results contain feasibility and aggregate explanation
+codes.
 
 Any unresolved candidate blocks the final recommendation because it could
 outperform the currently scoreable candidates. Examples are `MISSING_COST`,

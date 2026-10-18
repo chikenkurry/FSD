@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from datetime import datetime
 from uuid import uuid4
 
 from decision_service.algorithm.scoring import group_objective_metrics
@@ -139,6 +140,39 @@ def _pareto_frontier(scored: list[tuple]) -> tuple[dict, ...]:
     return tuple(sorted(frontier, key=lambda row: row["option_id"]))
 
 
+def _metric(value: float) -> float:
+    """Use the same precision for ordering and reported tie groups."""
+    return round(value, 12)
+
+
+def _primary_key(row: tuple, mode: str) -> tuple[float, ...]:
+    _, minimum, average, group_score, _ = row
+    if mode == "weighted_fairness":
+        return _metric(group_score), _metric(minimum), _metric(average)
+    return _metric(minimum), _metric(average)
+
+
+def _start_key(candidate: dict) -> datetime:
+    value = candidate.get("start_at")
+    if value is None:
+        return datetime.max.replace(tzinfo=None)
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+
+
+def _ranking_key(row: tuple, sort_order: list[str]) -> tuple:
+    candidate, minimum, average, group_score, _ = row
+    values = {
+        "highest_group_score": -_metric(group_score),
+        "highest_min_member_score": -_metric(minimum),
+        "highest_average_member_score": -_metric(average),
+        "lowest_estimated_cost": candidate.get("estimated_cost_minor")
+        if candidate.get("estimated_cost_minor") is not None else float("inf"),
+        "earliest_start": _start_key(candidate),
+        "stable_candidate_id": candidate["option_id"],
+    }
+    return tuple(values[field] for field in sort_order)
+
+
 def _scoring_rows(handoff: dict, required: list[str]) -> dict[str, list[tuple[dict, list[dict]]]]:
     """Index candidate-independent answers/weights once, preserving their order."""
     by_member_criterion = {}
@@ -216,9 +250,21 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
     if not scored or any(row["feasibility"] == "unresolved" for row in results):
         status = "blocked" if any(row["feasibility"] == "unresolved" for row in results) else "no_feasible_candidate"
         return GenericDecisionResult(status, run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"), (), tuple(results))
-    ordered = sorted(scored, key=lambda row: (-row[3], -row[1], -row[2], row[0]["option_id"]))
-    ranked = tuple({"option_id": row[0]["option_id"], "rank": index, "min_member_score": round(row[1], 12),
-                    "average_member_score": round(row[2], 12), "group_score": round(row[3], 12),
-                    "fairness_penalty": round(row[4], 12)} for index, row in enumerate(ordered, 1))
+    model = handoff["scoring_model"]
+    sort_order = model["ranking_policy"]["sort_order"]
+    mode = model["group_objective"]["mode"]
+    ordered = sorted(scored, key=lambda row: _ranking_key(row, sort_order))
+    primary_ranks, tie_sizes = {}, {}
+    for row in ordered:
+        key = _primary_key(row, mode)
+        if key not in primary_ranks:
+            primary_ranks[key] = len(primary_ranks) + 1
+            tie_sizes[key] = sum(_primary_key(other, mode) == key for other in ordered)
+    ranked = tuple({"option_id": row[0]["option_id"], "rank": index,
+                    "primary_rank": primary_ranks[_primary_key(row, mode)],
+                    "primary_objective_tie_size": tie_sizes[_primary_key(row, mode)],
+                    "min_member_score": round(row[1], 12), "average_member_score": round(row[2], 12),
+                    "group_score": round(row[3], 12), "fairness_penalty": round(row[4], 12)}
+                   for index, row in enumerate(ordered, 1))
     return GenericDecisionResult("ranked", run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"),
                                  ranked, tuple(results), pareto_frontier=_pareto_frontier(scored))

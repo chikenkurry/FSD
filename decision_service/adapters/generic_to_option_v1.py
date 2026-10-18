@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from decision_service.contract import DEFAULT_OBJECTIVE
+from decision_service.contract import DEFAULT_OBJECTIVE, ranking_order
 from decision_service.generic_option_contract import (
     SCHEMA_VERSION,
     SUPPORTED_HARD_RULES,
@@ -79,6 +79,10 @@ def adapt_generic_to_option_v1(preparation: dict[str, Any]) -> dict:
 
     context = deepcopy(preparation.get("context", {}))
     context.update(schema_version=SCHEMA_VERSION, algorithm_version="generic-option-baseline-v2")
+    objective = deepcopy(preparation.get("scoring_model", {}).get("group_objective", DEFAULT_OBJECTIVE))
+    ranking_policy = deepcopy(preparation.get("scoring_model", {}).get("ranking_policy", {
+        "sort_order": ranking_order(objective),
+    }))
     handoff = {
         "context": context,
         "criteria": deepcopy(preparation.get("criteria", [])),
@@ -89,7 +93,8 @@ def adapt_generic_to_option_v1(preparation: dict[str, Any]) -> dict:
         "scoring_model": {
             "questions": [deepcopy(question) for question in questions.values() if question.get("role") in {"hard", "soft"}],
             "member_weights": deepcopy(preparation.get("scoring_model", {}).get("member_weights", [])),
-            "group_objective": deepcopy(preparation.get("scoring_model", {}).get("group_objective", DEFAULT_OBJECTIVE)),
+            "group_objective": objective,
+            "ranking_policy": ranking_policy,
             "missing_fact_policy": "unresolved",
         },
     }

@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from decision_service.adapters import adapt_generic_to_option_v1, adapt_scenarios_to_option_v1
+from decision_service.contract import ranking_order
 from decision_service.generic_algorithm import run_decision
 from decision_service.generic_algorithm.run import _numeric_utility
 
@@ -61,6 +62,31 @@ class GenericOptionV1Tests(unittest.TestCase):
         self.assertEqual([row["option_id"] for row in result.ranked_candidates], ["a", "b"])
         self.assertEqual(result.ranked_candidates[0]["min_member_score"], 0.0)
         self.assertEqual({row["option_id"] for row in result.pareto_frontier}, {"a", "b"})
+
+    def test_tied_primary_scores_use_cost_then_start_without_hiding_the_tie(self):
+        source = preparation()
+        source["candidates"][0].update(estimated_cost_minor=200, start_at="2027-01-02T10:00:00Z")
+        source["candidates"][1].update(estimated_cost_minor=100, start_at="2027-01-03T10:00:00Z")
+        result = run_decision(self.handoff(source))
+        self.assertEqual([row["option_id"] for row in result.ranked_candidates], ["b", "a"])
+        self.assertEqual([row["primary_rank"] for row in result.ranked_candidates], [1, 1])
+        self.assertEqual([row["primary_objective_tie_size"] for row in result.ranked_candidates], [2, 2])
+
+    def test_adapter_preserves_the_preprocessing_ranking_policy(self):
+        source = preparation()
+        objective = source["scoring_model"]["group_objective"]
+        source["scoring_model"]["ranking_policy"] = {
+            "feasibility_policy": "all_required_participants",
+            "sort_order": ranking_order(objective),
+        }
+        self.assertEqual(self.handoff(source)["scoring_model"]["ranking_policy"], source["scoring_model"]["ranking_policy"])
+
+    def test_equal_cost_uses_earlier_start_before_stable_option_id(self):
+        source = preparation()
+        source["candidates"][0].update(estimated_cost_minor=100, start_at="2027-01-03T10:00:00Z")
+        source["candidates"][1].update(estimated_cost_minor=100, start_at="2027-01-02T10:00:00Z")
+        result = run_decision(self.handoff(source))
+        self.assertEqual([row["option_id"] for row in result.ranked_candidates], ["b", "a"])
 
     def test_same_attribute_in_different_questions_keeps_each_members_weights(self):
         source = preparation()

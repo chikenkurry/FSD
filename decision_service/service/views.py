@@ -29,6 +29,8 @@ def _display_candidate(row: dict, catalog: dict[str, dict], *, recommended: bool
     return {
         **known,
         "rank": row.get("rank"),
+        "primary_rank": row.get("primary_rank", row.get("rank")),
+        "primary_objective_tie_size": row.get("primary_objective_tie_size", 1),
         "group_score": row.get("group_score"),
         "minimum_member_score": row.get("min_member_score"),
         "average_member_score": row.get("average_member_score"),
