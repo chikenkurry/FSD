@@ -39,6 +39,14 @@
     },
     "expected": {"next_action": "OPTION_FACTS_REQUIRED", "unavailable_status": "unresolved"}
   },
+  "blocked_incomplete_responses": {
+    "run": {
+      "status": "blocked",
+      "result": {"ranked_candidates": [], "candidate_results": [], "pareto_frontier": []},
+      "algorithm_input": {"candidates": [{"option_id": "option-a", "title": "Option A"}]}
+    },
+    "expected": {"next_action": "RESPONSES_OR_CONFIRMATIONS_REQUIRED"}
+  },
   "no_feasible_candidate": {
     "run": {
       "status": "no_feasible_candidate",
@@ -50,5 +58,29 @@
       "algorithm_input": {"candidates": [{"option_id": "option-a", "title": "Option A"}]}
     },
     "expected": {"next_action": "REVISE_OPTIONS_OR_REQUIREMENTS", "unavailable_status": "infeasible"}
+  },
+  "ranked_without_pareto_alternatives": {
+    "run": {
+      "status": "ranked",
+      "result": {
+        "ranked_candidates": [{"option_id": "only-choice", "rank": 1, "group_score": 0.8, "min_member_score": 0.8, "average_member_score": 0.8, "fairness_penalty": 0.0}],
+        "candidate_results": [],
+        "pareto_frontier": [{"option_id": "only-choice"}]
+      },
+      "algorithm_input": {"candidates": [{"option_id": "only-choice", "title": "Only choice"}]}
+    },
+    "expected": {"next_action": null}
+  },
+  "pending_recommendation": {
+    "run": {"status": "pending", "result": {}, "algorithm_input": {"candidates": []}},
+    "expected": {"next_action": "RECOMMENDATION_IN_PROGRESS"}
+  },
+  "setup_review_required": {
+    "run": {"status": "needs_information", "result": {}, "algorithm_input": {"candidates": []}},
+    "expected": {"next_action": "DECISION_SETUP_REVIEW_REQUIRED"}
+  },
+  "failed_recommendation": {
+    "run": {"status": "failed", "result": {}, "algorithm_input": {"candidates": []}},
+    "expected": {"next_action": "RECOMMENDATION_RETRY_REQUIRED"}
   }
 }

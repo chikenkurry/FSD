@@ -23,7 +23,7 @@ def snapshots():
 
 
 class ServiceIntegrationTests(unittest.TestCase):
-    def test_recommendation_view_fixtures_cover_ranked_blocked_and_no_feasible_states(self):
+    def test_recommendation_view_fixtures_cover_presentation_states(self):
         path = Path(__file__).parents[1] / 'fixtures' / 'presentation' / 'recommendation_view_cases.json'
         cases = json.loads(path.read_text())
 
@@ -34,12 +34,19 @@ class ServiceIntegrationTests(unittest.TestCase):
         self.assertEqual([row['candidate_id'] for row in ranked['pareto_alternatives']], expected['pareto_ids'])
         self.assertEqual(ranked['pareto_alternatives'][0]['tradeoffs'], expected['popular_tradeoffs'])
 
-        for name in ('blocked_missing_facts', 'no_feasible_candidate'):
+        for name in ('blocked_missing_facts', 'blocked_incomplete_responses', 'no_feasible_candidate',
+                     'pending_recommendation', 'setup_review_required', 'failed_recommendation'):
             view = recommendation_view(cases[name]['run'])
             expected = cases[name]['expected']
             self.assertIsNone(view['recommendation'])
             self.assertEqual(view['next_action'], expected['next_action'])
-            self.assertEqual(view['unavailable_candidates'][0]['status'], expected['unavailable_status'])
+            if 'unavailable_status' in expected:
+                self.assertEqual(view['unavailable_candidates'][0]['status'], expected['unavailable_status'])
+
+        no_tradeoff = recommendation_view(cases['ranked_without_pareto_alternatives']['run'])
+        self.assertEqual(no_tradeoff['recommendation']['candidate_id'], 'only-choice')
+        self.assertEqual(no_tradeoff['alternatives'], [])
+        self.assertEqual(no_tradeoff['pareto_alternatives'], [])
 
     def test_real_preprocessing_and_matcher_execute_frozen_question_answers(self):
         plan, replies = snapshots()

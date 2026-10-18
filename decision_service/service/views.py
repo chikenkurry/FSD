@@ -80,16 +80,23 @@ def recommendation_view(run: dict) -> dict:
         unavailable.append({**catalog.get(candidate_id, {"candidate_id": candidate_id, "title": candidate_id}),
                             "status": row.get("feasibility")})
     fact_requests = run.get("processing", {}).get("preparation", {}).get("fact_requests", [])
+    status = run.get("status")
     next_action = None
     if fact_requests:
         next_action = "OPTION_FACTS_REQUIRED"
-    elif run.get("status") == "blocked":
+    elif status == "blocked":
         next_action = "RESPONSES_OR_CONFIRMATIONS_REQUIRED"
-    elif run.get("status") == "no_feasible_candidate":
+    elif status == "no_feasible_candidate":
         next_action = "REVISE_OPTIONS_OR_REQUIREMENTS"
+    elif status == "pending":
+        next_action = "RECOMMENDATION_IN_PROGRESS"
+    elif status in {"needs_information", "needs_clarification", "unsupported", "invalid_input"}:
+        next_action = "DECISION_SETUP_REVIEW_REQUIRED"
+    elif status == "failed":
+        next_action = "RECOMMENDATION_RETRY_REQUIRED"
     return {
         "schema_version": VIEW_SCHEMA_VERSION,
-        "status": run.get("status"),
+        "status": status,
         "recommendation": recommendation,
         "alternatives": alternatives,
         "pareto_alternatives": pareto,

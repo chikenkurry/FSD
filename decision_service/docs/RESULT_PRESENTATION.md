@@ -97,6 +97,9 @@ overall when its labels show a trade-off.
 | Blocked with fact requests | Do not show a recommendation. Show that more option information is needed. | `OPTION_FACTS_REQUIRED` |
 | Other `blocked` result | Do not show a recommendation. Ask members to complete or confirm required information. | `RESPONSES_OR_CONFIRMATIONS_REQUIRED` |
 | `no_feasible_candidate` | Do not show a recommendation. Explain that the group should revise options or requirements. | `REVISE_OPTIONS_OR_REQUIREMENTS` |
+| `pending` | Show a non-final loading state. Do not infer a recommendation from incomplete data. | `RECOMMENDATION_IN_PROGRESS` |
+| `needs_information`, `needs_clarification`, `unsupported`, or `invalid_input` | Do not show a recommendation. Ask the organiser to review the round setup. | `DECISION_SETUP_REVIEW_REQUIRED` |
+| `failed` | Show a recoverable error state. Do not expose internal failure details. | `RECOMMENDATION_RETRY_REQUIRED` |
 
 `unavailable_candidates[].status` is intentionally limited to aggregate states
 such as `infeasible` or `unresolved`. The view does not expose raw explanation
@@ -127,6 +130,7 @@ privacy boundary require a new schema version if changed incompatibly.
 
 Presentation fixtures live in
 `decision_service/fixtures/presentation/recommendation_view_cases.json`. They
-cover a ranked result with a Pareto trade-off, a blocked result awaiting option
-facts, and a no-feasible-candidate result. The corresponding regression test is
-in `decision_service/tests/test_service_integration.py`.
+cover ranked results with and without a Pareto trade-off, blocked results awaiting
+option facts or responses, no-feasible-candidate, pending, setup-review, and
+failed states. The corresponding regression test is in
+`decision_service/tests/test_service_integration.py`.
