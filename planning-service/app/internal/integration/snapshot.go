@@ -90,6 +90,9 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 		if choices, ok := metadata["options"]; ok {
 			question["choices"] = choices
 		}
+		if tags, ok := metadata["options_tags"]; ok {
+			question["choice_tags"] = tags
+		}
 		if definition, ok := metadata["decision"].(map[string]any); ok {
 			for _, key := range []string{"role", "criterion", "relevance", "leader_weight", "numeric_intent", "mapping", "answer_format"} {
 				if value, exists := definition[key]; exists {

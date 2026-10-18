@@ -52,6 +52,12 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	options, err := normaliseOptionTags(req.Options)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	question := &model.Question{
 		PlanID: req.PlanID,
 		Title: req.Title,
@@ -59,7 +65,7 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		IsRequired: req.IsRequired,
 		SortOrder: req.SortOrder,
-		Options: req.Options,
+		Options: options,
 	}
 	if err := h.repo.Create(r.Context(), question); err != nil {
 		WriteError(w, http.StatusInternalServerError, "Fail to create question")
@@ -116,7 +122,12 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 		updates["sort_order"] = req.SortOrder
 	}
 	if req.Options != nil {
-		updates["options"] = req.Options
+		options, err := normaliseOptionTags(req.Options)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		updates["options"] = options
 	}
 
 	if len(updates) == 0 {

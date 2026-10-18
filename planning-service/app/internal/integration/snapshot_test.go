@@ -80,3 +80,21 @@ func TestInternalRoutesRejectMissingAndWrongCredentials(t *testing.T) {
 		t.Fatal("valid caller rejected")
 	}
 }
+
+func TestSnapshotCarriesOptionTagsWithoutChangingChoices(t *testing.T) {
+	plan := model.Plan{ID: uuid.New(), Title: "Where shall we eat?", Members: []model.PlanMember{{UserID: uuid.New()}},
+		ProposedActivities: []model.ProposedActivity{{ID: uuid.New(), Title: "Dinner"}},
+		Questions: []model.Question{{ID: uuid.New(), Title: "Cuisine?", Type: model.QuestionTypeCustomSingleChoice,
+			Options: datatypes.JSON(`{"options":["McDonald's","Sushiro","Ajuma"],"option_tags":{"Sushiro":["japanese"]}}`)}}}
+	snapshot, err := BuildSnapshot(plan, model.PlanRound{ID: uuid.New(), RoundNumber: 1}, uuid.New(), Settings{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := snapshot["questions"].([]map[string]any)[0]
+	if len(q["choices"].([]any)) != 3 {
+		t.Fatal("choices changed")
+	}
+	if q["choice_tags"] == nil {
+		t.Fatal("tags missing from snapshot")
+	}
+}

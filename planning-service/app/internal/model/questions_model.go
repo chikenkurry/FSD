@@ -34,7 +34,15 @@ type Question struct {
 	SortOrder   int          `gorm:"type:integer;default:0;not null" json:"sort_order"` // For reordering questions on the form
 
 	// Options stores unstructured metadata for custom choices, range limits, or default values as JSON
-	// e.g. {"options": ["Italian", "Japanese", "Mexican"], "allow_other": true}
+	// options example{
+			// "options": ["McDonald's", "Sushiro", "Ajuma"],
+			// "option_tags": {
+			// 	"McDonald's": ["fast food"],
+			// 	"Sushiro": ["japanese"],
+			// 	"Ajuma": ["korean"]
+			// },
+			// "allow_other": true
+		// }
 	Options datatypes.JSON `gorm:"type:jsonb" json:"options,omitempty"`
 
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
