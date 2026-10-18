@@ -22,6 +22,12 @@ See [RESULT_PRESENTATION.md](RESULT_PRESENTATION.md) for the shared
 `recommendation-view-v1` contract, Pareto trade-off labels, shared result states,
 and the privacy boundary between group output and member clarifications.
 
+## Algorithm design
+
+See [ALGORITHM_DESIGN_JOURNEY.md](ALGORITHM_DESIGN_JOURNEY.md) for the
+algorithm's decision sequence, fairness policies, ranking/tie behavior,
+considered alternatives, and verification strategy.
+
 ## Generic preprocessing flow
 
 See [FLOW.md](FLOW.md) for the input/output contract, each processing step,
