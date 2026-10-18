@@ -83,6 +83,7 @@ func (r *PlanRepository) ListByOrganiser(ctx context.Context, organiserID string
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
+		Preload("CreatedBy").
 		Find(&plans).Error
 
 	return plans, err

@@ -36,6 +36,7 @@ type PlanResponse struct {
 	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
+	OrganiserName   string             `json:"organiser_name,omitempty"`
 
 	// Relational details (included when loaded)
 	MembersCount            int `json:"members_count,omitempty"`
@@ -163,7 +164,22 @@ func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusInternalServerError, "Failed to list plans")
 		return
 	}
-	WriteJSONResponse(w, http.StatusOK, plans)
+	responses := make([]PlanResponse, len(plans))
+	for i, p := range plans{
+		responses[i] = PlanResponse{
+			ID:              p.ID,
+			Title:           p.Title,
+			Description:     p.Description,
+			State:           p.State,
+			CreatedByUserID: p.CreatedByUserID,
+			TimeWindowStart: p.TimeWindowStart,
+			TimeWindowEnd:   p.TimeWindowEnd,
+			CreatedAt:       p.CreatedAt,
+			UpdatedAt:       p.UpdatedAt,
+			OrganiserName:   p.CreatedBy.Username,
+		}
+	}
+	WriteJSONResponse(w, http.StatusOK, responses)
 }
 
 // PATCH /v1/plans/{id} - Update plan details or transition status
