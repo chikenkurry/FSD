@@ -56,6 +56,53 @@ class GenericOptionV1Tests(unittest.TestCase):
         self.assertEqual(result["status"], "ready")
         return result["algorithm_input"]
 
+    def fairness_adversary(self, objective: dict) -> dict:
+        """Two options with the same inputs but opposing fairness trade-offs."""
+        return {
+            "status": "ready",
+            "context": {"policy_version": "test-policy-v1"},
+            "criteria": [
+                {"attribute_id": "p1_fit", "value_type": "number", "unit": None},
+                {"attribute_id": "p2_fit", "value_type": "number", "unit": None},
+            ],
+            "candidates": [
+                {"option_id": "balanced", "facts": [
+                    {"attribute_id": "p1_fit", "value_type": "number", "value": 6, "status": "confirmed"},
+                    {"attribute_id": "p2_fit", "value_type": "number", "value": 6, "status": "confirmed"},
+                ]},
+                {"option_id": "popular_but_uneven", "facts": [
+                    {"attribute_id": "p1_fit", "value_type": "number", "value": 4, "status": "confirmed"},
+                    {"attribute_id": "p2_fit", "value_type": "number", "value": 10, "status": "confirmed"},
+                ]},
+            ],
+            "participants": [
+                {"participant_id": "p1", "is_required_for_decision": True},
+                {"participant_id": "p2", "is_required_for_decision": True},
+            ],
+            "constraints": [],
+            "preferences": [
+                {"participant_id": "p1", "source_question_id": "q_p1", "attribute_id": "p1_fit",
+                 "kind": "attribute_preference", "preferred_value": 10, "utility_rule": "numeric_target_v1",
+                 "utility_parameters": {"scale": 10}, "polarity": "prefer"},
+                {"participant_id": "p2", "source_question_id": "q_p2", "attribute_id": "p2_fit",
+                 "kind": "attribute_preference", "preferred_value": 10, "utility_rule": "numeric_target_v1",
+                 "utility_parameters": {"scale": 10}, "polarity": "prefer"},
+            ],
+            "scoring_model": {
+                "questions": [
+                    {"question_id": "q_p1", "role": "soft", "weight": 1.0},
+                    {"question_id": "q_p2", "role": "soft", "weight": 1.0},
+                ],
+                "member_weights": [
+                    {"participant_id": "p1", "source_question_id": "q_p1", "attribute_id": "p1_fit",
+                     "effective_weight": 1.0, "status": "resolved"},
+                    {"participant_id": "p2", "source_question_id": "q_p2", "attribute_id": "p2_fit",
+                     "effective_weight": 1.0, "status": "resolved"},
+                ],
+                "group_objective": objective,
+            },
+        }
+
     def test_adapter_and_runner_rank_a_ready_packet(self):
         result = run_decision(self.handoff())
         self.assertEqual(result.status, "ranked")
@@ -181,6 +228,36 @@ class GenericOptionV1Tests(unittest.TestCase):
                                                          "average_score_weight": 1.0, "fairness_weight": 0.0}
         result = run_decision(self.handoff(source))
         self.assertEqual(result.ranked_candidates[0]["average_member_score"], 0.5)
+
+    def test_maximin_and_weighted_fairness_choose_different_adversarial_winners(self):
+        maximin = run_decision(self.handoff(self.fairness_adversary({
+            "mode": "maximin_then_average", "minimum_score_weight": 0.6,
+            "average_score_weight": 0.4, "fairness_weight": 0.0,
+        })))
+        weighted = run_decision(self.handoff(self.fairness_adversary({
+            "mode": "weighted_fairness", "minimum_score_weight": 0.1,
+            "average_score_weight": 0.9, "fairness_weight": 0.0,
+        })))
+        self.assertEqual(maximin.ranked_candidates[0]["option_id"], "balanced")
+        self.assertEqual(weighted.ranked_candidates[0]["option_id"], "popular_but_uneven")
+        maximin_scores = {row["option_id"]: row for row in maximin.ranked_candidates}
+        weighted_scores = {row["option_id"]: row for row in weighted.ranked_candidates}
+        self.assertEqual(maximin_scores["popular_but_uneven"]["min_member_score"], 0.4)
+        self.assertEqual(maximin_scores["popular_but_uneven"]["average_member_score"], 0.7)
+        self.assertEqual(weighted_scores["popular_but_uneven"]["min_member_score"], 0.4)
+        self.assertEqual(weighted_scores["popular_but_uneven"]["average_member_score"], 0.7)
+
+    def test_weighted_fairness_penalty_can_prefer_a_more_even_option(self):
+        average_first = run_decision(self.handoff(self.fairness_adversary({
+            "mode": "weighted_fairness", "minimum_score_weight": 0.0,
+            "average_score_weight": 1.0, "fairness_weight": 0.0,
+        })))
+        variance_averse = run_decision(self.handoff(self.fairness_adversary({
+            "mode": "weighted_fairness", "minimum_score_weight": 0.0,
+            "average_score_weight": 1.0, "fairness_weight": 2.0,
+        })))
+        self.assertEqual(average_first.ranked_candidates[0]["option_id"], "popular_but_uneven")
+        self.assertEqual(variance_averse.ranked_candidates[0]["option_id"], "balanced")
 
     def test_avoidance_preference_inverts_category_utility(self):
         source = preparation()
