@@ -16,6 +16,12 @@ connecting these functions to frozen Planning and Participation snapshots.
 See [EVALUATION.md](EVALUATION.md) for the labelled cross-domain dataset,
 rules/model evaluation commands, per-dimension reports, and evidence replay.
 
+## Result presentation
+
+See [RESULT_PRESENTATION.md](RESULT_PRESENTATION.md) for the shared
+`recommendation-view-v1` contract, Pareto trade-off labels, shared result states,
+and the privacy boundary between group output and member clarifications.
+
 ## Generic preprocessing flow
 
 See [FLOW.md](FLOW.md) for the input/output contract, each processing step,

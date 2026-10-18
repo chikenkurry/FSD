@@ -7,6 +7,7 @@ import unittest
 from decision_service.service.snapshots import SnapshotError, map_snapshots, validate_planning_snapshot
 from decision_service.service.store import RunStore
 from decision_service.service.workflow import execute, public_result, member_review
+from decision_service.service.views import recommendation_view
 
 
 def snapshots():
@@ -22,6 +23,24 @@ def snapshots():
 
 
 class ServiceIntegrationTests(unittest.TestCase):
+    def test_recommendation_view_fixtures_cover_ranked_blocked_and_no_feasible_states(self):
+        path = Path(__file__).parents[1] / 'fixtures' / 'presentation' / 'recommendation_view_cases.json'
+        cases = json.loads(path.read_text())
+
+        ranked = recommendation_view(cases['ranked_pareto']['run'])
+        expected = cases['ranked_pareto']['expected']
+        self.assertEqual(ranked['recommendation']['candidate_id'], expected['recommendation_id'])
+        self.assertEqual([row['candidate_id'] for row in ranked['alternatives']], expected['alternative_ids'])
+        self.assertEqual([row['candidate_id'] for row in ranked['pareto_alternatives']], expected['pareto_ids'])
+        self.assertEqual(ranked['pareto_alternatives'][0]['tradeoffs'], expected['popular_tradeoffs'])
+
+        for name in ('blocked_missing_facts', 'no_feasible_candidate'):
+            view = recommendation_view(cases[name]['run'])
+            expected = cases[name]['expected']
+            self.assertIsNone(view['recommendation'])
+            self.assertEqual(view['next_action'], expected['next_action'])
+            self.assertEqual(view['unavailable_candidates'][0]['status'], expected['unavailable_status'])
+
     def test_real_preprocessing_and_matcher_execute_frozen_question_answers(self):
         plan, replies = snapshots()
         validate_planning_snapshot(plan)
