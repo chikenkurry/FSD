@@ -1,6 +1,6 @@
 
 <template>
-    <div class="published-layout">
+    <div class="published-layout" v-if="form">
         <TopBar />
 
         <div class="published-wrapper">

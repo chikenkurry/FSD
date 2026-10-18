@@ -3,10 +3,11 @@
     <!-- Frame switcher navbar for debugging and previewing all frames -->
     <nav class="frame-switcher">
       <span>Jump to Frame:</span>
-      <button :class="{ active: currentFrame === 'login' }" @click="currentFrame = 'login'">Frame 2</button>
-      <button :class="{ active: currentFrame === 'dashboard' }" @click="currentFrame = 'dashboard'">Frame 3</button>
-      <button :class="{ active: currentFrame === 'creator' }" @click="currentFrame = 'creator'">Frame 4</button>
-      <button :class="{ active: currentFrame === 'published' }" @click="currentFrame = 'published'">Frame 5</button>
+      <button :class="{ active: currentFrame === 'login' }" @click="currentFrame = 'login'">Login</button>
+      <button :class="{ active: currentFrame === 'dashboard' }" @click="currentFrame = 'dashboard'">Dashboard</button>
+      <button :class="{ active: currentFrame === 'creator' }" @click="currentFrame = 'creator'">Form Creator</button>
+      <button :class="{ active: currentFrame === 'published' }" @click="currentFrame = 'published'">Publish view</button>
+      <button :class="{ active: currentFrame === 'answering' }" @click="currentFrame = 'answering'">Answer Form</button>
     </nav>
 
     <!-- Dynamically rendered active frame component -->
@@ -25,6 +26,7 @@ import Login from '@/components/Login.vue';
 import FormsDashboard from '@/components/FormsDashboard.vue';
 import FormCreator from '@/components/FormCreator.vue';
 import FormPublishedView from '@/components/FormPublishedView.vue';
+import FormParticipantView from '@/components/FormParticipantView.vue';
 import type { Form } from '@/types/form';
 
 const currentFrame = ref<string>("login"); 
@@ -47,6 +49,7 @@ const activeFrameComponent = computed<Component>(() => {
     case "dashboard": return FormsDashboard;
     case "creator": return FormCreator;
     case "published": return FormPublishedView
+    case "answering": return FormParticipantView
     default: return FormsDashboard;
   }
 });
@@ -61,6 +64,8 @@ const handleNavigation = (target: number | string): void => {
     currentFrame.value = "dashboard";
   } else if (target === 'published') {
     currentFrame.value = "published";
+  } else if (target === 'anwering') {
+    currentFrame.value = "answering";
   }
 };
 </script>

@@ -16,7 +16,7 @@ export interface Question {
 }
 
 export interface Form {
-  id: number;
+  id: string;
   // name?: string;
   title: string;
   description: string;
