@@ -1,6 +1,18 @@
-
 <template>
-    <div class="published-layout" v-if="form">
+    <!-- Fallback when opened without a form (e.g. via the debug frame switcher) -->
+    <div v-if="!form" class="published-layout">
+        <TopBar />
+        <div class="published-wrapper">
+            <div class="card share-card">
+                <h2>No form to show yet</h2>
+                <p class="subtitle">Create and publish a form first, and it will appear here.</p>
+                <button type="button" class="btn-secondary" @click="emit('navigate', 'creator')">Create a form</button>
+                <button type="button" class="btn-secondary" @click="emit('navigate', 'dashboard')">← Back to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <div v-else class="published-layout">
         <TopBar />
 
         <div class="published-wrapper">
@@ -73,6 +85,7 @@
                 <div v-if="question.type === 'Multiple choice' || question.type === 'Single choice'" class="options-preview">
                     <div v-for="(opt, oIdx) in question.options" :key="oIdx" class="preview-option-row">
                         <span class="choice-symbol">{{ question.type === 'Single choice' ? '○' : '☐' }}</span>
+                        <span>{{ opt }}</span>
                     </div>
                 </div>
 
@@ -92,7 +105,7 @@
                         <span class="choice-symbol">📍</span>
                         <span>{{ opt }}</span>
                     </div>
-                    <p v-if="question.allowCustomSuggestions" class="custom-hint">
+                    <p v-if="question.metadata?.allowCustomSuggestions" class="custom-hint">
                         💡 Custom location suggestions enabled for participants.
                     </p>
                 </div>
@@ -117,7 +130,7 @@ import type { Form } from '@/types/form.ts';
 
 
 const props = defineProps<{
-    form: Form;
+    form?: Form | null;
 }>();
 
 const emit = defineEmits<{
@@ -127,7 +140,7 @@ const emit = defineEmits<{
 const isCopied = ref<boolean>(false);
 
 const shareUrl = computed<string>(() => {
-  const formId = props.form.id || 'draft-preview-id';
+  const formId = props.form?.id || 'draft-preview-id';
   return `${window.location.origin}/forms/view/${formId}`;
 });
 

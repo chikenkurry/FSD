@@ -17,7 +17,7 @@
         </div>
       </div>
 
-      <form @submit.prevent="submitForm" class="form-builder">
+      <form @submit.prevent="submitForm" @keydown.enter="onFormEnter" class="form-builder">
         <!-- 1: Form name and description -->
         <div v-if="currentStep === 1" class="card step-card">
           <h3 class="step-title"> Step 1: Basic information </h3>
@@ -86,11 +86,30 @@
 
           <h3 class="section-heading">Form Questions</h3>
 
-          <div v-for="(question, qIndex) in form.questions" :key="qIndex" class="card question-card">
+          <p v-if="form.questions.length > 1" class="reorder-hint">
+            Drag the ⠿ handle or use the ↑ ↓ buttons to change the order questions appear in.
+          </p>
+
+          <div v-for="(question, qIndex) in form.questions" :key="getQuestionKey(question)" class="card question-card"
+            :class="{ dragging: dragIndex === qIndex, 'drag-over': dragOverIndex === qIndex && dragIndex !== qIndex }"
+            :draggable="armedIndex === qIndex"
+            @dragstart="onDragStart(qIndex, $event)"
+            @dragover.prevent="onDragOver(qIndex)"
+            @drop.prevent="onDrop(qIndex)"
+            @dragend="onDragEnd">
             <div class="question-header">
+              <div class="drag-handle" title="Drag to reorder" aria-hidden="true"
+                @mousedown="armedIndex = qIndex" @mouseup="armedIndex = null">⠿</div>
+              <span class="question-order">Q{{ qIndex + 1 }}</span>
               <input type="text" v-model="question.title" placeholder="Question title" class="question-title-input"
                 required />
               <div class="question-controls">
+                <button type="button" class="btn-move" :disabled="qIndex === 0"
+                  :aria-label="`Move question ${qIndex + 1} up`" title="Move up"
+                  @click="moveQuestion(qIndex, qIndex - 1)">↑</button>
+                <button type="button" class="btn-move" :disabled="qIndex === form.questions.length - 1"
+                  :aria-label="`Move question ${qIndex + 1} down`" title="Move down"
+                  @click="moveQuestion(qIndex, qIndex + 1)">↓</button>
                 <select v-model="question.type">
                   <option>Multiple choice</option>
                   <option>Single choice</option>
@@ -182,7 +201,7 @@
 
               <div class="checkbox-setting">
                 <label class="checkbox-label" >
-                  <input type="checkbox" v-model="question.allowCustomSuggestions" />
+                  <input type="checkbox" v-model="question.metadata!.allowCustomSuggestions" />
                   Allow memebers to suggest their own custom location
                 </label>
               </div>
@@ -214,18 +233,30 @@
 
         <!-- wizard navigation footer -->
         <div class="wizard-actions">
-          <button type="button" class="btn-secondary" v-if="currentStep > 1" @click="prevStep">← Back
-          </button>
+          <div class="wizard-left">
+            <button type="button" class="btn-secondary" v-if="currentStep > 1" @click="prevStep">← Back
+            </button>
+          </div>
 
-          <button type="button" class="btn-primary" v-if="currentStep < 4" @click="nextStep">Next Step →
-          </button>
+          <div class="wizard-right">
+            <button type="button" class="btn-secondary btn-draft" :disabled="isSavingDraft" @click="saveDraft">
+              {{ isSavingDraft ? 'Saving…' : 'Save as Draft' }}
+            </button>
 
-          <button type="button" class="btn-primary" v-if="currentStep === 4" @click="nextStep">Proceed to questions →
-          </button>
+            <button type="button" class="btn-primary" v-if="currentStep < 4" @click="nextStep">Next Step →
+            </button>
 
-          <button type="submit" class="btn-primary btn-publish" v-else-if="currentStep === 5">Save & Publish Form
-          </button>
+            <button type="button" class="btn-primary" v-if="currentStep === 4" @click="nextStep">Proceed to questions →
+            </button>
+
+            <button type="submit" class="btn-primary btn-publish" v-else-if="currentStep === 5">Save & Publish Form
+            </button>
+          </div>
         </div>
+
+        <p v-if="draftStatus" class="draft-status" :class="draftStatus.type" role="status">
+          {{ draftStatus.message }}
+        </p>
       </form>
     </div>
   </div>
@@ -241,6 +272,15 @@ const emit = defineEmits<{
   (e: 'navigate', frame: string): void;
   (e: 'published', form: Form): void;
 }>();
+
+// Pressing Enter inside a text input would trigger the browser's implicit form submit
+// (which clicks "Save & Publish" on the last step). Block it for inputs only, so Enter
+// still adds a new line in textareas and still activates buttons and selects.
+const onFormEnter = (event: KeyboardEvent): void => {
+  if ((event.target as HTMLElement).tagName === 'INPUT') {
+    event.preventDefault();
+  }
+};
 
 // track active step 
 const currentStep = ref<number>(1);
@@ -334,6 +374,61 @@ const removeQuestion = (index: number): void => {
   form.questions.splice(index, 1);
 };
 
+// Stable keys so Vue moves the existing DOM nodes when questions are reordered
+// (index keys would reuse the wrong nodes).
+const questionKeys = new WeakMap<object, number>();
+let nextQuestionKey = 0;
+const getQuestionKey = (question: object): number => {
+  let key = questionKeys.get(question);
+  if (key === undefined) {
+    key = nextQuestionKey++;
+    questionKeys.set(question, key);
+  }
+  return key;
+};
+
+// Reorder: move a question from one position to another
+const moveQuestion = (from: number, to: number): void => {
+  if (from === to || from < 0 || to < 0 || from >= form.questions.length || to >= form.questions.length) {
+    return;
+  }
+  const [moved] = form.questions.splice(from, 1);
+  form.questions.splice(to, 0, moved);
+};
+
+// Drag & drop state. The card is only draggable while the handle is pressed,
+// so text selection inside the inputs keeps working.
+const armedIndex = ref<number | null>(null);
+const dragIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
+
+const onDragStart = (index: number, event: DragEvent): void => {
+  dragIndex.value = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index)); // required by Firefox
+  }
+};
+
+const onDragOver = (index: number): void => {
+  if (dragIndex.value !== null) {
+    dragOverIndex.value = index;
+  }
+};
+
+const onDrop = (targetIndex: number): void => {
+  if (dragIndex.value !== null) {
+    moveQuestion(dragIndex.value, targetIndex);
+  }
+  onDragEnd();
+};
+
+const onDragEnd = (): void => {
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+  armedIndex.value = null;
+};
+
 const addOption = (qIndex: number): void => {
   const optionNum = form.questions[qIndex].options.length + 1;
   form.questions[qIndex].options.push(`Option ${optionNum}`);
@@ -345,19 +440,58 @@ const removeOption = (qIndex: number, oIndex: number) => {
   }
 };
 
+// Save as draft: can be used from any step, only a form name is required
+const isSavingDraft = ref<boolean>(false);
+const draftStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null);
+
+const saveDraft = async (): Promise<void> => {
+  draftStatus.value = null;
+
+  // A draft needs a name so it can be found again on the dashboard.
+  if (!form.title.trim()) {
+    currentStep.value = 1;
+    draftStatus.value = { type: 'error', message: 'Give your form a name before saving it as a draft.' };
+    return;
+  }
+
+  isSavingDraft.value = true;
+  form.state = 'Draft';
+  try {
+    // TODO: replace with real backend call once available.
+    // Create on the first save and update afterwards, so repeated clicks don't create duplicate drafts:
+    // const saved = form.id
+    //   ? await apiService.updateForm(form.id, form)
+    //   : await apiService.createForm(form);
+    // form.id = saved.id;
+
+    console.log('Saving draft to Go server:', JSON.stringify(form, null, 2));
+    await new Promise((resolve) => setTimeout(resolve, 300)); // simulate latency
+    if (!form.id) form.id = `draft-${Date.now()}`; // placeholder until the backend returns a real id
+
+    const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    draftStatus.value = { type: 'success', message: `Draft saved at ${time}. You can come back and finish it later.` };
+  } catch (err) {
+    console.error('Failed to save draft:', err);
+    draftStatus.value = { type: 'error', message: 'We could not save your draft. Please try again.' };
+  } finally {
+    isSavingDraft.value = false;
+  }
+};
+
 // form submission to backend
 const submitForm = async (): Promise<void> => {
   // Transmit Form payload to Golang server endpoint via fetch
   // try {
   //   const savedForm = await apiService.createForm(form)
-  //   emit('navigate', 'published');
+  //   emit('published', savedForm);
   // } catch (error) {
   //   alert('Failted to save form to backend')
   // }
+  form.state = 'Collecting';
+  // TODO: if this form was saved as a draft earlier (form.id is set), call updateForm(form.id, form) instead of createForm.
   console.log('Transmitting Typed Form Payload to Go Server:', JSON.stringify(form, null, 2));
-  emit('published', JSON.parse(JSON.stringify(form)));
-  emit('navigate', 'published');
-  alert('Form successfully sent to backend!');
+  // Hand a plain copy of the form to AppManager so FormPublishedView receives its `form` prop.
+  emit('published', JSON.parse(JSON.stringify(form)) as Form);
 };
 </script>
 
@@ -549,6 +683,66 @@ const submitForm = async (): Promise<void> => {
 
 .btn-icon-delete:hover {
   color: #E53E3E;
+}
+
+/* Question reordering */
+.reorder-hint {
+  font-size: 0.8rem;
+  color: #718096;
+  margin-bottom: 12px;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #A0AEC0;
+  font-size: 1.2rem;
+  line-height: 1;
+  user-select: none;
+  padding: 0 4px;
+}
+
+.drag-handle:hover {
+  color: #4A5568;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.question-order {
+  background: #EBF8FF;
+  color: #3182CE;
+  font-weight: bold;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.question-card.dragging {
+  opacity: 0.5;
+}
+
+.question-card.drag-over {
+  border: 1px solid #3182CE;
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.25);
+}
+
+.btn-move {
+  background: white;
+  border: 1px solid #CBD5E0;
+  border-radius: 6px;
+  width: 30px;
+  color: #4A5568;
+  cursor: pointer;
+}
+
+.btn-move:hover:not(:disabled) {
+  background-color: #EDF2F7;
+}
+
+.btn-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .options-container {
@@ -810,7 +1004,38 @@ const submitForm = async (): Promise<void> => {
 /* Wizard Navigation Actions */
 .wizard-actions {
   display: flex;
-  justify-content:
-  space-between; margin-top: 24px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.wizard-left,
+.wizard-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.draft-status {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.draft-status.success {
+  background: #C6F6D5;
+  color: #22543D;
+}
+
+.draft-status.error {
+  background: #FED7D7;
+  color: #742A2A;
 }
 </style>

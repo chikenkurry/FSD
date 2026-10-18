@@ -8,6 +8,7 @@
       <button :class="{ active: currentFrame === 'creator' }" @click="currentFrame = 'creator'">Form Creator</button>
       <button :class="{ active: currentFrame === 'published' }" @click="currentFrame = 'published'">Publish view</button>
       <button :class="{ active: currentFrame === 'answering' }" @click="currentFrame = 'answering'">Answer Form</button>
+      <button :class="{ active: currentFrame === 'results' }" @click="currentFrame = 'results'">Results page</button>
     </nav>
 
     <!-- Dynamically rendered active frame component -->
@@ -27,6 +28,7 @@ import FormsDashboard from '@/components/FormsDashboard.vue';
 import FormCreator from '@/components/FormCreator.vue';
 import FormPublishedView from '@/components/FormPublishedView.vue';
 import FormParticipantView from '@/components/FormParticipantView.vue';
+import FormResultsView from '@/components/FormResultsView.vue';
 import type { Form } from '@/types/form';
 
 const currentFrame = ref<string>("login"); 
@@ -50,6 +52,7 @@ const activeFrameComponent = computed<Component>(() => {
     case "creator": return FormCreator;
     case "published": return FormPublishedView
     case "answering": return FormParticipantView
+    case "results": return FormResultsView
     default: return FormsDashboard;
   }
 });
@@ -66,6 +69,8 @@ const handleNavigation = (target: number | string): void => {
     currentFrame.value = "published";
   } else if (target === 'anwering') {
     currentFrame.value = "answering";
+  } else if (target === 'results') {
+    currentFrame.value = "results";
   }
 };
 </script>

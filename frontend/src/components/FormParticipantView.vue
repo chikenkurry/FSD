@@ -144,7 +144,7 @@
               <span>📍 {{ opt }}</span>
             </label>
 
-            <template v-if="question.allowCustomSuggestions">
+            <template v-if="question.metadata?.allowCustomSuggestions">
               <label class="option-label">
                 <input type="radio" :name="`q-${qIndex}`" :value="CUSTOM_VALUE" v-model="answers[qIndex]" />
                 <span>💡 Suggest my own</span>
