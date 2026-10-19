@@ -78,7 +78,8 @@
         "status",
         "job_state",
         "input_refs",
-        "issues"
+        "issues",
+        "recommendation_view"
       ],
       "properties": {
         "run_id": {
@@ -122,6 +123,9 @@
         },
         "collection": {
           "type": "object"
+        },
+        "recommendation_view": {
+          "$ref": "#/$defs/recommendation_view"
         }
       }
     },
@@ -279,6 +283,372 @@
         },
         "replace_existing": {
           "type": "boolean"
+        }
+      }
+    },
+    "recommendation_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "rank",
+        "primary_rank",
+        "primary_objective_tie_size",
+        "group_score",
+        "minimum_member_score",
+        "average_member_score",
+        "fairness_penalty",
+        "is_recommended"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_option_id": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "estimated_cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "currency_minor_digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duration_days",
+            "earliest_start_date",
+            "latest_start_date"
+          ],
+          "properties": {
+            "duration_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "earliest_start_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "latest_start_date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_objective_tie_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "group_score": {
+          "type": "number"
+        },
+        "minimum_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "average_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fairness_penalty": {
+          "type": "number",
+          "minimum": 0
+        },
+        "is_recommended": {
+          "type": "boolean"
+        }
+      }
+    },
+    "pareto_alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "rank",
+        "primary_rank",
+        "primary_objective_tie_size",
+        "group_score",
+        "minimum_member_score",
+        "average_member_score",
+        "fairness_penalty",
+        "is_recommended",
+        "tradeoffs"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_option_id": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "estimated_cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "currency_minor_digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duration_days",
+            "earliest_start_date",
+            "latest_start_date"
+          ],
+          "properties": {
+            "duration_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "earliest_start_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "latest_start_date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_objective_tie_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "group_score": {
+          "type": "number"
+        },
+        "minimum_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "average_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fairness_penalty": {
+          "type": "number",
+          "minimum": 0
+        },
+        "is_recommended": {
+          "type": "boolean"
+        },
+        "tradeoffs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "HIGHER_MINIMUM_SATISFACTION",
+              "LOWER_MINIMUM_SATISFACTION",
+              "HIGHER_AVERAGE_SATISFACTION",
+              "LOWER_AVERAGE_SATISFACTION",
+              "EQUIVALENT_GROUP_METRICS"
+            ]
+          }
+        }
+      }
+    },
+    "unavailable_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_option_id": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "estimated_cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "currency_minor_digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duration_days",
+            "earliest_start_date",
+            "latest_start_date"
+          ],
+          "properties": {
+            "duration_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "earliest_start_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "latest_start_date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "status": {
+          "enum": [
+            "infeasible",
+            "unresolved"
+          ]
+        }
+      }
+    },
+    "recommendation_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "recommendation",
+        "alternatives",
+        "pareto_alternatives",
+        "unavailable_candidates",
+        "next_action"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "recommendation-view-v1"
+        },
+        "status": {
+          "$ref": "#/$defs/run/properties/status"
+        },
+        "recommendation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/recommendation_candidate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/recommendation_candidate"
+          }
+        },
+        "pareto_alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pareto_alternative"
+          }
+        },
+        "unavailable_candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unavailable_candidate"
+          }
+        },
+        "next_action": {
+          "enum": [
+            null,
+            "OPTION_FACTS_REQUIRED",
+            "RESPONSES_OR_CONFIRMATIONS_REQUIRED",
+            "REVISE_OPTIONS_OR_REQUIREMENTS",
+            "RECOMMENDATION_IN_PROGRESS",
+            "DECISION_SETUP_REVIEW_REQUIRED",
+            "RECOMMENDATION_RETRY_REQUIRED"
+          ]
         }
       }
     }

@@ -1,6 +1,7 @@
 """Build aggregate results and member-specific reviews from private run artifacts."""
 from copy import deepcopy
 
+from decision_service.ranking import primary_score_key, primary_ties
 from .snapshots import SnapshotError
 
 
@@ -14,13 +15,35 @@ def _candidate_id(row: dict) -> str | None:
 
 def _candidate_catalog(run: dict) -> dict[str, dict]:
     catalog = {}
+    prepared = {row["option_id"]: row for row in run.get("processing", {}).get("preparation", {}).get("candidates", [])}
+    context = run.get("algorithm_input", {}).get("context", {})
     for candidate in run.get("algorithm_input", {}).get("candidates", []):
         candidate_id = _candidate_id(candidate)
         if not candidate_id:
             continue
-        title = candidate.get("title") or candidate.get("activity_id") or candidate.get("source_option_id") or candidate_id
-        catalog[candidate_id] = {"candidate_id": candidate_id, "title": title}
+        source_id = candidate.get("source_option_id") or candidate.get("activity_id")
+        title = candidate.get("title") or prepared.get(source_id, {}).get("title") or source_id or candidate_id
+        details = {key: candidate[key] for key in ("source_option_id", "start_at", "end_at", "estimated_cost_minor") if key in candidate}
+        details.update({key: context[key] for key in ("currency", "currency_minor_digits") if key in context})
+        if "scenario" in candidate:
+            details["scenario"] = {key: candidate["scenario"][key] for key in
+                                   ("duration_days", "earliest_start_date", "latest_start_date") if key in candidate["scenario"]}
+        catalog[candidate_id] = {"candidate_id": candidate_id, "title": title, **details}
     return catalog
+
+
+def _ranked_for_display(run: dict) -> list[dict]:
+    ranked = run.get("result", {}).get("ranked_candidates", [])
+    if not ranked or all("primary_rank" in row and "primary_objective_tie_size" in row for row in ranked):
+        return ranked
+    # Historical artifacts predate tie metadata. Derive it without changing
+    # their stored scores, winner, or display order.
+    model = run.get("algorithm_input", {}).get("scoring_model", {})
+    mode = model.get("group_objective", {}).get("mode", "maximin_then_average")
+    keys = [primary_score_key(row["min_member_score"], row["average_member_score"], row["group_score"], mode) for row in ranked]
+    ties = primary_ties(keys)
+    return [{**row, "primary_rank": ties[key][0], "primary_objective_tie_size": ties[key][1]}
+            for row, key in zip(ranked, keys)]
 
 
 def _display_candidate(row: dict, catalog: dict[str, dict], *, recommended: bool = False) -> dict:
@@ -64,7 +87,7 @@ def recommendation_view(run: dict) -> dict:
     """
     result = run.get("result", {})
     catalog = _candidate_catalog(run)
-    ranked = result.get("ranked_candidates", [])
+    ranked = _ranked_for_display(run)
     recommendation = _display_candidate(ranked[0], catalog, recommended=True) if ranked else None
     pareto_ids = {_candidate_id(row) for row in result.get("pareto_frontier", [])}
     alternatives = [_display_candidate(row, catalog) for row in ranked[1:]]
@@ -107,8 +130,26 @@ def recommendation_view(run: dict) -> dict:
     }
 
 
+def _public_algorithm_result(result: dict) -> dict:
+    """Allowlist the whole public result; diagnostic fields stay in storage."""
+    public = {key: result[key] for key in ("status", "run_id", "algorithm_version", "policy_version") if key in result}
+    fields = {
+        "ranked_candidates": ("option_id", "candidate_id", "rank", "primary_rank", "primary_objective_tie_size",
+                              "min_member_score", "average_member_score", "group_score", "fairness_penalty",
+                              "estimated_cost_minor", "start_at"),
+        "candidate_results": ("option_id", "candidate_id", "feasibility"),
+        "pareto_frontier": ("option_id", "candidate_id"),
+    }
+    for name, allowed in fields.items():
+        if name in result:
+            public[name] = [{key: row[key] for key in allowed if key in row} for row in result[name]]
+    if "issues" in result:
+        public["issues"] = []  # Raw contract errors can include private input values.
+    return deepcopy(public)
+
+
 def public_result(run: dict) -> dict:
-    result = deepcopy(run.get("result", {}))
+    result = _public_algorithm_result(run.get("result", {}))
     preparation = run.get("processing", {}).get("preparation", {})
     facts = [{key: row[key] for key in ("option_id", "attribute_id", "value_type", "unit", "priority") if key in row}
              for row in preparation.get("fact_requests", [])]
@@ -120,7 +161,8 @@ def public_result(run: dict) -> dict:
             "execution_specification": run.get("execution_specification", {}),
             "result": result, "fact_requests": facts, "scenario_requests": scenarios,
             "recommendation_view": recommendation_view(run),
-            "issues": [{"code": issue.get("code", "PROCESSING_ISSUE")} for issue in run.get("issues", [])]}
+            "issues": [{"code": issue.get("code", "PROCESSING_ISSUE")} for issue in run.get("issues", [])
+                       if not issue.get("path", "").startswith("responses.participants.")]}
 
 
 def member_review(run: dict, member_id: str) -> dict:

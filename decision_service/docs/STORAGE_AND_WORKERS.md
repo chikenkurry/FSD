@@ -305,7 +305,7 @@ when `DECISION_TEST_DATABASE_URL` is set; they create/drop isolated schemas with
 generated `decision_test_` names. They do not truncate application tables.
 
 ```sh
-python3.12 -m pip install -r decision_service/requirements.txt
+python3.12 -m pip install -r decision_service/requirements-test.txt
 python3.12 -m unittest discover -s decision_service/tests -t . -q
 python3.12 -m integration.benchmark_decision_service --jobs 48 --delay-ms 100 --output /private/tmp/decision-load.json
 python3.12 -m integration.benchmark_decision_service --jobs 48 --delay-ms 0 --output /private/tmp/decision-rules-load.json

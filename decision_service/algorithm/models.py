@@ -45,6 +45,8 @@ class RankedCandidate:
     estimated_cost_minor: int | None
     start_at: str
     explanation_codes: tuple[str, ...] = ()
+    primary_rank: int = 1
+    primary_objective_tie_size: int = 1
 
 
 @dataclass(frozen=True)

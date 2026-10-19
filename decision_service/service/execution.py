@@ -9,6 +9,7 @@ from decision_service.adapters import (
 from decision_service.algorithm import run_decision as run_activity
 from decision_service.generic_algorithm import run_decision as run_options
 from decision_service.preprocessing.money import minor_amount
+from decision_service.preprocessing.common import InputError
 
 
 def adapt_preparation(packet: dict, plan: dict, responses: dict) -> dict:
@@ -23,13 +24,36 @@ def adapt_preparation(packet: dict, plan: dict, responses: dict) -> dict:
     if adapted["status"] != "ready":
         return adapted
     handoff = adapted["algorithm_input"]
+    handoff["context"]["currency_minor_digits"] = plan.get("currency_minor_digits", 2)
     if mode != "scheduled":
+        try:
+            _apply_option_costs(handoff, plan)
+        except InputError as exc:
+            return {"status": "invalid_input", "issues": [{"code": "INVALID_OPTION_COST", "message": str(exc)}]}
         handoff["option_flags"] = [
             {"participant_id": pid, **flag}
             for pid, row in constraint_rows.items()
             for flag in row.get("activity_flags", [])
         ]
     return adapted
+
+
+def _apply_option_costs(handoff: dict, plan: dict) -> None:
+    """Derive tie-break costs from confirmed facts in the frozen currency/scope.
+
+    Missing or unconfirmed costs remain unknown. Never use a display default,
+    convert currencies, or round an amount to fit the minor-unit convention.
+    """
+    for candidate in handoff["candidates"]:
+        cost = next((fact for fact in candidate.get("facts", []) if fact["attribute_id"] == "max_cost"), None)
+        candidate["estimated_cost_minor"] = None
+        if (cost and cost.get("status") == "confirmed" and cost.get("value") is not None
+                and cost.get("unit") == plan["currency"]
+                and cost.get("context", {}).get("scope", plan["cost_scope"]) == plan["cost_scope"]):
+            amount = minor_amount(cost["value"], plan.get("currency_minor_digits", 2), "candidate.cost")
+            if amount < 0:
+                raise InputError("INVALID_VALUE", "candidate.cost", "Cost must be nonnegative")
+            candidate["estimated_cost_minor"] = amount
 
 
 def execute_preparation(packet: dict, plan: dict, responses: dict) -> dict:

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from decision_service.algorithm.scoring import group_objective_metrics
 from decision_service.generic_option_contract import ContractError, validate_handoff
+from decision_service.ranking import primary_score_key, primary_ties
 
 
 @dataclass(frozen=True)
@@ -147,16 +148,14 @@ def _metric(value: float) -> float:
 
 def _primary_key(row: tuple, mode: str) -> tuple[float, ...]:
     _, minimum, average, group_score, _ = row
-    if mode == "weighted_fairness":
-        return _metric(group_score), _metric(minimum), _metric(average)
-    return _metric(minimum), _metric(average)
+    return primary_score_key(minimum, average, group_score, mode)
 
 
 def _start_key(candidate: dict) -> datetime:
     value = candidate.get("start_at")
     if value is None:
-        return datetime.max.replace(tzinfo=None)
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+        return datetime.max.replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _ranking_key(row: tuple, sort_order: list[str]) -> tuple:
@@ -254,17 +253,13 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
     sort_order = model["ranking_policy"]["sort_order"]
     mode = model["group_objective"]["mode"]
     ordered = sorted(scored, key=lambda row: _ranking_key(row, sort_order))
-    primary_ranks, tie_sizes = {}, {}
-    for row in ordered:
-        key = _primary_key(row, mode)
-        if key not in primary_ranks:
-            primary_ranks[key] = len(primary_ranks) + 1
-            tie_sizes[key] = sum(_primary_key(other, mode) == key for other in ordered)
+    primary_keys = [_primary_key(row, mode) for row in ordered]
+    ties = primary_ties(primary_keys)
     ranked = tuple({"option_id": row[0]["option_id"], "rank": index,
-                    "primary_rank": primary_ranks[_primary_key(row, mode)],
-                    "primary_objective_tie_size": tie_sizes[_primary_key(row, mode)],
+                    "primary_rank": ties[key][0],
+                    "primary_objective_tie_size": ties[key][1],
                     "min_member_score": round(row[1], 12), "average_member_score": round(row[2], 12),
                     "group_score": round(row[3], 12), "fairness_penalty": round(row[4], 12)}
-                   for index, row in enumerate(ordered, 1))
+                   for index, (row, key) in enumerate(zip(ordered, primary_keys), 1))
     return GenericDecisionResult("ranked", run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"),
                                  ranked, tuple(results), pareto_frontier=_pareto_frontier(scored))
