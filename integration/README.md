@@ -1,5 +1,8 @@
 # Service integration
 
+The integrated Vue frontend is at **http://localhost:15173** after Compose starts.
+See [full-system startup and mobile/browser testing](../frontend/README.md).
+
 Decision now uses shared PostgreSQL persistence and separate API/worker roles.
 See [the design and alternatives](../decision_service/docs/STORAGE_AND_WORKERS.md)
 for first-upgrade instructions, version compatibility, operations and scaling,
@@ -219,7 +222,8 @@ ratings have a different scoring contract and return `ACTIVITY_RATINGS_NOT_SUPPO
 if supplied; they are not silently discarded. Activity participation flags and
 structured budgets are supported.
 
-This branch implements backend APIs. Frontend form, review and confirmation
-screens still need to call them. Gemini collection, RSVP and durable jobs are documented in the backend guide.
+The frontend connects ordinary option forms, private review, recommendation,
+confirmation and RSVP. Dedicated Gemini collection and scheduled/scenario creation
+screens remain separate UI work. Gemini collection, RSVP and durable jobs are documented in the backend guide.
 External identity providers remain separate work. Planning uses checked-in, versioned SQL migrations. Participation's new rating constraint refuses existing invalid
 null-rating rows rather than guessing their meaning.

@@ -13,7 +13,9 @@ Create plan, options and questions
 
 This checkout provides backend APIs, durable recommendation jobs, private draft
 previews, Gemini Search fact collection with evidence review, and versioned RSVPs.
-Frontend form and review screens remain to be implemented. Legacy per-activity ratings return
+The Vue frontend supports ordinary option forms, private review, recommendations,
+confirmation and RSVP. See [the full-system and frontend guide](frontend/README.md)
+for startup, mobile testing, design choices and remaining UI scope. Legacy per-activity ratings return
 `ACTIVITY_RATINGS_NOT_SUPPORTED`; the connected form uses question answers for
 preferences. Activity participation flags and structured budgets are supported.
 
@@ -47,11 +49,12 @@ When upgrading a running SQLite-based stack, stop the old writer first with
 retained volume read-only; do not delete it. Fresh installations need no old database.
 
 ```sh
-docker compose -f compose.integration.yaml up -d --build --wait
+docker compose -f compose.integration.yaml up -d --build --wait --wait-timeout 240
 docker compose -f compose.integration.yaml ps
 ```
 
-The stack starts the three application services, separate Decision workers and
+Open **http://localhost:15173** for the frontend. The stack starts the frontend,
+three application services, separate Decision workers and
 three PostgreSQL databases. It configures
 their internal URLs and shared token, applies database migrations at startup,
 and stores databases and Decision artifacts in named volumes. Local Go, Node
