@@ -49,6 +49,21 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 	return &user, nil
 }
 
+// GetByUsername fetches a single user by their username
+func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
+	var user model.User
+	
+	err := r.db.WithContext(ctx).First(&user, "username = ?", username).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 // GetByIDWithRelations fetches a user and preloads their created plans and memberships
 func (r *UserRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var user model.User
