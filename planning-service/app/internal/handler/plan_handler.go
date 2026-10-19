@@ -169,6 +169,8 @@ func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Reques
 		responses[i] = PlanResponse{
 			ID:              p.ID,
 			Title:           p.Title,
+			Category:        p.Category,
+			MembersCount:    len(p.Members),
 			Description:     p.Description,
 			State:           p.State,
 			CreatedByUserID: p.CreatedByUserID,

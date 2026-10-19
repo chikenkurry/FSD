@@ -90,6 +90,7 @@ func (r *PlanRepository) ListByOrganiser(ctx context.Context, organiserID string
 		Limit(limit).
 		Offset(offset).
 		Preload("CreatedBy").
+		Preload("Members", func(db *gorm.DB) *gorm.DB { return db.Select("id", "plan_id") }).
 		Find(&plans).Error
 
 	return plans, err
