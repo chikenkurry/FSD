@@ -80,6 +80,8 @@ def adapt_generic_to_activity_v2(preparation: dict[str, Any], execution_context:
             continue
         execution_candidates.append({
             "candidate_id": raw["candidate_id"],
+            "source_option_id": raw["option_id"],
+            "title": option.get("title") or raw["activity_id"],
             "activity_id": raw["activity_id"],
             "start_at": raw["start_at"],
             "end_at": raw["end_at"],

@@ -220,7 +220,46 @@ class ServiceJourneyTests(unittest.TestCase):
         self.assertEqual(result['status'],'ranked',result)
         self.assertEqual(len(result['result']['ranked_candidates']),1)
         failures=[c for c in result['result']['candidate_results'] if c['feasibility']=='infeasible']
-        self.assertIn('CANNOT_JOIN',failures[0]['explanation_codes'])
+        self.assertEqual(len(failures),1)
+        member_result=call(PLANNING,'GET',root+'/recommendation',token=member['session_token'])
+        for public in (result,member_result):
+            self.assertNotIn('CANNOT_JOIN',json.dumps(public))
+            self.assertNotIn('explanation_codes',json.dumps(public))
+
+    def test_scheduled_view_preserves_titles_times_and_primary_ties(self):
+        owner,member,plan,options,question,round_record,published,form=self.create_plan(scheduled=True)
+        for user in (owner,member):
+            self.submit(user,round_record,question,published['option_revision'],scheduled=True)
+        root=f"/v1/rounds/{round_record['id']}"
+        call(PLANNING,'POST',root+'/close',{},owner['session_token'])
+        run=self.recommendation(root,owner)
+        view=run['recommendation_view']
+        self.assertEqual(run['status'],'ranked')
+        self.assertEqual(view['recommendation']['source_option_id'],options[0]['id'])
+        self.assertEqual(view['recommendation']['estimated_cost_minor'],2000)
+        titles={option['id']:option['title'] for option in options}
+        for row in [view['recommendation']]+view['alternatives']:
+            self.assertEqual(row['title'],titles[row['source_option_id']])
+            self.assertEqual(row['start_at'],'2027-01-01T10:00:00Z')
+            self.assertEqual(row['end_at'],'2027-01-01T11:00:00Z')
+            self.assertEqual((row['primary_rank'],row['primary_objective_tie_size']),(1,2))
+
+    def test_equal_fit_options_use_confirmed_cost_facts_before_ids(self):
+        owner,member,plan,options,question,round_record,published,form=self.create_plan()
+        # 1.0 is equally distant from the fixture masses 1.2 and 0.8.
+        for user in (owner,member):
+            path=f"/rounds/{round_record['id']}/my-response"
+            saved=call(PARTICIPATION,'PUT',path,{'expectedRevision':0,'acknowledgedOptionRevision':published['option_revision'],
+                'availability':[],'budget':{'kind':'UNANSWERED'},'activityAnswers':[],
+                'answers':[{'question_id':question['id'],'value':1.0}]},user['session_token'])
+            call(PARTICIPATION,'POST',path+'/submit',{'expectedRevision':saved['revision']},user['session_token'])
+        root=f"/v1/rounds/{round_record['id']}"
+        call(PLANNING,'POST',root+'/close',{},owner['session_token'])
+        run=self.recommendation(root,owner)
+        view=run['recommendation_view']
+        self.assertEqual(view['recommendation']['candidate_id'],options[0]['id'])
+        self.assertEqual(view['recommendation']['estimated_cost_minor'],2000)
+        self.assertEqual(view['recommendation']['primary_objective_tie_size'],2)
 
 
     def test_late_join_is_included_in_final_roster_without_changing_form(self):
