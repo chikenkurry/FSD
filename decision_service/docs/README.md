@@ -136,6 +136,7 @@ Run from the `FSD` repository root with Python 3.10 or later. The module uses on
 
 ```sh
 python3 -m decision_service.preprocessing
+python3 -m pip install -r decision_service/requirements-test.txt
 python3 -m unittest discover -s decision_service/tests -v
 ```
 

@@ -64,6 +64,7 @@ explicit definitions and synthetic facts; they do not measure live model accurac
 Python's unittest suite needs both package roots for the legacy algorithm tests:
 
 ```sh
+python3 -m pip install -r decision_service/requirements-test.txt
 PYTHONPATH=.:decision_service python3 -m unittest discover -s decision_service/tests
 ```
 
@@ -210,7 +211,7 @@ the scenario adapter and require matching confirmed cost evidence.
 Shared wire shapes are in [the schema](../contracts/snapshots.schema.json).
 Runtime validation also enforces snapshot identity, roster, currency, question
 references and member weights. Full semantic evidence and member processing stay
-in Decision's private SQLite store. Shared results contain aggregate scores and
+in Decision's private PostgreSQL store (SQLite is a standalone fallback). Shared results contain aggregate scores and
 issues without raw answers, budgets or private notes.
 
 The connected form uses question answers for preferences. Legacy per-activity
