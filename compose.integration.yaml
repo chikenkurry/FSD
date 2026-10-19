@@ -18,6 +18,13 @@ x-decision-dependencies: &decision-dependencies
   decision-db: {condition: service_healthy}
   decision-migrate: {condition: service_completed_successfully}
 services:
+  frontend:
+    build: frontend
+    depends_on:
+      planning: {condition: service_healthy}
+      participation: {condition: service_healthy}
+      decision: {condition: service_healthy}
+    ports: ["${FRONTEND_BIND:-127.0.0.1}:15173:80"]
   decision-db:
     image: postgres:16
     environment:

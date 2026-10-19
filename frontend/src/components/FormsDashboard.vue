@@ -52,7 +52,7 @@
               <td>
                 <span :class="['badge', form.state?.toLowerCase()]">{{ form.state }}</span>
               </td>
-              <td class="cell-text">{{ form.title }}</td>
+              <td class="cell-text"><button @click="emit('open-plan', form.id)">{{ form.title }}</button></td>
               <td>{{ form.membersCount }}</td>
               <td>{{ form.createdBy }}</td>
               <td><span class="category-badge">{{ form.category }}</span></td>
@@ -71,12 +71,13 @@ import type { Form } from '@/types/form';
 import { apiService } from '@/services/api';
 import TopBar from '@/components/TopBar.vue';
 import { useAuthStore } from '@/stores/auth';
-import { errorMessages } from 'vue/compiler-sfc';
+
 
 const authStore = useAuthStore();
 
 const emit = defineEmits<{
   (e: 'navigate', frame: string): void;
+  (e: 'open-plan', id: string): void;
 }>();
 
 

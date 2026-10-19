@@ -1,104 +1,49 @@
 <template>
   <div class="app-container">
-    <!-- Frame switcher navbar for debugging and previewing all frames -->
-    <nav class="frame-switcher">
-      <span>Jump to Frame:</span>
-      <button :class="{ active: currentFrame === 'login' }" @click="currentFrame = 'login'">Login</button>
-      <button :class="{ active: currentFrame === 'dashboard' }" @click="currentFrame = 'dashboard'">Dashboard</button>
-      <button :class="{ active: currentFrame === 'creator' }" @click="currentFrame = 'creator'">Form Creator</button>
-      <button :class="{ active: currentFrame === 'published' }" @click="currentFrame = 'published'">Publish view</button>
-      <button :class="{ active: currentFrame === 'answering' }" @click="currentFrame = 'answering'">Answer Form</button>
-    </nav>
-
-    <!-- Dynamically rendered active frame component -->
-    <component 
-      :is="activeFrameComponent"
-      v-bind="frameProps"
-      @navigate="handleNavigation"
-      @published="onPublished"
-    />
+    <header v-if="auth.token" class="session-bar">
+      <span>{{ auth.username }}</span>
+      <button @click="dashboard">My forms</button>
+      <details><summary>Session details</summary><p>Keep these private. They allow access to your session.</p>
+        <label>User ID<input readonly :value="auth.userID" /></label>
+        <label>Session token<input readonly type="password" :value="auth.token" /></label>
+        <button @click="copySession">Copy session details</button><span>{{ copied ? 'Copied' : '' }}</span>
+      </details>
+      <button @click="logout">Sign out</button>
+      <span role="alert">{{ error }}</span>
+    </header>
+    <Login v-if="!auth.token" @navigate="afterLogin" />
+    <RoundWorkspace v-else-if="roundId" :key="roundId" :round-id="roundId" :invite-token="inviteToken" @open-round="openRound" />
+    <FormCreator v-else-if="frame === 'creator'" @navigate="frame = $event" @published="published" />
+    <FormsDashboard v-else @navigate="frame = $event" @open-plan="openPlan" />
   </div>
 </template>
-
 <script setup lang="ts">
-import { ref, computed, type Component } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import Login from '@/components/Login.vue';
 import FormsDashboard from '@/components/FormsDashboard.vue';
 import FormCreator from '@/components/FormCreator.vue';
-import FormPublishedView from '@/components/FormPublishedView.vue';
-import FormParticipantView from '@/components/FormParticipantView.vue';
+import RoundWorkspace from '@/components/RoundWorkspace.vue';
+import { useAuthStore } from '@/stores/auth';
+import { apiService, ApiError } from '@/services/api';
 import type { Form } from '@/types/form';
-
-const currentFrame = ref<string>("login"); 
-
-const publishedForm = ref<Form | null>(null);
-
-const frameProps = computed(() =>
-  currentFrame.value === 'published' ? { form: publishedForm.value } : {}
-);
-
-const onPublished = (form: Form) => {
-  publishedForm.value = form;
-  currentFrame.value = 'published';
-};
-
-// Computed property to select component based on active frame number
-const activeFrameComponent = computed<Component>(() => {
-  switch (currentFrame.value) {
-    case "login": return Login;
-    case "dashboard": return FormsDashboard;
-    case "creator": return FormCreator;
-    case "published": return FormPublishedView
-    case "answering": return FormParticipantView
-    default: return FormsDashboard;
-  }
-});
-
-// Handles cross-frame navigation events
-const handleNavigation = (target: number | string): void => {
-  if (typeof target === 'number') {
-    currentFrame.value = "login";
-  } else if (target === 'creator') {
-    currentFrame.value = "creator";
-  } else if (target === 'dashboard') {
-    currentFrame.value = "dashboard";
-  } else if (target === 'published') {
-    currentFrame.value = "published";
-  } else if (target === 'anwering') {
-    currentFrame.value = "answering";
-  }
-};
+const auth = useAuthStore(); const frame = ref('dashboard'); const roundId = ref(''); const inviteToken = ref(''); const error = ref(''); const copied = ref(false);
+function readLink() { const params = new URLSearchParams(location.hash.slice(1)); roundId.value = params.get('round') || ''; inviteToken.value = params.get('invite') || ''; }
+readLink();
+function openRound(id: string) { location.hash = new URLSearchParams({ round: id }).toString(); readLink(); }
+function dashboard() { location.hash = ''; readLink(); frame.value = 'dashboard'; }
+function published(form: Form) { if (form.roundId) openRound(form.roundId); }
+function afterLogin() { readLink(); frame.value = 'dashboard'; }
+async function openPlan(id: string) { try { const result = await apiService.rounds(id); const latest = [...result.data].sort((a,b) => b.round_number-a.round_number)[0]; if (!latest) throw new Error('This draft has no published round. Finish it in the creator tab.'); openRound(latest.id); } catch(e) { error.value = String(e); } }
+async function copySession() { await navigator.clipboard.writeText(JSON.stringify({ user_id: auth.userID, session_token: auth.token })); copied.value = true; }
+async function logout() { try { await apiService.revoke(); auth.logout(); } catch(e) { if(e instanceof ApiError && e.status === 401) auth.logout(); else error.value = String(e); } }
+onMounted(() => { readLink(); window.addEventListener('hashchange', readLink); });
+onUnmounted(() => window.removeEventListener('hashchange', readLink));
 </script>
-
-<style scoped>
-.app-container {
-  min-height: 100vh;
-  background-color: #EFECE9;
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #2D3748;
-}
-
-.frame-switcher {
-  background: #2D3748;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: white;
-  font-size: 0.9rem;
-}
-
-.frame-switcher button {
-  background: #4A5568;
-  border: none;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.frame-switcher button.active {
-  background: #3182CE;
-  font-weight: bold;
-}
+<style>
+body { margin: 0; font-family: system-ui, sans-serif; color: #2d3748; background: #efece9; }
+button { cursor: pointer; } button:disabled { cursor: wait; opacity: .6; }
+input, select, textarea { box-sizing: border-box; max-width: 100%; padding: .6rem; border: 1px solid #cbd5e0; border-radius: 5px; }
+label { display: block; margin: .7rem 0; } label input:not([type=checkbox]):not([type=radio]), label textarea { display: block; width: 100%; }
+.session-bar { display: flex; gap: 1rem; align-items: center; padding: .8rem 1.5rem; background: #fff; flex-wrap: wrap; }
+.session-bar details { max-width: 36rem; }.session-bar button { padding: .5rem; }
 </style>

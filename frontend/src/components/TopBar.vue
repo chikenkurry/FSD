@@ -4,9 +4,7 @@
       <h3 class="brand-title">What to do?</h3>
     </div>
     <nav class="nav-links">
-      <span class="nav-link active">Forms</span>
-      <span class="nav-link">Placeholder</span>
-      <span class="nav-link">Placeholder</span>
+      <a class="nav-link active" href="/#">Forms</a>
     </nav>
   </header>
 </template>

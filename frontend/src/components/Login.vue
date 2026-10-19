@@ -1,94 +1,35 @@
 <template>
-  <div class="auth-wrapper">
-    <div class="auth-card">
-      <h2 class="auth-title">What to do?</h2>
-
-      <div v-if="hasError" class="error-banner">
-        username or password is wrong
-      </div>
-
-      <form @submit.prevent="handleLogin">
-        <div class="input-group">
-          <label>Username</label>
-          <input type="text" v-model="form.username" placeholder="username" :class="{ 'input-error': hasError }"
-            @input="clearError" required />
-        </div>
-
-        <div class="input-group">
-          <label>Password</label>
-          <div class="password-field-wrapper">
-            <input :type="showPassword ? 'text' : 'password'" v-model="form.password" 
-            placeholder="password"
-            :class="{ 'input-error': hasError}"
-            @input="clearError" required />
-            <span class="eye-icon" @click="showPassword = !showPassword">👁</span>
-          </div>
-          <small class="helper-text">It must be a combination of minimum 8 letters, numbers, and symbols.</small>
-        </div>
-
-        <div class="auth-options">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="form.rememberMe" /> Remember me
-          </label>
-          <a href="#" class="forgot-link" @click.prevent>Forgot Password?</a>
-        </div>
-
-        <button type="submit" class="btn-primary" :disabled="isLoading">
-          {{ isLoading ? 'Logging in..' : 'Log in' }}</button>
-      </form>
-
-      <div class="signup-footer">
-        <span>No account yet? <a href="#" @click.prevent="emit('navigate', 'dashboard')">Sign Up</a></span>
-      </div>
-    </div>
-  </div>
+  <div class="auth-wrapper"><div class="auth-card">
+    <h2 class="auth-title">What to do?</h2>
+    <p>Create a guest session to plan or join a group. Keep your session details to return on another device.</p>
+    <p v-if="error" role="alert" class="error-banner">{{ error }}</p>
+    <form @submit.prevent="create">
+      <label>Your display name<input v-model="name" required maxlength="255" autocomplete="nickname" /></label>
+      <button class="btn-primary" :disabled="busy">{{ busy ? 'Connecting…' : 'Create guest session' }}</button>
+    </form>
+    <details><summary>Resume an existing session</summary><form @submit.prevent="resume">
+      <label>User ID<input v-model="id" required autocomplete="off" /></label>
+      <label>Session token<input v-model="token" type="password" required autocomplete="off" /></label>
+      <button class="btn-primary" :disabled="busy">Resume session</button>
+    </form></details>
+  </div></div>
 </template>
-
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import type { LoginPayload } from '@/types/form';
 import { apiService } from '@/services/api';
-
-const emit = defineEmits<{
-  (e: 'navigate', frame: string): void;
-}>();
-
-const authStore = useAuthStore()
-
-const form = reactive<LoginPayload>({
-  username: '',
-  password: '',
-  rememberMe: false
-});
-
-const handleLogin = async (): Promise<void> => {
-  try {
-    const response = await apiService.fakeLogin(form.username);
-
-    // save logged in user ID to pinia
-    authStore.setUser(response.id);
-    emit('navigate', 'dashboard')
-  } catch (error) {
-    console.error('Login error: ', error)
-    hasError.value = true;
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const showPassword = ref<boolean>(false);
-const hasError = ref<boolean>(false);
-const isLoading = ref<boolean>(false);
-
-// reset error highlighting with user types
-const clearError = () => {
-  if (hasError.value) {
-    hasError.value = false;
-  }
+const emit = defineEmits<{ (e: 'navigate', frame: string): void }>();
+const auth = useAuthStore();
+const name = ref(''); const id = ref(''); const token = ref(''); const error = ref(''); const busy = ref(false);
+async function create() { await act(async () => auth.setSession(await apiService.register(name.value))); }
+async function resume() { await act(async () => { const user = await apiService.resume(id.value, token.value); auth.setSession({ ...user, session_token: token.value }); }); }
+async function act(fn: () => Promise<void>) {
+  if (busy.value) return;
+  busy.value = true; error.value = '';
+  try { await fn(); emit('navigate', 'dashboard'); } catch(e) { error.value = e instanceof Error ? e.message : 'Unable to connect'; }
+  finally { busy.value = false; }
 }
 </script>
-
 <style scoped>
 .auth-wrapper {
   display: flex;

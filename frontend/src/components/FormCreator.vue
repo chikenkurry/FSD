@@ -9,21 +9,24 @@
 
       <!-- Step nvagiation indicator bar -->
       <div class="step-indicator-bar">
-        <div v-for="stepNum in 5" :key="stepNum" :class="['step-pill',
+        <button type="button" :disabled="isSaving" v-for="stepNum in 5" :key="stepNum" :class="['step-pill',
           { active: currentStep === stepNum, completed: currentStep > stepNum, disabled: stepNum === 5 && currentStep < 5 }
         ]" @click="goToStep(stepNum)">
           <span class="step-number">{{ stepNum === 5 ? 'Q' : stepNum }}</span>
           <span class="step-label"> {{ getStepLabel(stepNum) }} </span>
-        </div>
+        </button>
       </div>
 
       <form @submit.prevent="submitForm" class="form-builder">
+        <p v-if="saveError" role="alert">{{ saveError }}</p>
+        <fieldset :disabled="isSaving" style="border:0;padding:0;margin:0">
+        <OptionEditor v-if="currentStep === 5" :model-value="form" />
         <!-- 1: Form name and description -->
         <div v-if="currentStep === 1" class="card step-card">
           <h3 class="step-title"> Step 1: Basic information </h3>
           <div class="input-group">
-            <label>Form name *</label>
-            <input type="text" v-model="form.title" placeholder="eg. Europe Summer Trip 2026" required />
+            <label for="form-title">Form name *</label>
+            <input id="form-title" type="text" v-model="form.title" placeholder="eg. Europe Summer Trip 2026" required />
           </div>
           <div class="input-group">
             <label>Description</label>
@@ -35,8 +38,8 @@
         <div v-if="currentStep === 2" class="card step-card">
           <h3 class="step-title">Step 2: Category</h3>
           <div class="input-group">
-            <label>Category</label>
-            <select v-model="form.category">
+            <label for="form-category">Category</label>
+            <select id="form-category" v-model="form.category" :disabled="!!form.id">
               <option disabled value="">Select category</option>
               <option>Travel</option>
               <option>Event</option>
@@ -48,7 +51,8 @@
 
         <!-- 3: Meeting date and time -->
         <div v-if="currentStep === 3" class="card step-card">
-          <h3 class="step-title">Step 3: Scheduling</h3>
+          <h3 class="step-title">Step 3: Date context</h3>
+          <p>This date range describes your plan. It does not create scheduled candidates or restrict member availability.</p>
           <div class="input-row">
             <div class="input-group flex-1">
               <label>Date range start *</label>
@@ -97,9 +101,9 @@
                   <option>Short answer</option>
                   <option>Duration</option>
                   <option>Location</option>
-                  <option>Budget</option>
+                  <option>Budget</option><option>Number</option><option>Boolean</option>
                 </select>
-                <button type="button" class="btn-icon-delete" @click="removeQuestion(qIndex)">×</button>
+                <button v-if="!question.id" type="button" class="btn-icon-delete" aria-label="Remove question" @click="removeQuestion(qIndex)">×</button>
               </div>
             </div>
             <div class="input-group">
@@ -108,6 +112,13 @@
             </div>
 
             <!-- multiple choice option builder -->
+            <div class="decision-settings">
+              <label>How this answer is used<select v-model="question.role"><option value="soft">Preference</option><option value="hard">Requirement (member reviews before confirming)</option><option value="informational">Information only</option></select></label>
+              <label v-if="question.role !== 'informational'">Criterion name<input v-model="question.criterion" :placeholder="`preference_${qIndex + 1}`" /></label>
+              <label v-if="question.type === 'Number'">Unit<input v-model="question.unit" placeholder="kg or hours" /></label>
+              <label v-if="question.type === 'Number' && question.role !== 'hard'">Tolerance around preferred value<input v-model.number="question.scale" type="number" min="0.000001" step="any" /></label>
+              <p>Preferences compare against option facts. Requirements use equality (all selected tags for multiple choice). Budget ranges are category preferences; use a numeric question for an exact amount.</p>
+            </div>
             <div v-if="question.type === 'Multiple choice'" class="options-container">
               <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
                 <span class="checkbox-indicator">☐</span>
@@ -226,6 +237,7 @@
           <button type="submit" class="btn-primary btn-publish" v-else-if="currentStep === 5">Save & Publish Form
           </button>
         </div>
+      </fieldset>
       </form>
     </div>
   </div>
@@ -233,6 +245,8 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
+import OptionEditor from './OptionEditor.vue';
+import { useAuthStore } from '@/stores/auth';
 import type { Form } from '@/types/form';
 import TopBar from './TopBar.vue';
 import { apiService } from '@/services/api.ts';
@@ -257,11 +271,14 @@ const form = reactive<Form>({
     {
       title: '',
       description: '',
+      role: 'soft',
       type: 'Multiple choice',
       options: ['Option 1']
     }
   ],
   state: 'Draft',
+  currency: 'SGD',
+  decisionOptions: [{title:'',facts:[]},{title:'',facts:[]}],
 });
 
 // Step label helper
@@ -325,6 +342,7 @@ const addQuestion = (): void => {
   form.questions.push({
     title: '',
     description: '',
+    role: 'soft',
     type: 'Multiple choice',
     options: ['Option 1']
   });
@@ -335,29 +353,31 @@ const removeQuestion = (index: number): void => {
 };
 
 const addOption = (qIndex: number): void => {
-  const optionNum = form.questions[qIndex].options.length + 1;
-  form.questions[qIndex].options.push(`Option ${optionNum}`);
+  const question = form.questions[qIndex];
+  if (!question) return;
+  const optionNum = question.options.length + 1;
+  question.options.push(`Option ${optionNum}`);
 };
 
 const removeOption = (qIndex: number, oIndex: number) => {
-  if (form.questions[qIndex].options.length > 1) {
-    form.questions[qIndex].options.splice(oIndex, 1);
+  const question = form.questions[qIndex];
+  if (question && question.options.length > 1) {
+    question.options.splice(oIndex, 1);
   }
 };
 
-// form submission to backend
+const auth = useAuthStore();
+const isSaving = ref(false);
+const saveError = ref('');
 const submitForm = async (): Promise<void> => {
-  // Transmit Form payload to Golang server endpoint via fetch
-  // try {
-  //   const savedForm = await apiService.createForm(form)
-  //   emit('navigate', 'published');
-  // } catch (error) {
-  //   alert('Failted to save form to backend')
-  // }
-  console.log('Transmitting Typed Form Payload to Go Server:', JSON.stringify(form, null, 2));
-  emit('published', JSON.parse(JSON.stringify(form)));
-  emit('navigate', 'published');
-  alert('Form successfully sent to backend!');
+  if (isSaving.value) return;
+  isSaving.value = true; saveError.value = '';
+  try {
+    const saved = await apiService.createForm(form, auth.userID, auth.username);
+    emit('published', JSON.parse(JSON.stringify(saved)));
+  } catch (error) {
+    saveError.value = (error instanceof Error ? error.message : 'Unable to publish.') + (form.id ? ' Your saved draft is retained; retry in this tab.' : '');
+  } finally { isSaving.value = false; }
 };
 </script>
 
