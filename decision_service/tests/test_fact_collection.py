@@ -54,6 +54,21 @@ class GeminiCollectionTests(unittest.TestCase):
         self.assertEqual(claims[0]["identity"],self.plan["options"][0]["identity"])
         self.assertEqual(claims[0]["sources"][0]["url"], "https://manufacturer.example/spec")
 
+    def test_citation_on_an_overlapping_segment_that_states_the_value_is_accepted(self):
+        text = "### Bistro\n**Cuisine**: Modern French (as described by the restaurant)"
+        metadata = deepcopy(self.metadata)
+        metadata["groundingSupports"] = [{"segment": {"text": "**Cuisine**: Modern French"}, "groundingChunkIndices": [0]}]
+        safe = public_collection_input({**self.plan, "options": [{**self.plan["options"][0]}]},
+                                       [{"option_id": "device-a", "attribute_id": "cuisine", "value_type": "category", "unit": None}])
+        claim = {**self.claim, "attribute_id": "cuisine", "value_type": "category", "value": "Modern French", "unit": None,
+                 "source_text": "Modern French (as described by the restaurant)"}
+        claims, issues = validate_claims([claim], safe, text, metadata)
+        self.assertFalse(issues)
+        self.assertEqual(claims[0]["sources"][0]["url"], "https://manufacturer.example/spec")
+        # An overlapping citation that states a different value does not support the claim.
+        claims, issues = validate_claims([{**claim, "value": "Japanese", "source_text": "Modern French (as described by the restaurant)"}], safe, text, metadata)
+        self.assertFalse(claims)
+
     def test_uncited_values_and_invented_source_phrases_are_not_accepted(self):
         for change in ("citation", "excerpt", "identity", "unit", "type", "missing"):
             claim, metadata = deepcopy(self.claim), deepcopy(self.metadata)
