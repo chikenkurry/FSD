@@ -28,6 +28,10 @@ Enable **Places API (New)** in Google Cloud Console, restrict the key to it, and
 a daily quota. Compose passes `GOOGLE_PLACES_API_KEY` only to `decision` (live place
 cards and photos) and `decision-research`. The browser never receives either key.
 
+Without `GEMINI_API_KEY` the `decision-research` worker still starts and reports
+healthy; each research job fails as `FACT_COLLECTOR_NOT_CONFIGURED`, which the UI
+explains. CI relies on this, as it runs without provider keys.
+
 After changing keys, recreate the services that read them:
 
 ```sh

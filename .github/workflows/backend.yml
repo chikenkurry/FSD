@@ -83,6 +83,9 @@ jobs:
   integration:
     needs: [decision, planning, participation]
     runs-on: ubuntu-latest
+    env:
+      # CI has no Ollama server or provider keys; research reports itself unconfigured.
+      SEMANTIC_PROVIDER: rules
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

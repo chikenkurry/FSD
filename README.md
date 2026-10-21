@@ -123,6 +123,7 @@ when running elsewhere, and keep `/internal/*` routes behind the internal networ
 
 ## Local LLM interpretation
 
+CI sets `SEMANTIC_PROVIDER=rules`, because GitHub runners have no Ollama server.
 The default `SEMANTIC_PROVIDER=ollama` enables model-assisted interpretation of
 member answers. Run Ollama separately with the configured model installed and
 reachable from Docker, then start the stack. Compose connects to Ollama on the
