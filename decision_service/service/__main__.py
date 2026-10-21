@@ -61,7 +61,7 @@ def main():
     if len(token) < 16:
         raise SystemExit("INTERNAL_API_TOKEN must have at least 16 characters")
     provider = None
-    mode = os.environ.get("SEMANTIC_PROVIDER", "rules")
+    mode = os.environ.get("SEMANTIC_PROVIDER") or "ollama"
     if mode not in {"rules", "ollama"}:
         raise SystemExit("SEMANTIC_PROVIDER must be rules or ollama")
     if mode == "ollama":
@@ -75,10 +75,17 @@ def main():
         from .fact_collection import GeminiFactCollector
         collector = GeminiFactCollector()
 
+    if args.role != 'api' and collector is not None and (not args.kinds or 'research' in args.kinds.split(',')):
+        from .research import Researcher
+        from .places import PlacesClient
+        researcher = Researcher(collector, PlacesClient() if os.environ.get("GOOGLE_PLACES_API_KEY") else None)
+    else:
+        researcher = None
     jobs = JobQueue(store, provider, fact_collector=collector) if args.role == 'api' else JobWorkers(
         store, provider, workers=int(os.environ.get('DECISION_WORKERS', '2')),
         fact_collector=collector, kinds=args.kinds.split(',') if args.kinds else None,
         lease_seconds=int(os.environ.get('DECISION_LEASE_SECONDS', '300')))
+    jobs.researcher = researcher
     server = DecisionServer(
         ("0.0.0.0", int(os.environ.get("PORT", "8000"))),
         token=token, store=store, semantic_provider=provider,

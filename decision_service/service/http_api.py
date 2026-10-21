@@ -3,6 +3,7 @@ from copy import deepcopy
 import hmac
 import json
 import logging
+import os
 import re
 import threading
 import time
@@ -118,7 +119,7 @@ class DecisionHandler(BaseHTTPRequestHandler):
                 try:
                     self.server.store.ping()
                     ready = (self.server.jobs.ready() if self.server.worker_health else self.server.store.supports(
-                        [spec for kind, spec in self.server.jobs.specifications.items() if kind != 'fact_collection']))
+                        [spec for kind, spec in self.server.jobs.specifications.items() if kind not in {'fact_collection', 'research'}]))
                 except Exception:
                     return self.send_json(503, {'code': 'DATABASE_UNAVAILABLE'})
                 if not ready:
@@ -181,6 +182,46 @@ class DecisionHandler(BaseHTTPRequestHandler):
             frozen["collection_input"] = safe
             run = self.server.jobs.enqueue(frozen,{"snapshot_id":"fact-collection"},kind="fact_collection",retry=body.get("retry") is True)
             return self.send_run(run)
+        if self.path == "/internal/research" and self.command == "POST":
+            if 'research' not in self.server.jobs.specifications or not self.server.store.supports([self.server.jobs.specifications['research']]):
+                return self.send_json(503, {"code": "FACT_COLLECTOR_NOT_CONFIGURED"})
+            task = body.get("task")
+            refs = body.get("refs") if isinstance(body.get("refs"), dict) else {}
+            if task not in {"overviews", "questions", "fit"} or not isinstance(body.get("input"), dict) or not all(
+                    isinstance(refs.get(key), str) and refs[key] for key in ("plan_id", "round_id")):
+                return self.send_json(400, {"code": "INVALID_INPUT"})
+            # Only the organiser's option names, links, plan question and region reach providers.
+            frozen = {"plan_id": refs["plan_id"], "round_id": refs["round_id"], "option_revision": 0,
+                      "option_snapshot_id": "research", "research_task": task, "research_input": body["input"]}
+            run = self.server.jobs.enqueue(frozen, {"snapshot_id": "research"}, kind="research", retry=body.get("retry") is True)
+            return self.send_run(run)
+        if len(parts) == 3 and parts[:2] == ["internal", "places"] and self.command == "GET":
+            from .research import Researcher
+            from .places import PlacesClient
+            from .fact_collection import CollectionUnavailable
+            try:
+                card = Researcher(None, PlacesClient() if os.environ.get("GOOGLE_PLACES_API_KEY") else None).place_card(parts[2])
+            except CollectionUnavailable as error:
+                return self.send_json(503 if error.code != "PLACES_HTTP_404" else 404, {"code": error.code})
+            return self.send_json(200, card)
+        if len(parts) >= 5 and parts[:2] == ["internal", "places"] and parts[3] == "photos" and self.command == "GET":
+            from .research import Researcher
+            from .places import PlacesClient
+            from .fact_collection import CollectionUnavailable
+            name = "/".join(["places", parts[2], "photos", parts[4].split("?")[0]])
+            try:
+                payload, kind = Researcher(None, PlacesClient() if os.environ.get("GOOGLE_PLACES_API_KEY") else None).photo(name, 800)
+            except CollectionUnavailable as error:
+                return self.send_json(503, {"code": error.code})
+            if not kind.startswith("image/"):
+                return self.send_json(502, {"code": "PLACES_UNAVAILABLE"})
+            self.send_response(200)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "private, max-age=3600")
+            self.end_headers()
+            self.wfile.write(payload)
+            return
         if len(parts) == 4 and parts[:2] == ["internal", "rounds"] and parts[3] == "recommendations" and self.command == "POST":
             return self.recommend(str(UUID(parts[2])),retry=body.get("retry") is True)
         if len(parts) in {3, 4, 5} and parts[:2] == ["internal", "runs"]:

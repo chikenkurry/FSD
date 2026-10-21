@@ -12,6 +12,7 @@ from decision_service.preprocessing.sparse import VERSION as PROCESSING_VERSION
 from .store import canonical
 from .workflow import execute, preview
 from .fact_collection import CollectionUnavailable
+from .snapshots import SnapshotError
 from decision_service.deadlines import deadline, remaining_timeout
 from decision_service.preprocessing.semantics import SemanticServiceError
 
@@ -74,6 +75,9 @@ class JobQueue:
         self.fact_collector = fact_collector
         if fact_collector:
             self.specifications["fact_collection"] = execution_specification(fact_collector,kind="fact_collection")
+            # Organiser research shares the collector's model version but runs on its own pool.
+            self.specifications["research"] = execution_specification(fact_collector,kind="research")
+        self.researcher = None
         self.wake = threading.Event()
 
     def close(self):
@@ -95,7 +99,7 @@ class JobWorkers(JobQueue):
         if not 5 <= lease_seconds <= 1800:
             raise ValueError('Decision lease must be between 5 and 1800 seconds')
         kinds = kinds or list(self.specifications)
-        if len(set(kinds)) != len(kinds) or any(kind not in {'recommendation', 'preview', 'fact_collection'} for kind in kinds):
+        if len(set(kinds)) != len(kinds) or any(kind not in {'recommendation', 'preview', 'fact_collection', 'research'} for kind in kinds):
             raise ValueError('Unknown or duplicate worker job kinds')
         self.specifications = {kind: spec for kind, spec in self.specifications.items() if kind in kinds}
         if not self.specifications:
@@ -185,7 +189,14 @@ class JobWorkers(JobQueue):
             try:
                 inputs = job["inputs"]
                 kind = job["specification"]["kind"]
-                if kind == "fact_collection":
+                if kind == "research":
+                    planning = inputs["planning"]
+                    task = planning["research_task"]
+                    output = getattr(self.researcher, {"overviews": "overviews", "questions": "draft_questions", "fit": "fit"}[task])(planning["research_input"])
+                    refs = {key: planning[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
+                    refs["response_snapshot_id"] = inputs["responses"]["snapshot_id"]
+                    run = {"status": "completed", "input_refs": refs, "research": output, "issues": []}
+                elif kind == "fact_collection":
                     collection = self.fact_collector.collect(inputs["planning"]["collection_input"])
                     refs = {key: inputs["planning"][key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
                     refs["response_snapshot_id"] = inputs["responses"]["snapshot_id"]
@@ -201,6 +212,8 @@ class JobWorkers(JobQueue):
                 else:
                     self.store.complete(job, run)
                 logging.info("job_finished run_id=%s kind=%s status=%s elapsed_ms=%d", job["id"], job["specification"]["kind"], run["status"], (time.monotonic()-started)*1000)
+            except SnapshotError:
+                self.store.fail(job, "INVALID_RESEARCH_INPUT", max_attempts=job["attempts"])
             except CollectionUnavailable as error:
                 self.store.fail(job, error.code, max_attempts=3 if error.retryable else job["attempts"])
             except Exception as error:

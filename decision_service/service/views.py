@@ -157,6 +157,7 @@ def public_result(run: dict) -> dict:
                  for row in preparation.get("scenario_requests", [])]
     return {"run_id": run["run_id"], "status": run["status"], "input_refs": run["input_refs"],
             **({"collection": deepcopy(run["collection"])} if "collection" in run else {}),
+            **({"research": deepcopy(run["research"])} if "research" in run else {}),
             "job_state": run.get("job_state", "completed"),
             "execution_specification": run.get("execution_specification", {}),
             "result": result, "fact_requests": facts, "scenario_requests": scenarios,

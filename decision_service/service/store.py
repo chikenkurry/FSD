@@ -282,7 +282,7 @@ class RunStore:
         active_specs = {canonical(spec) for worker in workers for spec in worker['specifications']}
         return {'jobs': self.health(), 'pending_by_kind': {
                     kind: sum(json.loads(row['specification']).get('kind') == kind for row in pending)
-                    for kind in ('preview', 'recommendation', 'fact_collection')},
+                    for kind in ('preview', 'recommendation', 'fact_collection', 'research')},
                 'oldest_pending_seconds': round(max((now-row['created_at'] for row in pending), default=0), 3),
                 'sample_size': len(recent), 'queue_wait_seconds_p95': percentile(waiting, .95),
                 'last_attempt_seconds_p95': percentile(processing, .95),
