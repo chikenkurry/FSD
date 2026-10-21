@@ -190,6 +190,8 @@ class JobWorkers(JobQueue):
                 inputs = job["inputs"]
                 kind = job["specification"]["kind"]
                 if kind == "research":
+                    if not self.researcher or not self.researcher.gemini:
+                        raise CollectionUnavailable("FACT_COLLECTOR_NOT_CONFIGURED", retryable=False)
                     planning = inputs["planning"]
                     task = planning["research_task"]
                     output = getattr(self.researcher, {"overviews": "overviews", "questions": "draft_questions", "fit": "fit"}[task])(planning["research_input"])

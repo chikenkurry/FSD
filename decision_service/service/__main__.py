@@ -74,11 +74,15 @@ def main():
     elif os.environ.get("GEMINI_API_KEY"):
         from .fact_collection import GeminiFactCollector
         collector = GeminiFactCollector()
+    elif args.kinds and 'research' in args.kinds.split(','):
+        # Without a key, a research worker still starts and fails its jobs as not
+        # configured, so the stack stays healthy and the UI explains the gap.
+        collector = SimpleNamespace(provider_name='GeminiFactCollector', model=os.environ.get('GEMINI_FACT_MODEL', 'gemini-3.8-flash'))
 
     if args.role != 'api' and collector is not None and (not args.kinds or 'research' in args.kinds.split(',')):
         from .research import Researcher
         from .places import PlacesClient
-        researcher = Researcher(collector, PlacesClient() if os.environ.get("GOOGLE_PLACES_API_KEY") else None)
+        researcher = Researcher(collector if os.environ.get("GEMINI_API_KEY") else None, PlacesClient() if os.environ.get("GOOGLE_PLACES_API_KEY") else None)
     else:
         researcher = None
     jobs = JobQueue(store, provider, fact_collector=collector) if args.role == 'api' else JobWorkers(

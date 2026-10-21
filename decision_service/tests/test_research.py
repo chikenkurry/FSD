@@ -94,6 +94,26 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual(sentences("One. Two is here. Three is long.", 2, 320), "One. Two is here.")
         self.assertTrue(sentences("word " * 200, 2, 50).endswith("…"))
 
+    def test_research_worker_starts_without_a_gemini_key(self):
+        # CI runs the stack without provider keys; the worker must still start.
+        import os
+        from unittest.mock import patch
+        from decision_service.service import __main__ as entry
+        started = {}
+        class Stop(Exception):
+            pass
+        def fake_server(*args, **kwargs):
+            started["kinds"] = list(kwargs["jobs"].specifications)
+            started["researcher"] = kwargs["jobs"].researcher
+            raise Stop()
+        environment = {"INTERNAL_API_TOKEN": "x" * 16, "SEMANTIC_PROVIDER": "rules"}
+        with patch.dict(os.environ, environment, clear=True), patch.object(entry, "open_store", return_value=MagicMock()), \
+                patch.object(entry, "DecisionServer", side_effect=fake_server), \
+                patch("sys.argv", ["decision", "--role", "worker", "--kinds", "research"]), self.assertRaises(Stop):
+            entry.main()
+        self.assertEqual(started["kinds"], ["research"])
+        self.assertIsNone(started["researcher"].gemini)
+
     def test_inputs_are_validated_before_any_provider_call(self):
         with self.assertRaises(SnapshotError):
             Researcher(self.gemini, self.places).overviews({"options": [{"key": "a", "title": ""}]})
