@@ -2,7 +2,7 @@ name: what2do-integration
 x-decision-environment: &decision-environment
   DECISION_DATABASE_URL: postgresql://decision:decision@decision-db:5432/decision
   INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
-  SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-rules}
+  SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-ollama}
   OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
   OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
   SEMANTIC_MODEL_REVISION: ${SEMANTIC_MODEL_REVISION:-}
@@ -100,6 +100,8 @@ services:
       <<: *decision-environment
       PLANNING_BASE_URL: http://planning:8080
       PARTICIPATION_BASE_URL: http://participation:3000
+      # Serves live place cards and photos; Places content is never stored.
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
   decision-worker:
     build: *decision-build
     depends_on: *decision-dependencies
@@ -108,6 +110,17 @@ services:
       <<: *decision-environment
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       DECISION_WORKERS: ${DECISION_WORKERS:-2}
+  # Organiser research (overviews, drafted questions, option fit) runs on its own pool
+  # so a slow web search never delays recommendations or previews.
+  decision-research:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, worker, --kinds, research]
+    environment:
+      <<: *decision-environment
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+      DECISION_WORKERS: ${DECISION_RESEARCH_WORKERS:-6}
   decision-preview:
     build: *decision-build
     depends_on: *decision-dependencies
