@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
+	"unicode/utf8"
 
 	"planning-service/app/internal/model"
 
@@ -20,11 +22,20 @@ type Settings struct {
 	ScenarioCosts    []map[string]any `json:"scenario_costs,omitempty"`
 	Canonicalization map[string]any   `json:"canonicalization,omitempty"`
 	GroupObjective   map[string]any   `json:"group_objective,omitempty"`
+	// DecisionQuestion is the question members help answer; the plan title is used when empty.
+	DecisionQuestion string `json:"decision_question,omitempty"`
 }
 
 func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, settings Settings) (map[string]any, error) {
 	if len(plan.Members) == 0 || len(plan.Members) > 30 || len(plan.ProposedActivities) == 0 || len(plan.ProposedActivities) > 8 {
 		return nil, fmt.Errorf("publish requires 1-30 members and 1-8 options")
+	}
+	question := strings.TrimSpace(settings.DecisionQuestion)
+	if question == "" {
+		question = plan.Title
+	}
+	if utf8.RuneCountInString(question) > 300 {
+		return nil, fmt.Errorf("decision question exceeds 300 characters")
 	}
 	mode := settings.ExecutionMode
 	if mode == "" {
@@ -54,7 +65,12 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 		if option.Description != nil {
 			description = *option.Description
 		}
-		options = append(options, map[string]any{"option_id": option.ID.String(), "title": option.Title, "description": description, "facts": facts, "identity": metadata["identity"]})
+		entry := map[string]any{"option_id": option.ID.String(), "title": option.Title, "description": description, "facts": facts, "identity": metadata["identity"]}
+		// The brief is the organiser-reviewed web or AI overview shown to members.
+		if brief, ok := metadata["brief"].(map[string]any); ok && len(encoded(brief)) <= 8000 {
+			entry["brief"] = brief
+		}
+		options = append(options, entry)
 		if entries, ok := metadata["candidates"].([]any); ok {
 			for _, entry := range entries {
 				c, ok := entry.(map[string]any)
@@ -101,7 +117,7 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 	}
 	snapshot := map[string]any{"schema_version": "planning-snapshot-v1", "plan_id": plan.ID.String(), "round_id": round.ID.String(),
 		"roster_policy": "close", "roster_is_final": false,
-		"option_revision": round.RoundNumber, "option_snapshot_id": id.String(), "decision_question": plan.Title,
+		"option_revision": round.RoundNumber, "option_snapshot_id": id.String(), "decision_question": question,
 		"currency": settings.Currency, "currency_minor_digits": digits, "cost_scope": settings.CostScope,
 		"timezone": settings.Timezone, "execution_mode": mode, "roster": roster, "options": options, "questions": questions,
 		"execution_context": map[string]any{"candidates": candidates}}

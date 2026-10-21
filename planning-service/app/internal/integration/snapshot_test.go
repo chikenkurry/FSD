@@ -24,6 +24,22 @@ func TestSnapshotUsesEvidenceAndStableQuestionIdentity(t *testing.T) {
 	if snapshot["option_revision"] != 2 {
 		t.Fatal("revision was not preserved")
 	}
+	if _, ok := snapshot["options"].([]map[string]any)[0]["brief"]; ok {
+		t.Fatal("brief invented without metadata")
+	}
+	plan.ProposedActivities[0].Metadata = []byte(`{"facts":[],"brief":{"summary":"A light laptop."}}`)
+	withBrief, err := BuildSnapshot(plan, round, uuid.New(), Settings{})
+	if err != nil || withBrief["options"].([]map[string]any)[0]["brief"].(map[string]any)["summary"] != "A light laptop." {
+		t.Fatal("option brief not published")
+	}
+	plan.ProposedActivities[0].Metadata = []byte(`{"facts":[{"criterion":"mass","value":1,"unit":"kg","status":"confirmed","source":"specification"}]}`)
+	if snapshot["decision_question"] != "Choose a device" {
+		t.Fatal("decision question should fall back to the plan title")
+	}
+	asked, err := BuildSnapshot(plan, round, uuid.New(), Settings{DecisionQuestion: "  Which device should the team buy?  "})
+	if err != nil || asked["decision_question"] != "Which device should the team buy?" {
+		t.Fatal("organiser decision question lost")
+	}
 	question := snapshot["questions"].([]map[string]any)[0]
 	if question["question_id"] != plan.Questions[0].ID.String() || question["answer_format"] != "number" {
 		t.Fatal("question mapping lost")
