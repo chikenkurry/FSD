@@ -59,9 +59,11 @@ cd participation-service-main
 DATABASE_URL=postgresql://participation:participation@127.0.0.1:15432/participation npm run test:e2e
 ```
 
-The default semantic mode is `rules`. For arbitrary prose, configure
-`SEMANTIC_PROVIDER=ollama`, `OLLAMA_BASE_URL` and `OLLAMA_MODEL` before starting
-the stack. Missing interpretations return review requests. The HTTP tests use
+The default application semantic mode is `ollama`. Start Ollama separately with
+`OLLAMA_MODEL` installed and `OLLAMA_BASE_URL` reachable from the containers
+(default `http://host.docker.internal:11434`). Compose does not launch Ollama.
+Set `SEMANTIC_PROVIDER=rules` explicitly for model-free operation. Missing
+interpretations return review requests. The HTTP tests use
 explicit definitions and synthetic facts; they do not measure live model accuracy.
 
 Python's unittest suite needs both package roots for the legacy algorithm tests:
@@ -104,8 +106,10 @@ must remain off a public gateway. Supply a deployment-specific
 
 ## Form definitions
 
-Existing CRUD endpoints create plans, options and questions. Sourced option facts
-go in `metadata.facts`:
+Existing CRUD endpoints create plans, options and questions. The frontend can fill
+these through [AI option research](OPTION_RESEARCH.md); options then carry
+`metadata.identity.kind` and, for venues, `metadata.identity.place_id`. AI fit values
+are facts with `context.estimated: true`. Sourced option facts go in `metadata.facts`:
 
 ```json
 {"facts":[{

@@ -142,8 +142,14 @@ window, and surrender their own unfinished claims. The old token is invalidated.
 | `retire` | Explicitly fails pending jobs of one retired implementation after active workers/live leases are gone |
 
 Compose runs `decision` in API mode, `decision-worker` for recommendation/fact
-collection, and `decision-preview` for previews. The API receives no Gemini key.
-Only the recommendation/fact worker receives it. Preview isolation reserves
+collection, `decision-preview` for previews, and `decision-research` for organiser
+research (option overviews, drafted questions and option fit; see
+[option research](../../integration/OPTION_RESEARCH.md)). The API receives no Gemini
+key; it holds only `GOOGLE_PLACES_API_KEY` to serve live place cards and photos,
+which Google's terms do not allow storing. Gemini reaches the recommendation/fact
+and research workers. Research runs on its own pool (`DECISION_RESEARCH_WORKERS`,
+default 6) so a slow web search never delays recommendations, and API readiness
+does not depend on it. Preview isolation reserves
 capacity so slow fact collection cannot occupy every execution slot. Fairness
 between recommendations and fact collection within their shared pool is FIFO;
 separate pools for those kinds can be introduced if measurements justify it.
@@ -167,7 +173,9 @@ The first persisted response wins; reads return independent Python values.
 Caching is private and is not exposed through public result views. Rules-only
 processing generally does not use this model-response cache.
 
-Gemini collection results are persisted job artifacts, not semantic cache rows.
+Gemini collection and research results are persisted job artifacts, not semantic
+cache rows. Research artifacts hold suggestions only; Places details are never part
+of an artifact or a planning snapshot, only the place ID chosen for an option.
 Repeating an identical successful collection reuses that artifact. Current expiry
 validation and explicit fact review remain in force, but a dedicated refresh
 generation/freshness API is still needed for changing prices or offers. Do not

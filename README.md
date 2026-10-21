@@ -12,9 +12,10 @@ Create plan, options and questions
 ```
 
 This checkout provides backend APIs, durable recommendation jobs, private draft
-previews, Gemini Search fact collection with evidence review, and versioned RSVPs.
-The Vue frontend supports ordinary option forms, private review, recommendations,
-confirmation and RSVP. See [the full-system and frontend guide](frontend/README.md)
+previews, Gemini Search fact collection with evidence review, AI option research
+(overviews, drafted questions and option fit, with Google Places for venues), and
+versioned RSVPs. The Vue frontend supports AI-assisted form creation, a step-by-step
+member response flow, private review, recommendations, confirmation and RSVP. See [the full-system and frontend guide](frontend/README.md)
 for startup, mobile testing, design choices and remaining UI scope. Legacy per-activity ratings return
 `ACTIVITY_RATINGS_NOT_SUPPORTED`; the connected form uses question answers for
 preferences. Activity participation flags and structured budgets are supported.
@@ -29,8 +30,10 @@ Targeted scoring, database-read and idle-work improvements are measured in the
 
 ## Run all services
 
-Copy [.env_example](.env_example) to `.env` in this directory and set `GEMINI_API_KEY`
-to enable fact collection. Compose passes the key only to Decision's recommendation/fact worker. See the
+Copy [.env_example](.env_example) to `.env` in this directory. Set `GEMINI_API_KEY` to
+enable AI option research and fact collection, and optionally `GOOGLE_PLACES_API_KEY`
+for venue photos, ratings and review summaries. Compose passes these keys only to the
+Decision services that call those providers; see [option research](integration/OPTION_RESEARCH.md). See the
 [backend lifecycle guide](integration/BACKEND_HARDENING.md) for job polling,
 private previews, reviewed fact acceptance, RSVPs and service-specific local env files.
 
@@ -65,7 +68,7 @@ and PostgreSQL installations are not required for this setup.
 | Planning | Plans, options, questions, membership, guest sessions and round lifecycle | `http://127.0.0.1:18080` |
 | Participation | Private drafts, submissions and frozen response snapshots | `http://127.0.0.1:13002` |
 | Decision API | Snapshot validation, job admission and filtered results | Internal Docker network: `http://decision:8000` |
-| Decision workers | Preprocessing, ranking and evidence collection; reserved preview pool | Internal health endpoints only |
+| Decision workers | Preprocessing, ranking and evidence collection; reserved preview and research pools | Internal health endpoints only |
 | Participation PostgreSQL | Participation data; also available for database tests | `127.0.0.1:15432` |
 
 Participation's Swagger UI is at [http://127.0.0.1:13002/docs](http://127.0.0.1:13002/docs).
@@ -118,13 +121,12 @@ The Compose credentials and shared internal token are local development defaults
 Set `INTERNAL_API_TOKEN` to a deployment-specific value of at least 16 characters
 when running elsewhere, and keep `/internal/*` routes behind the internal network.
 
-## Enable local LLM interpretation
+## Local LLM interpretation
 
-The default `SEMANTIC_PROVIDER=rules` runs without an LLM. It supports explicit
-definitions and rule-based interpretation; unresolved answers request review.
-
-For model-assisted natural-language interpretation, run an Ollama server with
-the configured model installed and reachable from Docker, then start the stack:
+The default `SEMANTIC_PROVIDER=ollama` enables model-assisted interpretation of
+member answers. Run Ollama separately with the configured model installed and
+reachable from Docker, then start the stack. Compose connects to Ollama on the
+host; it does not launch an Ollama container:
 
 ```sh
 SEMANTIC_PROVIDER=ollama \
@@ -133,9 +135,14 @@ OLLAMA_MODEL=qwen3:4b-instruct \
 docker compose -f compose.integration.yaml up -d --build --wait
 ```
 
+Set `SEMANTIC_PROVIDER=rules` explicitly for model-free operation. Offline
+evaluation and benchmark tools retain their deterministic rules baseline.
+
 Change the URL and model to match your Ollama installation. Model outputs still
 pass preprocessing validation before ranking. This enables interpretation of
-answers. Gemini Search collects option facts separately when GEMINI_API_KEY is configured.
+answers. Gemini handles organiser-side research separately when GEMINI_API_KEY is
+configured: option overviews, drafted questions and option fit
+([option research](integration/OPTION_RESEARCH.md)), plus quoted fact collection.
 
 ## Logs and shutdown
 
@@ -152,6 +159,7 @@ the [integration guide](integration/README.md#run-and-check).
 ## Service documentation
 
 - [Integration guide and API lifecycle](integration/README.md)
+- [AI option research, Google Places and option fit](integration/OPTION_RESEARCH.md)
 - [Shared snapshot schemas](contracts/snapshots.schema.json)
 - [Decision setup and examples](decision_service/docs/README.md)
 - [Decision processing flow](decision_service/docs/FLOW.md)

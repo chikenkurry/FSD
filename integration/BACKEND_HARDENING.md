@@ -134,6 +134,10 @@ its history; predicted availability never creates an RSVP.
 
 ## Gemini fact collection
 
+For organiser-side overviews, drafted questions and option fit (including Google
+Places), see [AI option research](OPTION_RESEARCH.md). The collection described
+here is the stricter path for exact, quoted claims.
+
 Configure `GEMINI_API_KEY` and optionally `GEMINI_FACT_MODEL` in the root env file.
 Member interpretation remains rules/Ollama; Gemini is a separate evidence collector.
 The collector follows Google's [Search grounding documentation](https://ai.google.dev/gemini-api/docs/generate-content/google-search)
