@@ -1,3 +1,4 @@
+import { clearCheckpoints } from '@/services/checkpoints';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { Session } from '@/types/form';
@@ -13,6 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user_id');
   }
   function logout() {
+    clearCheckpoints(userID.value);
     userID.value = ''; username.value = ''; token.value = '';
     for (const key of ['user_id', 'username', 'session_token']) sessionStorage.removeItem(key);
   }

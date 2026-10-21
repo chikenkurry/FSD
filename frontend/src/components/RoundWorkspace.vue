@@ -1,61 +1,129 @@
 <template>
-  <main class="workspace">
-    <p v-if="error" role="alert" class="error">{{ error }}</p>
-    <p v-if="busy" role="status">Working…</p>
-    <template v-if="snapshot && plan">
-      <header class="round-header"><div><h1>{{ plan.title }}</h1><p>{{ plan.state }} · {{ snapshot.currency }} · {{ snapshot.execution_mode }}</p></div><button :disabled="busy" @click="refresh">Refresh status</button></header>
-      <section class="panel" v-if="organiser && ['COLLECTING','REVIEWING'].includes(plan.state)">
-        <h2>Organiser controls</h2>
-        <p v-if="progress">{{ progress }}</p>
-        <div class="actions">
-          <button v-if="plan.state === 'COLLECTING'" :disabled="busy" @click="makeInvite">Create invitation link</button>
-          <button v-if="plan.state === 'COLLECTING'" :disabled="busy" @click="close">Close collection</button>
-          <button v-if="plan.state === 'REVIEWING'" :disabled="busy" @click="recommend">{{ run?.status === 'failed' ? 'Retry recommendation' : 'Calculate recommendation' }}</button>
+  <main class="workspace" id="main-content" tabindex="-1" :aria-busy="busy">
+    <Transition name="reveal"><p v-if="error" role="alert" class="error">{{ error }}</p></Transition>
+    <div v-if="busy && !snapshot" role="status" class="loading"><p class="muted">Loading your plan…</p><div class="skeleton tall" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div></div>
+    <FormParticipantView v-if="snapshot && plan && memberCollecting" guided :round-id="roundId" :snapshot="snapshot" :title="plan.title" :description="plan.description" @refresh="refresh" />
+    <template v-else-if="snapshot && plan">
+      <header class="round-header page-heading">
+        <div>
+          <div class="round-meta"><Transition name="swap" mode="out-in"><span :key="plan.state" :class="['badge', plan.state.toLowerCase()]">{{ stateLabel(plan.state) }}</span></Transition><span>{{ organiser ? 'You’re organising' : 'You’re a member' }}</span><span aria-hidden="true">·</span><span>Costs in {{ snapshot.currency }}</span></div>
+          <h1>{{ plan.title }}</h1>
+          <p v-if="snapshot.decision_question && snapshot.decision_question !== plan.title" class="decision-question">{{ snapshot.decision_question }}</p>
+          <p v-if="plan.description" class="plan-description">{{ plan.description }}</p>
         </div>
-        <label v-if="shareUrl && plan.state === 'COLLECTING'">Invitation link<input readonly :value="shareUrl" @focus="($event.target as HTMLInputElement).select()" /></label>
-        <button v-if="shareUrl && plan.state === 'COLLECTING'" @click="copyInvite">{{ copied ? 'Copied' : 'Copy invitation' }}</button>
+        <button :disabled="busy" @click="refresh" :class="['refresh', { spinning: busy }]"><UiIcon name="refresh" />{{ busy ? 'Refreshing…' : 'Refresh status' }}</button>
+      </header>
+      <ol class="round-progress" aria-label="Decision progress" :style="{ '--phase': phase }">
+        <li v-for="(label, index) in ['Collect responses', 'Review options', 'Confirm choice']" :key="label" :class="{ current: index === phase, complete: index < phase }" :aria-current="index === phase ? 'step' : undefined">
+          <span class="phase-dot"><Transition name="swap" mode="out-in"><UiIcon v-if="index < phase" name="check" /><span v-else>{{ index + 1 }}</span></Transition></span><span>{{ label }}</span>
+        </li>
+      </ol>
+
+      <Transition name="reveal" mode="out-in">
+        <section class="panel organiser-panel" v-if="organiser && ['COLLECTING','REVIEWING'].includes(plan.state)" :key="plan.state" aria-labelledby="organiser-heading">
+          <div class="panel-heading"><div><h2 id="organiser-heading">Organiser controls</h2><p>{{ plan.state === 'COLLECTING' ? 'Share the invitation, then close collection once enough people have responded.' : 'Collection is closed. Calculate the recommendation to compare eligible options.' }}</p></div></div>
+          <div v-if="plan.state === 'COLLECTING'" class="collect-progress">
+            <template v-if="readiness">
+              <div class="collect-figure"><strong>{{ readiness.submitted }}</strong><span>of {{ readiness.members }} {{ readiness.members === 1 ? 'member has' : 'members have' }} submitted</span></div>
+              <span class="meter" aria-hidden="true"><span :style="{ '--value': readiness.members ? readiness.submitted / readiness.members : 0 }"></span></span>
+              <p class="helper-text">Closing collection freezes the roster and any unfinished responses.</p>
+            </template>
+            <p v-else-if="progressError" class="helper-text">{{ progressError }}</p>
+          </div>
+          <div class="actions">
+            <button class="btn-primary" v-if="plan.state === 'COLLECTING' && !shareUrl" :disabled="busy" @click="makeInvite"><UiIcon name="people" />Create invitation link</button>
+            <button v-if="plan.state === 'COLLECTING'" :disabled="busy" @click="close">Close collection</button>
+            <button class="btn-primary" v-if="plan.state === 'REVIEWING'" :disabled="busy" @click="recommend">{{ calculating ? 'Calculating…' : run?.status === 'failed' ? 'Retry recommendation' : run ? 'Recalculate' : 'Calculate recommendation' }}<UiIcon v-if="!calculating" name="arrow" /></button>
+          </div>
+          <Transition name="reveal">
+            <div v-if="shareUrl && plan.state === 'COLLECTING'" class="invitation-field">
+              <label for="invite-link">Invitation link</label>
+              <div class="invite-row"><input id="invite-link" readonly :value="shareUrl" @focus="($event.target as HTMLInputElement).select()" /><button :class="{ 'btn-primary': !copied }" @click="copyInvite"><Transition name="swap" mode="out-in"><span :key="String(copied)" class="copy-label"><UiIcon v-if="copied" name="check" />{{ copied ? 'Copied' : 'Copy invitation' }}</span></Transition></button></div>
+              <p class="helper-text">Anyone with this link can join and respond. Share it with the people involved in this decision.</p>
+            </div>
+          </Transition>
+        </section>
+      </Transition>
+
+      <Transition name="reveal"><p v-if="!organiser && plan.state === 'REVIEWING' && !run" class="callout waiting">Collection has closed. The organiser is reviewing the options. Refresh status to check for the result.</p></Transition>
+
+      <section class="options-section" aria-labelledby="options-heading">
+        <h2 id="options-heading">Options being considered <span class="muted">{{ snapshot.options.length }}</span></h2>
+        <OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" :chosen="selection?.candidate_id" compact />
       </section>
-      <section class="panel"><h2>Options</h2><ul><li v-for="option in snapshot.options" :key="option.option_id">{{ option.title }}</li></ul></section>
+
       <FormParticipantView v-if="plan.state === 'COLLECTING'" :round-id="roundId" :snapshot="snapshot" @saved="updateProgress" />
-      <section class="panel" v-if="run">
-        <h2>Group recommendation</h2><p>Status: {{ run.status }}</p>
-        <p v-if="run.status === 'pending'">Your recommendation is still running. Refresh status to check it.</p>
-        <p v-if="run.recommendation_view.next_action">{{ nextAction }}</p>
-        <ul v-if="run.issues.length"><li v-for="(issue,index) in run.issues" :key="index">{{ issue.code }}</li></ul>
-        <div class="candidate-grid">
-          <article v-for="candidate in candidates" :key="candidate.candidate_id" class="candidate-card">
-            <h3>{{ candidate.rank === 1 ? 'Recommended: ' : '' }}{{ candidate.title }}</h3>
-            <p v-if="candidate.primary_objective_tie_size > 1">Equally suitable with {{ candidate.primary_objective_tie_size - 1 }} other option(s). Cost, time, then ID determine display order.</p>
-            <dl v-if="hasPreferences"><dt>Least-satisfied member fit</dt><dd>{{ percent(candidate.minimum_member_score) }}</dd><dt>Average group fit</dt><dd>{{ percent(candidate.average_member_score) }}</dd></dl>
-            <p v-else>Meets the requirements. No scored preferences were collected.</p>
-            <p v-if="candidate.estimated_cost_minor != null">Cost: {{ money(candidate) }}</p>
-            <p v-if="candidate.start_at">{{ new Date(candidate.start_at).toLocaleString() }} – {{ candidate.end_at ? new Date(candidate.end_at).toLocaleString() : '' }}</p>
-            <p v-if="paretoIds.has(candidate.candidate_id)">Other strong trade-off: {{ tradeoffs(candidate.candidate_id) }}</p>
-            <button v-if="organiser && !selection && plan.state === 'REVIEWING'" :disabled="busy" @click="confirm(candidate.candidate_id)">Confirm {{ candidate.title }}</button>
-          </article>
-        </div>
-        <ul v-if="run.recommendation_view.unavailable_candidates.length"><li v-for="candidate in run.recommendation_view.unavailable_candidates" :key="candidate.candidate_id">{{ candidate.title }}: {{ candidate.status }}</li></ul>
-      </section>
-      <section v-if="selection" class="panel">
-        <h2>Confirmed selection</h2><p>{{ selectedTitle }} · version {{ selection.selection_version }}</p>
-        <label>Your RSVP<select v-model="rsvpStatus" :disabled="busy"><option value="">Choose…</option><option>GOING</option><option>MAYBE</option><option>DECLINED</option></select></label>
-        <button :disabled="busy || !rsvpStatus" @click="saveRsvp">Save RSVP</button><p role="status">{{ notice }}</p>
-      </section>
+
+      <Transition name="reveal">
+        <section class="recommendation-section" v-if="run" aria-labelledby="recommendation-heading">
+          <div class="panel-heading"><div><h2 id="recommendation-heading">Group recommendation</h2><p>Options ranked against the group’s confirmed responses.</p></div><span :class="['badge', run.status.toLowerCase()]">{{ stateLabel(run.status) }}</span></div>
+          <div v-if="run.status === 'pending'" class="pending" role="status"><span class="pulse" aria-hidden="true"></span>Calculating the recommendation. This usually takes a few seconds.</div>
+          <p v-if="run.recommendation_view.next_action && nextAction" class="callout warning">{{ nextAction }}</p>
+          <ul v-if="run.issues.length" class="issue-list"><li v-for="(issue,index) in run.issues" :key="index">{{ stateLabel(issue.code) }}</li></ul>
+          <div class="candidate-grid">
+            <article v-for="(candidate, index) in candidates" :key="candidate.candidate_id" :class="['candidate-card', 'rise', { recommended: candidate.rank === 1, chosen: selection?.candidate_id === candidate.candidate_id }]" :style="{ '--i': index }">
+              <p class="rank">{{ selection?.candidate_id === candidate.candidate_id ? 'Confirmed' : candidate.rank === 1 ? 'Recommended' : `Ranked ${ordinal(candidate.rank)}` }}</p>
+              <h3><span class="sr-only">{{ candidate.rank === 1 ? 'Recommended: ' : '' }}</span>{{ candidate.title }}</h3>
+              <p v-if="candidate.primary_objective_tie_size > 1" class="tie">Equally suitable with {{ candidate.primary_objective_tie_size - 1 }} other {{ candidate.primary_objective_tie_size === 2 ? 'option' : 'options' }}. Cost, time, then ID set the display order.</p>
+              <dl v-if="hasPreferences" class="scores">
+                <div><dt>Average group fit</dt><dd>{{ percent(candidate.average_member_score) }}</dd><span class="meter" aria-hidden="true"><span :style="{ '--value': candidate.average_member_score }"></span></span></div>
+                <div><dt>Least-satisfied member</dt><dd>{{ percent(candidate.minimum_member_score) }}</dd><span class="meter" aria-hidden="true"><span :style="{ '--value': candidate.minimum_member_score }"></span></span></div>
+              </dl>
+              <p v-else>Meets the requirements. No scored preferences were collected.</p>
+              <dl class="facts" v-if="candidate.estimated_cost_minor != null || candidate.start_at">
+                <div v-if="candidate.estimated_cost_minor != null"><dt>Cost per person</dt><dd>{{ money(candidate) }}</dd></div>
+                <div v-if="candidate.start_at"><dt>When</dt><dd>{{ new Date(candidate.start_at).toLocaleString() }}<template v-if="candidate.end_at"> – {{ new Date(candidate.end_at).toLocaleString() }}</template></dd></div>
+              </dl>
+              <p v-if="paretoIds.has(candidate.candidate_id)" class="tradeoff">Trade-off: {{ tradeoffs(candidate.candidate_id) }}</p>
+              <button :class="{ 'btn-primary': candidate.rank === 1 }" v-if="organiser && !selection && plan.state === 'REVIEWING'" :disabled="busy" @click="confirm(candidate)">Confirm {{ candidate.title }}<UiIcon name="check" /></button>
+            </article>
+          </div>
+          <div v-if="run.recommendation_view.unavailable_candidates.length" class="unavailable">
+            <h3>Ruled out</h3>
+            <ul><li v-for="candidate in run.recommendation_view.unavailable_candidates" :key="candidate.candidate_id"><span>{{ candidate.title }}</span><span class="muted">{{ unavailableLabel(candidate.status) }}</span></li></ul>
+          </div>
+        </section>
+      </Transition>
+
+      <Transition name="settle">
+        <section v-if="selection" class="panel selection-panel" aria-labelledby="selection-heading">
+          <div class="selection-head">
+            <span class="seal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg></span>
+            <div><h2 id="selection-heading">Confirmed selection</h2><p class="selected-title">{{ selectedTitle }}</p></div>
+          </div>
+          <p class="muted">The choice is confirmed. Let your group know whether you’ll be joining.</p>
+          <fieldset class="rsvp" :disabled="busy">
+            <legend>Your RSVP</legend>
+            <div class="choice-list rsvp-options">
+              <label v-for="o in rsvpOptions" :key="o.value" class="choice-option"><input type="radio" name="rsvp" :value="o.value" v-model="rsvpStatus" />{{ o.label }}</label>
+            </div>
+            <div class="rsvp-actions"><button class="btn-primary" :disabled="busy || !rsvpStatus || rsvpStatus === savedRsvp" @click="saveRsvp">{{ savedRsvp ? 'Update RSVP' : 'Save RSVP' }}</button>
+              <Transition name="reveal"><p v-if="notice" role="status" class="saved-note"><UiIcon name="check" />{{ notice }}</p></Transition></div>
+          </fieldset>
+          <p class="helper-text">Selection version {{ selection.selection_version }}</p>
+        </section>
+      </Transition>
     </template>
   </main>
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import UiIcon from './UiIcon.vue';
 import FormParticipantView from './FormParticipantView.vue';
+import OptionCards from './OptionCards.vue';
 import { apiService, ApiError, request } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import type { Snapshot, PlanRow, Run, Selection, Candidate } from '@/types/form';
 const props = defineProps<{ roundId: string; inviteToken?: string }>();
 const auth = useAuthStore(); const snapshot = ref<Snapshot>(); const plan = ref<PlanRow>();
 const run = ref<Run>(); const selection = ref<Selection>(); const busy = ref(false); const error = ref('');
-const shareUrl = ref(''); const copied = ref(false); const progress = ref(''); const notice = ref('');
-const rsvpStatus = ref(''); const rsvpRevision = ref(0); let alive = true;
+const shareUrl = ref(''); const copied = ref(false); const notice = ref(''); const calculating = ref(false);
+const readiness = ref<{ submitted: number; members: number }>(); const progressError = ref('');
+const rsvpStatus = ref(''); const savedRsvp = ref(''); const rsvpRevision = ref(0); let alive = true;
+const rsvpOptions = [{ value: 'GOING', label: 'Going' }, { value: 'MAYBE', label: 'Maybe' }, { value: 'DECLINED', label: 'Not joining' }];
 const organiser = computed(() => plan.value?.created_by_user_id === auth.userID);
+// Members answer in a focused, page-by-page flow; organisers keep the full workspace.
+const memberCollecting = computed(() => !organiser.value && plan.value?.state === 'COLLECTING');
 const hasPreferences = computed(() => snapshot.value?.questions.some(question => question.role === 'soft' || !question.role));
 const candidates = computed(() => run.value?.recommendation_view.recommendation ? [run.value.recommendation_view.recommendation, ...run.value.recommendation_view.alternatives] : []);
 const paretoIds = computed(() => new Set(run.value?.recommendation_view.pareto_alternatives.map(row => row.candidate_id)));
@@ -64,9 +132,13 @@ const actionMessages: Record<string,string> = {
   OPTION_FACTS_REQUIRED: 'More confirmed option facts are needed. The organiser must revise the options in a new round.',
   RESPONSES_OR_CONFIRMATIONS_REQUIRED: 'Responses or requirement confirmations are incomplete. Review the round before requesting another calculation.',
   REVISE_OPTIONS_OR_REQUIREMENTS: 'No option meets the group requirements. Revise the choices or requirements in a new round.',
-  RECOMMENDATION_IN_PROGRESS: 'The recommendation is running.', DECISION_SETUP_REVIEW_REQUIRED: 'The organiser needs to review the decision setup.', RECOMMENDATION_RETRY_REQUIRED: 'The calculation failed. The organiser can retry.',
+  RECOMMENDATION_IN_PROGRESS: '', DECISION_SETUP_REVIEW_REQUIRED: 'The organiser needs to review the decision setup.', RECOMMENDATION_RETRY_REQUIRED: 'The calculation failed. The organiser can retry.',
 };
-const nextAction = computed(() => actionMessages[run.value?.recommendation_view.next_action || ''] || '');
+const nextAction = computed(() => actionMessages[run.value?.recommendation_view.next_action || ''] ?? '');
+function stateLabel(value: string) { return value.toLowerCase().replaceAll('_', ' ').replace(/^./, c => c.toUpperCase()); }
+function unavailableLabel(status: string) { return ({ INFEASIBLE: 'Doesn’t meet the group’s requirements' } as Record<string,string>)[status] || stateLabel(status); }
+function ordinal(n: number) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]!); }
+const phase = computed(() => selection.value ? 2 : plan.value?.state === 'REVIEWING' ? 1 : plan.value?.state === 'CONFIRMED' ? 2 : 0);
 function percent(value: number) { return `${Math.round(value*100)}%`; }
 function money(row: Candidate) { return new Intl.NumberFormat(undefined,{style:'currency',currency:row.currency || snapshot.value!.currency}).format(row.estimated_cost_minor! / 10 ** (row.currency_minor_digits ?? snapshot.value!.currency_minor_digits)); }
 function tradeoffs(id: string) { const labels: Record<string,string> = { HIGHER_MINIMUM_SATISFACTION:'higher minimum fit', LOWER_MINIMUM_SATISFACTION:'lower minimum fit', HIGHER_AVERAGE_SATISFACTION:'higher average fit', LOWER_AVERAGE_SATISFACTION:'lower average fit', EQUIVALENT_GROUP_METRICS:'similar group metrics' }; return run.value?.recommendation_view.pareto_alternatives.find(row=>row.candidate_id===id)?.tradeoffs?.map(code=>labels[code] || code).join(', '); }
@@ -77,27 +149,34 @@ async function load() {
   plan.value = await apiService.plan(snapshot.value.plan_id);
   run.value = await optional(() => apiService.result(props.roundId));
   selection.value = await optional(() => apiService.selection(props.roundId));
-  if (selection.value) { const own = await apiService.rsvp(props.roundId); rsvpRevision.value = own.revision; rsvpStatus.value = own.status || ''; }
+  if (selection.value) { const own = await apiService.rsvp(props.roundId); rsvpRevision.value = own.revision; rsvpStatus.value = savedRsvp.value = own.status || ''; }
   await updateProgress();
 }
 async function refresh() { await act(load); }
 async function updateProgress() {
-  if (!organiser.value || plan.value?.state !== 'COLLECTING') { progress.value=''; return; }
+  if (!organiser.value || plan.value?.state !== 'COLLECTING') { readiness.value = undefined; return; }
   try {
-    const readiness = await request<{ member_count:number; progress: { submittedCount?:number } }>(`/api/planning/v1/rounds/${props.roundId}/readiness`);
-    progress.value = `${readiness.progress.submittedCount || 0} submitted / ${readiness.member_count} member(s). Closing freezes incomplete responses too.`;
-  } catch { progress.value = 'Progress could not be loaded. Refresh before closing.'; }
+    const row = await request<{ member_count:number; progress: { submittedCount?:number } }>(`/api/planning/v1/rounds/${props.roundId}/readiness`);
+    readiness.value = { submitted: row.progress.submittedCount || 0, members: row.member_count }; progressError.value = '';
+  } catch { readiness.value = undefined; progressError.value = 'Progress could not be loaded. Refresh before closing.'; }
 }
 async function makeInvite() { await act(async () => { const invite=await apiService.invite(snapshot.value!.plan_id,auth.userID); shareUrl.value=`${location.origin}/#${new URLSearchParams({round:props.roundId,invite:invite.token})}`; }); }
-async function copyInvite() { await act(async () => { await navigator.clipboard.writeText(shareUrl.value); copied.value=true; }); }
-async function close() { if (!window.confirm('Close collection and freeze the current roster and responses? Members cannot edit after closing.')) return; await act(async () => { await apiService.close(props.roundId); await load(); }); }
-async function recommend() { await act(async () => { run.value=await apiService.recommend(props.roundId); const until=Date.now()+30000; while(alive && run.value.status==='pending' && Date.now()<until) { await new Promise(resolve=>setTimeout(resolve,500)); if (alive) run.value=await apiService.result(props.roundId); } }); }
-async function confirm(candidate: string) { await act(async () => {
-  const key=`confirmation:${props.roundId}:${run.value!.run_id}:${candidate}`;
-  const operation=sessionStorage.getItem(key)||crypto.randomUUID();sessionStorage.setItem(key,operation);
-  selection.value=await apiService.confirm(props.roundId,run.value!.run_id,candidate,operation); await load();
-}); }
-async function saveRsvp() { await act(async () => { await apiService.saveRsvp(props.roundId,selection.value!.selection_version,rsvpRevision.value,rsvpStatus.value); const own=await apiService.rsvp(props.roundId);rsvpRevision.value=own.revision;notice.value='RSVP saved.'; }); }
+async function copyInvite() { await act(async () => { await navigator.clipboard.writeText(shareUrl.value); copied.value=true; setTimeout(() => { copied.value = false; }, 2400); }); }
+async function close() {
+  const count = readiness.value ? ` ${readiness.value.submitted} of ${readiness.value.members} members have submitted.` : '';
+  if (!window.confirm(`Close collection?${count} This freezes the roster and responses; members can’t edit afterwards.`)) return;
+  await act(async () => { await apiService.close(props.roundId); await load(); });
+}
+async function recommend() { calculating.value = true; await act(async () => { run.value=await apiService.recommend(props.roundId); const until=Date.now()+30000; while(alive && run.value.status==='pending' && Date.now()<until) { await new Promise(resolve=>setTimeout(resolve,500)); if (alive) run.value=await apiService.result(props.roundId); } }); calculating.value = false; }
+async function confirm(candidate: Candidate) {
+  if (!window.confirm(`Confirm “${candidate.title}” as the group’s choice? Members will be asked to RSVP.`)) return;
+  await act(async () => {
+    const key=`confirmation:${props.roundId}:${run.value!.run_id}:${candidate.candidate_id}`;
+    const operation=sessionStorage.getItem(key)||crypto.randomUUID();sessionStorage.setItem(key,operation);
+    selection.value=await apiService.confirm(props.roundId,run.value!.run_id,candidate.candidate_id,operation); await load();
+  });
+}
+async function saveRsvp() { notice.value = ''; await act(async () => { await apiService.saveRsvp(props.roundId,selection.value!.selection_version,rsvpRevision.value,rsvpStatus.value); const own=await apiService.rsvp(props.roundId);rsvpRevision.value=own.revision;savedRsvp.value=own.status || rsvpStatus.value;notice.value='RSVP saved.'; }); }
 onMounted(async () => { await act(async () => {
   if (props.inviteToken) {
     try { await apiService.snapshot(props.roundId); }
@@ -112,5 +191,92 @@ onMounted(async () => { await act(async () => {
 onUnmounted(()=>{alive=false;});
 </script>
 <style scoped>
-.workspace { max-width: 1100px; margin: auto; padding: clamp(1rem,4vw,2rem); }.round-header,.actions { display:flex; gap:1rem; justify-content:space-between; align-items:center; flex-wrap:wrap; }.panel { background:white; padding:clamp(1rem,3vw,1.5rem); margin:1rem 0; border-radius:8px; }.candidate-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:1rem; }.candidate-card { padding:1rem;border:1px solid #cbd5e0;border-radius:8px;overflow-wrap:anywhere; }.error { padding:1rem;background:#ffe5e5;color:#8a1515; }button { padding:.7rem;min-height:44px; }dd { margin-left:0;font-weight:600; }h1 { overflow-wrap:anywhere; }@media(max-width:600px) { .actions button { width:100%; }.round-header { align-items:stretch; }.round-header button { width:100%; } }
+.workspace { max-width: 1200px; margin: auto; padding: 48px 32px 80px; }
+.loading .tall { height: 120px; }
+.round-header h1 { overflow-wrap: anywhere; }
+.round-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: .75rem; margin-bottom: 16px; }
+.decision-question { font-size: 1.125rem; font-weight: 600; color: var(--ink); margin: -4px 0 8px; overflow-wrap: anywhere; }
+.plan-description { font-size: .875rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.refresh.spinning .ui-icon { animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.round-progress { position: relative; display: flex; list-style: none; padding: 0 0 28px; margin: 28px 0; border-bottom: 1px solid var(--line); gap: 40px; }
+.round-progress li { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .8125rem; transition: color var(--base) ease-out; }
+.phase-dot { border: 1px solid #aab9ae; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; font-size: .75rem; flex-shrink: 0; transition: background-color var(--base) ease-out, border-color var(--base) ease-out, color var(--base) ease-out; }
+.round-progress .current { color: var(--accent); font-weight: 650; } .current .phase-dot { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.complete .phase-dot { color: var(--accent); background: var(--accent-soft); border-color: transparent; } .phase-dot .ui-icon { width: 15px; height: 15px; }
+.round-progress::after { content: ''; position: absolute; left: 0; bottom: -1px; height: 2px; width: calc((var(--phase) + 1) / 3 * 100%); background: var(--accent); transition: width var(--slow) var(--ease-out); }
+
+.collect-progress { margin: 4px 0 24px; max-width: 460px; }
+.collect-figure { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.collect-figure strong { font-size: 2rem; line-height: 1; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.collect-figure span { color: var(--muted); font-size: .875rem; }
+.invitation-field { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.invitation-field > label { margin: 0 0 7px; }
+.invite-row { display: flex; gap: 10px; max-width: 720px; }
+.invite-row input { font-size: .8125rem; min-height: 44px; }
+.invite-row button { flex-shrink: 0; min-width: 160px; }
+.copy-label { display: inline-flex; align-items: center; gap: 8px; }
+
+.waiting { margin: 24px 0; }
+.options-section { margin: 32px 0; }
+.options-section h2 { font-size: 1rem; display: flex; gap: 8px; align-items: baseline; }
+.options-section h2 .muted { font-size: .8125rem; font-weight: 500; }
+
+.recommendation-section { margin: 40px 0; }
+.pending { display: flex; align-items: center; gap: 12px; padding: 16px 18px; margin-bottom: 20px; border-radius: 8px; background: #fff; border: 1px solid var(--line); color: var(--muted); font-size: .875rem; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: #c58a2e; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+.issue-list { font-size: .875rem; color: var(--muted); }
+.candidate-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 16px; }
+.candidate-card { display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--line); background: #fff; border-radius: 12px; overflow-wrap: anywhere; }
+.candidate-card.recommended { background: #f1f7f2; border-color: #a9c5b2; box-shadow: inset 0 3px 0 var(--accent); }
+.candidate-card.chosen { border-color: var(--accent); }
+.rank { font-size: .75rem; font-weight: 650; color: var(--muted); margin-bottom: 4px; }
+.recommended .rank { color: var(--accent); }
+.candidate-card h3 { font-size: 1.25rem; margin-bottom: 12px; }
+.candidate-card > p { font-size: .875rem; color: #3a5546; }
+.tie { color: var(--muted) !important; }
+.scores { display: grid; gap: 14px; margin: 8px 0 20px; }
+.scores > div { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 12px; }
+.scores dt { font-size: .8125rem; color: #3a5546; }
+.scores dd { margin: 0; font-size: 1.25rem; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.scores .meter { grid-column: 1 / -1; }
+.facts { display: grid; gap: 8px; margin: 0 0 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: .875rem; }
+.facts > div { display: flex; justify-content: space-between; gap: 12px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.tradeoff { font-size: .8125rem !important; color: var(--muted) !important; }
+.candidate-card > button { margin-top: auto; align-self: flex-start; }
+.unavailable { margin-top: 24px; }
+.unavailable h3 { font-size: .875rem; color: var(--muted); margin-bottom: 8px; }
+.unavailable ul { list-style: none; padding: 0; margin: 0; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.unavailable li { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 12px 16px; font-size: .875rem; }
+.unavailable li + li { border-top: 1px solid var(--line); }
+.unavailable li > span:first-child { text-decoration: line-through; text-decoration-color: #9aa79f; }
+
+.selection-panel { border-color: #a9c5b2; }
+.selection-head { display: flex; align-items: center; gap: 18px; margin-bottom: 12px; }
+.selection-head h2 { font-size: .875rem; color: var(--accent); margin-bottom: 2px; letter-spacing: 0; }
+.seal { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.seal svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 0; animation: draw 520ms 180ms var(--ease-out) both; }
+@keyframes draw { from { stroke-dashoffset: 20; } }
+.selected-title { font-size: 1.625rem; font-weight: 650; letter-spacing: -.02em; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
+.rsvp { margin: 20px 0 12px; }
+.rsvp-options { grid-template-columns: repeat(3, minmax(0, 180px)); }
+.rsvp-actions { display: flex; align-items: center; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+.saved-note { display: flex; align-items: center; gap: 6px; margin: 0; }
+.saved-note .ui-icon { width: 16px; height: 16px; }
+.settle-enter-active { transition: opacity var(--slow) var(--ease-out), transform var(--slow) var(--ease-out); }
+.settle-enter-from { opacity: 0; transform: translateY(12px) scale(.99); }
+
+@media(max-width:700px) {
+  .workspace { padding: 32px 20px 48px; }
+  .round-progress { gap: 12px; justify-content: space-between; } .round-progress li { flex-direction: column; align-items: flex-start; font-size: .6875rem; flex: 1; }
+  .round-header > button { align-self: flex-start; } .candidate-card { padding: 20px; }
+  .invite-row { flex-direction: column; } .invite-row button { width: 100%; }
+  .rsvp-options { grid-template-columns: minmax(0, 1fr); }
+  .rsvp-actions button { width: 100%; }
+  .selected-title { font-size: 1.375rem; }
+}
 </style>

@@ -1,836 +1,623 @@
 <template>
   <div class="creator-layout">
-    <TopBar />
-    <div class="creator-wrapper">
-      <div class="creator-header">
-        <h2>Create Form</h2>
-        <button class="btn-secondary" @click="emit('navigate', 'dashboard')">Back to Dashboard</button>
+    <main class="creator-wrapper" id="main-content" tabindex="-1">
+      <div class="creator-header page-heading">
+        <div><h1>Create a form</h1><p>Set up a clear decision before you invite your group.</p></div>
+        <button class="btn-secondary" @click="leave"><UiIcon name="back" />Back to forms</button>
       </div>
 
-      <!-- Step nvagiation indicator bar -->
-      <div class="step-indicator-bar">
-        <button type="button" :disabled="isSaving" v-for="stepNum in 5" :key="stepNum" :class="['step-pill',
-          { active: currentStep === stepNum, completed: currentStep > stepNum, disabled: stepNum === 5 && currentStep < 5 }
-        ]" @click="goToStep(stepNum)">
-          <span class="step-number">{{ stepNum === 5 ? 'Q' : stepNum }}</span>
-          <span class="step-label"> {{ getStepLabel(stepNum) }} </span>
-        </button>
+      <p class="helper-text" :role="storageFailed ? 'alert' : undefined">{{ storageFailed ? 'Browser storage is unavailable. Keep this page open; unsaved edits cannot survive refresh.' : recoveryMessage }}</p>
+      <div class="builder-layout">
+        <nav class="step-indicator-bar" aria-label="Form setup steps">
+          <div class="step-list">
+          <div class="step-track" aria-hidden="true"><span :style="{ '--value': (currentStep - 1) / (steps.length - 1) }"></span></div>
+          <button type="button" v-for="(label, i) in steps" :key="label" :disabled="isSaving"
+            :aria-current="currentStep === i + 1 ? 'step' : undefined"
+            :class="['step-pill', { active: currentStep === i + 1, completed: currentStep !== i + 1 && reachable(i + 2) && visited >= i + 1, locked: !reachable(i + 1) }]"
+            @click="goToStep(i + 1)">
+            <span class="step-number"><Transition name="swap" mode="out-in"><UiIcon v-if="currentStep !== i + 1 && reachable(i + 2) && visited >= i + 1" name="check" /><span v-else>{{ i + 1 }}</span></Transition></span>
+            <span class="step-label">{{ label }}</span>
+          </button>
+          </div>
+          <p class="step-hint">Nothing is shared until you publish on the last step.</p>
+        </nav>
+
+        <form @submit.prevent="submitForm" class="form-builder" novalidate>
+          <div ref="stepTop" class="step-top"></div>
+          <Transition name="reveal"><p v-if="saveError" role="alert">{{ saveError }}</p></Transition>
+          <fieldset :disabled="isSaving">
+            <Transition :name="direction > 0 ? 'step-forward' : 'step-back'" mode="out-in">
+              <!-- 1: Basics -->
+              <div v-if="currentStep === 1" key="1" class="step-card">
+                <p class="step-eyebrow">Step 1 of 5</p>
+                <h2 ref="stepHeading" tabindex="-1" class="step-title">What are you deciding?</h2>
+                <label for="form-title">Plan name<span class="required-mark" aria-hidden="true">*</span></label>
+                <input id="form-title" type="text" v-model="form.title" placeholder="e.g. Team offsite, Saturday dinner" maxlength="255" required :aria-invalid="flag(1, !form.title.trim())" aria-describedby="title-help" />
+                <p id="title-help" :class="['helper-text', { 'field-error': flag(1, !form.title.trim()) }]">{{ flag(1, !form.title.trim()) ? 'Give the plan a name your group will recognise.' : 'Your group sees this name on the invitation.' }}</p>
+                <label for="form-description">Description <span class="optional">(optional)</span></label>
+                <textarea id="form-description" v-model="form.description" placeholder="Context that helps people answer, such as the occasion or constraints" rows="3"></textarea>
+                <fieldset class="category-field" :disabled="!!form.id" :aria-invalid="flag(1, !form.category)">
+                  <legend>Category<span class="required-mark" aria-hidden="true">*</span></legend>
+                  <div class="choice-list">
+                    <label v-for="c in categories" :key="c.value" class="choice-option category-option">
+                      <input type="radio" name="category" :value="c.value" v-model="form.category" />
+                      <span><strong>{{ c.value }}</strong><small>{{ c.hint }}</small></span>
+                    </label>
+                  </div>
+                  <p v-if="flag(1, !form.category)" class="helper-text field-error">Choose the category closest to this plan.</p>
+                  <p v-else-if="form.id" class="helper-text">The category is fixed once a draft is saved.</p>
+                </fieldset>
+                <h3 class="sub-heading">When and where</h3>
+                <p class="step-lede">Context for your group. It doesn’t create time slots or limit anyone’s availability.</p>
+                <div class="input-row">
+                  <label>Earliest date<span class="required-mark" aria-hidden="true">*</span><input id="date-start" type="date" v-model="form.startDateRange" required :aria-invalid="flag(1, !form.startDateRange)" /></label>
+                  <label>Latest date<span class="required-mark" aria-hidden="true">*</span><input id="date-end" type="date" v-model="form.endDateRange" :min="form.startDateRange" required :aria-invalid="flag(1, !form.endDateRange || datesReversed)" /></label>
+                </div>
+                <p v-if="datesReversed" class="helper-text field-error">The latest date must be on or after the earliest date.</p>
+                <p v-else-if="dayCount" class="helper-text">{{ dayCount === 1 ? 'A single day.' : `A ${dayCount}-day window.` }}</p>
+                <label>Location or platform<span class="required-mark" aria-hidden="true">*</span><input id="meeting-location" type="text" v-model="form.location" placeholder="e.g. Zoom, Botanic Gardens, the office" required :aria-invalid="flag(1, !form.location.trim())" /></label>
+              </div>
+
+              <!-- 2: Decision and options -->
+              <div v-else-if="currentStep === 2" key="2" class="step-card">
+                <p class="step-eyebrow">Step 2 of 5</p>
+                <h2 ref="stepHeading" tabindex="-1" class="step-title">What are you choosing between?</h2>
+                <label for="form-question">The question your group is answering</label>
+                <input id="form-question" type="text" v-model="form.decisionQuestion" :placeholder="questionPlaceholder" maxlength="300" />
+                <p class="helper-text">Shown to everyone as the main question. Leave it blank to use “{{ questionPlaceholder }}”.</p>
+                <fieldset class="options-field">
+                  <legend>Options <span class="optional">{{ form.decisionOptions?.length }} of 8</span></legend>
+                  <TransitionGroup name="list" tag="ol" class="option-inputs">
+                    <li v-for="(option, index) in form.decisionOptions" :key="keyOf(option)" class="option-input">
+                      <span class="option-index" aria-hidden="true">{{ index + 1 }}</span>
+                      <div class="option-fields">
+                        <input v-model="option.title" :aria-label="`Option ${index + 1} name`" :placeholder="index ? 'Another option' : optionPlaceholder" @keydown.enter.prevent="enterOption(index)" :aria-invalid="flag(2, !option.title.trim())" />
+                        <input v-model="identity(option).source_url" type="url" inputmode="url" :aria-label="`Option ${index + 1} website (optional)`" placeholder="Website (optional, helps AI find facts)" class="link-input" />
+                      </div>
+                      <button v-if="(form.decisionOptions?.length || 0) > 1" type="button" class="btn-icon btn-quiet btn-danger" :aria-label="`Remove option ${index + 1}`" @click="removeDecisionOption(index)"><UiIcon name="close" /></button>
+                    </li>
+                  </TransitionGroup>
+                  <button v-if="(form.decisionOptions?.length || 0) < 8" type="button" class="btn-add-option" @click="addDecisionOption"><UiIcon name="plus" />Add option</button>
+                </fieldset>
+                <label class="currency-field">Currency for costs<select v-model="form.currency"><option>SGD</option><option>USD</option><option>EUR</option><option>GBP</option></select></label>
+              </div>
+
+              <!-- 3: Overview -->
+              <div v-else-if="currentStep === 3" key="3" class="step-card">
+                <p class="step-eyebrow">Step 3 of 5</p>
+                <h2 ref="stepHeading" tabindex="-1" class="step-title">Your options at a glance</h2>
+                <p class="step-lede">AI looked each option up{{ placesHint }}. This is what your group will see. Change an option’s type if it was misread.</p>
+                <Transition name="reveal"><p v-if="research.state.message" class="callout warning" role="status">{{ research.state.message }}</p></Transition>
+                <div class="overview-grid">
+                  <OverviewCard v-for="(option, index) in form.decisionOptions" :key="keyOf(option)" class="rise" :style="{ '--i': index }"
+                    :title="option.title" :overview="option.overview" :brief="option.brief" :kind="option.identity?.kind" :round-id="form.roundId" :place-id="option.identity?.place_id"
+                    :position="index + 1" :photo-key="research.revision.value" :loading="research.state.options[optionKey(option)]?.status === 'loading'">
+                    <div class="card-tools">
+                      <label class="kind-field">Type<select :value="option.identity?.kind || 'other'" @change="changeKind(option, ($event.target as HTMLSelectElement).value as OptionKind)">
+                        <option value="place">Place</option><option value="destination">Destination</option><option value="event">Event</option><option value="activity">Activity</option><option value="other">Other</option>
+                      </select></label>
+                      <button v-if="research.state.options[optionKey(option)]?.status === 'failed'" type="button" class="btn-quiet btn-small" @click="retryOverview(option)">Try again</button>
+                    </div>
+                  </OverviewCard>
+                </div>
+                <p class="helper-text overview-note">Next, AI drafts questions for your group from these overviews.</p>
+              </div>
+
+              <!-- 4: Questions -->
+              <div v-else-if="currentStep === 4" key="4" class="step-card">
+                <p class="step-eyebrow">Step 4 of 5</p>
+                <h2 ref="stepHeading" tabindex="-1" class="step-title">Questions for your group</h2>
+                <p class="step-lede">AI drafted these from your options. Edit, remove or add questions for your group.</p>
+                <div v-if="research.state.questions === 'loading'" class="drafting" role="status"><span class="pulse" aria-hidden="true"></span>Drafting questions from your options…</div>
+                <Transition name="reveal"><p v-if="research.state.message && currentStep === 4" class="callout warning" role="status">{{ research.state.message }}</p></Transition>
+                <TransitionGroup name="list" tag="div" class="question-list">
+                  <article v-for="(question, qIndex) in form.questions" :key="keyOf(question)" class="question-card">
+                    <div class="question-top">
+                      <h3>Question {{ qIndex + 1 }}</h3>
+                      <button v-if="form.questions.length > 1" type="button" class="btn-quiet btn-danger btn-small" @click="removeQuestion(qIndex)"><span class="sr-only">Remove question {{ qIndex + 1 }}</span><span aria-hidden="true">Remove</span></button>
+                    </div>
+                    <div class="question-header">
+                      <label class="question-title-field">Question<input type="text" v-model="question.title" @change="ensureCriterion(question, qIndex)" placeholder="e.g. Which cuisine do you prefer?" required :aria-invalid="flag(4, !question.title.trim())" /></label>
+                      <label class="question-type-field">Answer type<select v-model="question.type" @change="typeChanged(question)">
+                        <option>Single choice</option><option>Multiple choice</option><option value="Boolean">Yes or no</option><option>Number</option>
+                        <option>Short answer</option><option>Duration</option>
+                      </select></label>
+                    </div>
+                    <label>Help text <span class="optional">(optional)</span><input type="text" v-model="question.description" placeholder="Anything that helps people answer" /></label>
+
+                    <div v-if="hasChoices(question)" class="choices">
+                      <p class="choices-label">{{ question.type === 'Budget' ? 'Budget ranges' : question.type === 'Location' ? 'Suggested locations' : 'Choices' }}</p>
+                      <TransitionGroup name="list" tag="div">
+                        <div v-for="(choice, oIndex) in question.options" :key="`${keyOf(question)}-${oIndex}`" class="option-row">
+                          <span :class="['choice-marker', { square: question.type === 'Multiple choice' }]" aria-hidden="true"></span>
+                          <input type="text" v-model="question.options[oIndex]" :aria-label="`Question ${qIndex + 1} choice ${oIndex + 1}`" :placeholder="choicePlaceholder(question, oIndex)" />
+                          <button v-if="question.options.length > 1" type="button" class="btn-icon btn-quiet btn-danger" :aria-label="`Remove choice ${oIndex + 1}`" @click="removeOption(qIndex, oIndex)"><UiIcon name="close" /></button>
+                        </div>
+                      </TransitionGroup>
+                      <button type="button" class="btn-add-option" @click="addOption(qIndex)"><UiIcon name="plus" />Add choice</button>
+                    </div>
+                    <p v-else-if="question.type === 'Duration'" class="callout">Members enter a start and end date. Dates are collected as context only and don’t generate scheduled options.</p>
+                    <p v-else-if="question.type === 'Boolean'" class="callout">Members answer yes or no.</p>
+                    <p v-else-if="question.type === 'Short answer'" class="callout">Members type a short answer.</p>
+                    <div v-else-if="question.type === 'Number'" class="input-row">
+                      <label>Unit <span class="optional">(optional)</span><input v-model="question.unit" placeholder="e.g. km, hours" /></label>
+                      <label v-if="question.role !== 'hard'">Tolerance around the preferred value<input v-model.number="question.scale" type="number" min="0.000001" step="any" :aria-invalid="flag(4, question.role === 'soft' && !(Number(question.scale) > 0))" /></label>
+                    </div>
+
+                    <fieldset class="role-field">
+                      <legend>How this answer is used</legend>
+                      <div class="role-options">
+                        <label v-for="r in roles" :key="r.value" class="choice-option role-option" :class="{ unavailable: lockedToContext(question) && r.value !== 'informational' }">
+                          <input type="radio" :name="`role-${keyOf(question)}`" :value="r.value" v-model="question.role" :disabled="lockedToContext(question) && r.value !== 'informational'" />
+                          <span><strong>{{ r.label }}</strong><small>{{ r.hint }}</small></span>
+                        </label>
+                      </div>
+                      <p v-if="lockedToContext(question)" class="helper-text">Date answers are collected as context in this kind of form.</p>
+                    </fieldset>
+                  </article>
+                </TransitionGroup>
+                <button type="button" class="add-question" @click="addQuestion"><UiIcon name="plus" />Add question</button>
+              </div>
+
+              <!-- 5: Review -->
+              <div v-else key="5" class="step-card">
+                <p class="step-eyebrow">Step 5 of 5</p>
+                <h2 ref="stepHeading" tabindex="-1" class="step-title">Review and publish</h2>
+                <p class="step-lede">Check the plan, then publish it. You’ll get an invitation link to share on the next screen.</p>
+                <section class="review-block">
+                  <div class="review-heading"><h3>Plan</h3><button type="button" class="btn-quiet btn-small" @click="goToStep(1)">Edit<span class="sr-only"> plan details</span></button></div>
+                  <dl class="summary-grid">
+                    <div class="full-width"><dt>Name</dt><dd>{{ form.title }}</dd></div>
+                    <div class="full-width"><dt>Main question</dt><dd>{{ form.decisionQuestion?.trim() || questionPlaceholder }}</dd></div>
+                    <div v-if="form.description" class="full-width"><dt>Description</dt><dd class="multiline-summary">{{ form.description }}</dd></div>
+                    <div><dt>Category</dt><dd>{{ form.category }}</dd></div>
+                    <div><dt>Dates</dt><dd>{{ formatDate(form.startDateRange) }} – {{ formatDate(form.endDateRange) }}</dd></div>
+                    <div class="full-width"><dt>Location</dt><dd>{{ form.location }}</dd></div>
+                  </dl>
+                </section>
+                <section class="review-block">
+                  <div class="review-heading"><h3>Options <span class="muted">{{ form.decisionOptions?.length || 0 }}</span></h3><button type="button" class="btn-quiet btn-small" @click="goToStep(2)">Edit<span class="sr-only"> options</span></button></div>
+                  <ol class="review-list">
+                    <li v-for="(option, index) in form.decisionOptions" :key="index"><span>{{ option.title }}</span><span class="muted">{{ kindName(option.identity?.kind) }}</span></li>
+                  </ol>
+                </section>
+                <section class="review-block">
+                  <div class="review-heading"><h3>Questions <span class="muted">{{ form.questions.length }}</span></h3><button type="button" class="btn-quiet btn-small" @click="goToStep(4)">Edit<span class="sr-only"> questions</span></button></div>
+                  <ol class="review-list">
+                    <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role) }}</span></li>
+                  </ol>
+                </section>
+                <div v-if="warnings.length" class="callout warning">
+                  <p><strong>Worth checking before you publish</strong></p>
+                  <p v-if="research.state.message">{{ research.state.message }}</p>
+                  <ul><li v-for="w in warnings" :key="w">{{ w }}</li></ul>
+                  <button type="button" :disabled="research.state.fit === 'loading'" @click="fillMissing">{{ research.state.fit === 'loading' ? 'Checking comparisons…' : 'Retry missing comparisons' }}</button>
+                  <p class="helper-text">If evidence stays unavailable, edit the question to use “Context only”, or revise its choices. Don’t use an unverified dietary claim as a requirement.</p>
+                </div>
+              </div>
+            </Transition>
+
+            <div class="wizard-actions">
+              <button type="button" class="btn-secondary" v-if="currentStep > 1" @click="prevStep"><UiIcon name="back" />Back</button>
+              <button type="button" class="btn-primary" v-if="currentStep < 5" @click="nextStep">{{ currentStep === 2 ? 'Look them up' : currentStep === 3 ? 'Draft questions' : currentStep === 4 ? 'Review form' : 'Next step' }}<UiIcon name="arrow" /></button>
+              <button type="submit" class="btn-primary btn-publish" v-else :aria-busy="isSaving">{{ isSaving ? 'Publishing…' : 'Publish form' }}<UiIcon v-if="!isSaving" name="arrow" /></button>
+            </div>
+          </fieldset>
+        </form>
       </div>
-
-      <form @submit.prevent="submitForm" class="form-builder">
-        <p v-if="saveError" role="alert">{{ saveError }}</p>
-        <fieldset :disabled="isSaving" style="border:0;padding:0;margin:0">
-        <OptionEditor v-if="currentStep === 5" :model-value="form" />
-        <!-- 1: Form name and description -->
-        <div v-if="currentStep === 1" class="card step-card">
-          <h3 class="step-title"> Step 1: Basic information </h3>
-          <div class="input-group">
-            <label for="form-title">Form name *</label>
-            <input id="form-title" type="text" v-model="form.title" placeholder="eg. Europe Summer Trip 2026" required />
-          </div>
-          <div class="input-group">
-            <label>Description</label>
-            <textarea v-model="form.description" placeholder="Provide context or details" rows="3" class="textarea-multiline" ></textarea>
-          </div>
-        </div>
-
-        <!-- 2: Category select -->
-        <div v-if="currentStep === 2" class="card step-card">
-          <h3 class="step-title">Step 2: Category</h3>
-          <div class="input-group">
-            <label for="form-category">Category</label>
-            <select id="form-category" v-model="form.category" :disabled="!!form.id">
-              <option disabled value="">Select category</option>
-              <option>Travel</option>
-              <option>Event</option>
-              <option>Work</option>
-              <option>General</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- 3: Meeting date and time -->
-        <div v-if="currentStep === 3" class="card step-card">
-          <h3 class="step-title">Step 3: Date context</h3>
-          <p>This date range describes your plan. It does not create scheduled candidates or restrict member availability.</p>
-          <div class="input-row">
-            <div class="input-group flex-1">
-              <label>Date range start *</label>
-              <input type="date" v-model="form.startDateRange" required />
-            </div>
-            <div class="input-group flex-1">
-              <label>Date range end *</label>
-              <input type="date" v-model="form.endDateRange" :min="form.startDateRange" required />
-            </div>
-          </div>
-        </div>
-
-        <!-- 4: Meeting location -->
-        <div v-if="currentStep === 4" class="card step-card">
-          <h3 class="step-title">Step 4: Location</h3>
-          <div class="input-group">
-            <label>Meeting Location / Platform</label>
-            <input type="text" v-model="form.location" placeholder="eg, Zoom, Botanic Gardens" required />
-          </div>
-        </div>
-
-        <!-- Questions builder -->
-        <div v-if="currentStep === 5" class="card step-card">
-          <!-- Summary header of previous steps -->
-          <div class="summary-card">
-            <h4>Plan Details Overview</h4>
-            <div class="summary-grid">
-              <div><strong>Title:</strong> {{ form.title }}</div>
-              <div><strong>Category:</strong> {{ form.category }}</div>
-              <div v-if="form.description" class="full-width multiline-summary"><strong>Description:</strong> {{ form.description }}</div>
-              <div><strong>Date range:</strong> {{ form.startDateRange }} to {{ form.endDateRange }}</div>
-              <div class="full-width"><strong>Location:</strong> {{ form.location }}</div>
-            </div>
-          </div>
-
-          <h3 class="section-heading">Form Questions</h3>
-
-          <div v-for="(question, qIndex) in form.questions" :key="qIndex" class="card question-card">
-            <div class="question-header">
-              <input type="text" v-model="question.title" placeholder="Question title" class="question-title-input"
-                required />
-              <div class="question-controls">
-                <select v-model="question.type">
-                  <option>Multiple choice</option>
-                  <option>Single choice</option>
-                  <option>Short answer</option>
-                  <option>Duration</option>
-                  <option>Location</option>
-                  <option>Budget</option><option>Number</option><option>Boolean</option>
-                </select>
-                <button v-if="!question.id" type="button" class="btn-icon-delete" aria-label="Remove question" @click="removeQuestion(qIndex)">×</button>
-              </div>
-            </div>
-            <div class="input-group">
-              <input type="text" v-model="question.description" placeholder="Provide a description (optional)"
-                class="question-description-input" />
-            </div>
-
-            <!-- multiple choice option builder -->
-            <div class="decision-settings">
-              <label>How this answer is used<select v-model="question.role"><option value="soft">Preference</option><option value="hard">Requirement (member reviews before confirming)</option><option value="informational">Information only</option></select></label>
-              <label v-if="question.role !== 'informational'">Criterion name<input v-model="question.criterion" :placeholder="`preference_${qIndex + 1}`" /></label>
-              <label v-if="question.type === 'Number'">Unit<input v-model="question.unit" placeholder="kg or hours" /></label>
-              <label v-if="question.type === 'Number' && question.role !== 'hard'">Tolerance around preferred value<input v-model.number="question.scale" type="number" min="0.000001" step="any" /></label>
-              <p>Preferences compare against option facts. Requirements use equality (all selected tags for multiple choice). Budget ranges are category preferences; use a numeric question for an exact amount.</p>
-            </div>
-            <div v-if="question.type === 'Multiple choice'" class="options-container">
-              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
-                <span class="checkbox-indicator">☐</span>
-                <input type="text" v-model="question.options[oIndex]" :placeholder="`Option ${oIndex + 1}`" />
-                <button v-if="question.options.length > 1"
-                  type="button"
-                  class="btn-remove-option"
-                  @click="removeOption(qIndex, oIndex)">×</button>
-                </div>
-                <button type="button" 
-                  class="btn-add-option"
-                  @click="addOption(qIndex)"><span class="radio-indicator active">☑</span> Add option
-                </button>
-            </div>
-
-            <!-- single choice option builder -->
-             <div v-if="question.type === 'Single choice'" class="options-container">
-              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
-                <span class="radio-indicator">○</span> 
-                <input type="text" v-model="question.options[oIndex]" :placeholder="`Option ${oIndex + 1}`" />
-                <button 
-                  v-if="question.options.length > 1" 
-                  type="button" 
-                  class="btn-remove-option" 
-                  @click="removeOption(qIndex, oIndex)">×
-                </button>
-              </div> 
-              <button type="button" class="btn-add-option" @click="addOption(qIndex)">
-                <span class="radio-indicator active">◎</span> Add option
-              </button>
-             </div>
-
-            <!-- short answer view -->
-            <div v-if="question.type === 'Short answer'" class="short-answer-container">
-              <input type="text" disabled placeholder="Input text here" class="disabled-input" />
-            </div>
-
-            <!-- duration / calender view -->
-            <div v-if="question.type === 'Duration'" class="duration-container">
-              <p class="helper-subtitle" v-if="form.startDateRange &amp;&amp; form.endDateRange">
-                Select between: <strong>{{ form.startDateRange }}</strong> and <strong>{{ form.endDateRange }}</strong>
-              </p>
-              <div class="calender-widget">
-                <div class="calender-header">
-                  <button type="button" class="cal-nav"> < </button>
-                  <span class="cal-month-title">Oct 2026</span>
-                  <button type="button" class="cal-nav"> > </button>
-                </div>
-                <div class="calendar-grid">
-                  <span class="cal-day-header" v-for="day in ['M', 'T', 'W', 'Th', 'F', 'S', 'Su']" :key="day">{{ day}}</span>
-                  <!-- Calendar grid cells representation -->
-                  <span v-for="n in 31" :key="n" class="cal-date" :class="{ selected: n === 26 }">{{ n }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- location suggestions builder -->
-             <div v-if="question.type === 'Location'" class="options-container">
-              <label class="field-section-label">Suggested Locations:</label>
-              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
-                <span class="location-icon">📍</span>
-                <input type="text" v-model="question.options[oIndex]" :placeholder="`Location ${oIndex + 1} (e.g. Vivocity)`" />
-                <button 
-                  v-if="question.options.length > 1" 
-                  type="button" 
-                  class="btn-remove-option" 
-                  @click="removeOption(qIndex, oIndex)">×</button>
-              </div>
-              <button type="button" class="btn-add-option" @click="addOption(qIndex)">
-                <span class="location-icon">📍</span> Add location suggestion
-              </button>
-
-              <div class="checkbox-setting">
-                <label class="checkbox-label" >
-                  <input type="checkbox" v-model="question.allowCustomSuggestions" />
-                  Allow memebers to suggest their own custom location
-                </label>
-              </div>
-             </div>
-            <!-- Budget options builder -->
-             <div v-if="question.type === 'Budget'" class="options-container">
-              <label class="field-section-label">Budget Range Choices:</label>
-              <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-row">
-                <span class="currency-badge">$</span>
-                <input type="text" v-model="question.options[oIndex]" :placeholder="`Budget option ${oIndex + 1} (e.g. $20 - $50)`" />
-                <button 
-                  v-if="question.options.length > 1" 
-                  type="button" 
-                  class="btn-remove-option" 
-                  @click="removeOption(qIndex, oIndex)"
-                >×</button>
-              </div>
-              <button type="button" class="btn-add-option" @click="addOption(qIndex)">
-                <span class="currency-badge">$</span> Add budget tier
-              </button>
-             </div>
-          </div>
-
-          <!-- add question button -->
-          <div class="add-question-container">
-            <button type="button" class="btn-add-question" @click="addQuestion">+</button>
-          </div>
-        </div>
-
-        <!-- wizard navigation footer -->
-        <div class="wizard-actions">
-          <button type="button" class="btn-secondary" v-if="currentStep > 1" @click="prevStep">← Back
-          </button>
-
-          <button type="button" class="btn-primary" v-if="currentStep < 4" @click="nextStep">Next Step →
-          </button>
-
-          <button type="button" class="btn-primary" v-if="currentStep === 4" @click="nextStep">Proceed to questions →
-          </button>
-
-          <button type="submit" class="btn-primary btn-publish" v-else-if="currentStep === 5">Save & Publish Form
-          </button>
-        </div>
-      </fieldset>
-      </form>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import OptionEditor from './OptionEditor.vue';
+import { computed, nextTick, reactive, ref, watch, onMounted, onScopeDispose } from 'vue';
+import OverviewCard from './OverviewCard.vue';
 import { useAuthStore } from '@/stores/auth';
-import type { Form } from '@/types/form';
-import TopBar from './TopBar.vue';
-import { apiService } from '@/services/api.ts';
+import type { DecisionOption, Form, OptionKind, Question } from '@/types/form';
+import UiIcon from './UiIcon.vue';
+import { apiService, ApiError } from '@/services/api.ts';
+import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
+import { optionKey, useResearch, type OptionResearch } from '@/services/research';
 
 const emit = defineEmits<{
   (e: 'navigate', frame: string): void;
   (e: 'published', form: Form): void;
 }>();
 
-// track active step 
-const currentStep = ref<number>(1);
-
-const form = reactive<Form>({
-  id: '',
-  title: '',
-  description: '',
-  startDateRange: '',
-  endDateRange: '',
-  location: '',
-  category: '',
-  questions: [
-    {
-      title: '',
-      description: '',
-      role: 'soft',
-      type: 'Multiple choice',
-      options: ['Option 1']
-    }
-  ],
-  state: 'Draft',
-  currency: 'SGD',
-  decisionOptions: [{title:'',facts:[]},{title:'',facts:[]}],
-});
-
-// Step label helper
-const getStepLabel = (step: number): string => {
-  switch (step) {
-    case 1: return 'Name & Details';
-    case 2: return 'Category';
-    case 3: return 'Date & Time';
-    case 4: return 'Location';
-    case 5: return 'Questions';
-    default: return '';
-  }
-}
-
-// Step Validation logic 
-const isStepValid = (step: number): boolean => {
-  if (step === 1) return form.title.trim().length > 0;
-  if (step === 2) return form.category !== '';
-  if (step === 3) {
-    if (!form.startDateRange || !form.endDateRange) {
-      return false;
-    }
-    return form.endDateRange >= form.startDateRange;
-  }
-  if (step === 4) return form.location.trim().length > 0;
-  return true;
-};
-
-// wizard navigation handlers
-const nextStep = () => {
-  if (currentStep.value === 3 && form.startDateRange && form.endDateRange && form.endDateRange < form.startDateRange){
-    alert('End Date cannot be earlier than Start Date.');
-    return;
-  }
-  if (!isStepValid(currentStep.value)) {
-    alert('Please complete the required fields in this step before proceeding.');
-    return;
-  }
-  if (currentStep.value < 5) {
-    currentStep.value++;
-  }
-};
-
-const prevStep = () => {
-  if (currentStep.value > 1 ) {
-    currentStep.value--;
-  }
-};
-
-const goToStep = (targetStep: number) => {
-  // prevent jumping directly to Questions if previous steps are incomplete
-  if (targetStep === 5 && (!isStepValid(1) || !isStepValid(2) || !isStepValid(3) || !isStepValid(4)) ) {
-    alert('Please complete Step 1 through 4 before adding questions.');
-    return;
-  }
-  currentStep.value = targetStep;
-};
-
-// Question management
-const addQuestion = (): void => {
-  form.questions.push({
-    title: '',
-    description: '',
-    role: 'soft',
-    type: 'Multiple choice',
-    options: ['Option 1']
-  });
-};
-
-const removeQuestion = (index: number): void => {
-  form.questions.splice(index, 1);
-};
-
-const addOption = (qIndex: number): void => {
-  const question = form.questions[qIndex];
-  if (!question) return;
-  const optionNum = question.options.length + 1;
-  question.options.push(`Option ${optionNum}`);
-};
-
-const removeOption = (qIndex: number, oIndex: number) => {
-  const question = form.questions[qIndex];
-  if (question && question.options.length > 1) {
-    question.options.splice(oIndex, 1);
-  }
-};
+const steps = ['Basics', 'Options', 'Overview', 'Questions', 'Review'];
+const categories = [
+  { value: 'Work', hint: 'Meetings, offsites, team decisions' },
+  { value: 'Event', hint: 'Dinners, parties, celebrations' },
+  { value: 'Travel', hint: 'Trips and getaways' },
+  { value: 'General', hint: 'Anything else' },
+];
+const roles = [
+  { value: 'soft', label: 'Preference', hint: 'Options that match rank higher' },
+  { value: 'hard', label: 'Requirement', hint: 'Options that don’t match are ruled out' },
+  { value: 'informational', label: 'Context only', hint: 'Collected, not used to rank' },
+] as const;
 
 const auth = useAuthStore();
-const isSaving = ref(false);
+const recoveryKey = checkpointKey(auth.userID, 'creator');
+const saved = readCheckpoint<{ form: Form; step: number; visited: number; researchOptions?: Record<string, OptionResearch> }>(recoveryKey);
+const restored = saved && Array.isArray(saved.form?.questions) && Array.isArray(saved.form?.decisionOptions) && saved.form.state === 'Draft' ? saved : undefined;
+const currentStep = ref(restored ? Math.max(1, Math.min(5, restored.step || 1)) : 1);
+const visited = ref(restored?.visited || currentStep.value);
+const direction = ref(1);
+const attempted = reactive(new Set<number>());
+const stepTop = ref<HTMLElement>();
+const stepHeading = ref<HTMLElement>();
+
+const form = reactive<Form>(restored?.form || {
+  id: '', title: '', decisionQuestion: '', description: '', startDateRange: '', endDateRange: '', location: '', category: '',
+  questions: [], state: 'Draft', currency: 'SGD',
+  decisionOptions: [{ title: '', facts: [] }, { title: '', facts: [] }],
+});
+
+// Stable keys let list transitions follow the right item after a removal.
+const keys = new WeakMap<object, number>(); let nextKey = 0;
+function keyOf(item: object) { if (!keys.has(item)) keys.set(item, nextKey++); return keys.get(item)!; }
+function identity(option: DecisionOption) { return option.identity ??= { source_url: '' }; }
+
+let alive = true;
+onScopeDispose(() => { alive = false; });
+// Fact finding needs saved options (with IDs) and a draft round to research against.
+let draftSave = Promise.resolve();
+function saveDraftQuietly() {
+  const save = draftSave.catch(() => undefined).then(async () => {
+    if (alive) await apiService.saveFormDraft(form, auth.userID, auth.username);
+  });
+  draftSave = save;
+  return save;
+}
+const research = useResearch(form, saveDraftQuietly);
+const recoveryMessage = ref(restored ? 'Draft restored. Your changes and current step are kept in this browser tab.' : 'Changes are saved in this browser tab as you work.');
+const storageFailed = ref(false);
+for (const option of form.decisionOptions || []) {
+  if (option.brief) {
+    option.overview = { ...option.brief };
+    const status = restored?.researchOptions?.[optionKey(option)];
+    if (status?.status === 'done') research.state.options[optionKey(option)] = status;
+  }
+}
+watch([form, currentStep, visited, research.state.options], () => {
+  if (form.state !== 'Draft') return;
+  // Google Places display content/photos are live-only. Keep our web brief and place ID.
+  const copy = JSON.parse(JSON.stringify(form)) as Form;
+  for (const option of copy.decisionOptions || []) delete option.overview;
+  storageFailed.value = !writeCheckpoint(recoveryKey, { form: copy, step: currentStep.value, visited: visited.value, researchOptions: research.state.options });
+}, { deep: true, flush: 'sync' });
+onMounted(async () => {
+  if (!restored || form.publishAttempted) return;
+  if (currentStep.value >= 3) {
+    startOverviews();
+    for (const option of form.decisionOptions || []) if (option.identity?.place_id && form.roundId) {
+      apiService.placeCard(form.roundId, option.identity.place_id).then(live => {
+        if (alive) option.overview = { ...live, ...option.brief, source: live.source };
+      }).catch(() => undefined);
+    }
+  }
+  if (currentStep.value >= 4 && !form.publishAttempted) {
+    if (!form.questions.length) await startQuestions();
+    else await fillMissing();
+  }
+});
+
+const placesHint = computed(() => (form.decisionOptions || []).some(o => o.overview?.source === 'google_places') ? ' with Google Maps and the web' : ' on the web');
+function kindName(kind?: OptionKind) { return ({ place: 'Place', destination: 'Destination', event: 'Event', activity: 'Activity' } as Record<string, string>)[kind || ''] || 'Option'; }
+async function changeKind(option: DecisionOption, kind: OptionKind) {
+  option.identity = { ...option.identity, kind, ...(kind === 'place' || kind === 'destination' ? {} : { place_id: undefined }) };
+  await retryOverview(option);
+}
+async function retryOverview(option: DecisionOption) { delete research.state.options[optionKey(option)]; await research.overviews(); }
+
+function canFit(q: Question) { return !!q.criterion && (q.criterion === 'max_cost' ? q.type === 'Number' : q.type === 'Boolean' || (hasChoices(q) && q.options.filter(o => o.trim()).length >= 2)); }
+function missingFor(criterion: string) { return (form.decisionOptions || []).filter(o => !o.facts.some(f => f.criterion === criterion && f.value.trim())).map(o => o.title); }
+// Criteria come from the question wording, so a new question gets its own fact.
+function slug(text: string) { return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^(\d)/, 'q_$1').slice(0, 50) || 'preference'; }
+function ensureCriterion(q: Question, index: number) {
+  if (q.criterion || q.role === 'informational') return;
+  let base = slug(q.title) || `preference_${index + 1}`, name = base, n = 2;
+  while (form.questions.some(o => o !== q && o.criterion === name)) name = `${base}_${n++}`;
+  q.criterion = name;
+}
+
+function criterionOf(q: Question, index: number) { return q.criterion?.trim() || `preference_${index + 1}`; }
+function hasChoices(q: Question) { return ['Single choice', 'Multiple choice', 'Location', 'Budget'].includes(q.type); }
+function lockedToContext(q: Question) { return q.type === 'Duration'; }
+function typeChanged(q: Question) {
+  if (lockedToContext(q) || q.type === 'Short answer') q.role = 'informational';
+  if (hasChoices(q) && !q.options.length) q.options.push('', '');
+  // A different answer type compares a different kind of fact, so drop estimates made for the old one.
+  for (const o of form.decisionOptions || []) o.facts = o.facts.filter(f => f.criterion !== q.criterion);
+  if (q.type === 'Number' && q.role === 'soft' && !q.scale) q.scale = 1;
+  if (q.criterion === 'max_cost') q.unit = form.currency || 'SGD';
+}
+function choicePlaceholder(q: Question, i: number) { return `Choice ${i + 1}`; }
+function roleLabel(role?: string) { return roles.find(r => r.value === (role || 'soft'))?.label; }
+function formatDate(value: string) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
+
+// Category-specific wording when the organiser leaves the question blank.
+const questionPlaceholder = computed(() => ({ Event: 'Where should we go?', Travel: 'Where should we travel?', Work: 'Which option should the team choose?' } as Record<string, string>)[form.category] || 'Which option should we choose?');
+const optionPlaceholder = computed(() => ({ Event: 'e.g. Odette Singapore', Travel: 'e.g. Bali', Work: 'e.g. Marina Bay Sands Expo' } as Record<string, string>)[form.category] || 'e.g. First option');
+const datesReversed = computed(() => !!form.startDateRange && !!form.endDateRange && form.endDateRange < form.startDateRange);
+const dayCount = computed(() => form.startDateRange && form.endDateRange && !datesReversed.value
+  ? Math.round((Date.parse(form.endDateRange) - Date.parse(form.startDateRange)) / 86400000) + 1 : 0);
+function validLink(value?: string) { if (!value?.trim()) return true; try { return ['http:', 'https:'].includes(new URL(value.trim()).protocol); } catch { return false; } }
+
+// Each step's first problem, or '' when it's complete.
+function problem(step: number): string {
+  if (step === 1) {
+    if (!form.title.trim() && !form.category) return 'Add a plan name and choose a category to continue.';
+    if (!form.title.trim()) return 'Add a plan name to continue.';
+    if (!form.category) return 'Choose a category to continue.';
+    if (!form.startDateRange || !form.endDateRange) return 'Choose the earliest and latest dates to continue.';
+    if (datesReversed.value) return 'The latest date must be on or after the earliest date.';
+    if (!form.location.trim()) return 'Add a location or platform to continue.';
+  }
+  if (step === 2) {
+    const named = (form.decisionOptions || []).filter(o => o.title.trim());
+    if (named.length < 2) return 'Add at least two options to choose between.';
+    if ((form.decisionOptions || []).some(o => !validLink(o.identity?.source_url))) return 'Check the website links; each should start with https://.';
+  }
+  if (step === 4) {
+    if (!form.questions.length) return 'Add at least one question.';
+    if (form.questions.some(q => !q.title.trim())) return 'Write each question, or remove the empty ones.';
+    if (form.questions.some(q => hasChoices(q) && !q.options.some(o => o.trim()))) return 'Give each choice question at least one choice.';
+    if (form.questions.some(q => q.type === 'Number' && q.role === 'soft' && !(Number(q.scale) > 0))) return 'Numeric preferences need a positive tolerance.';
+  }
+  return '';
+}
+function reachable(step: number) { for (let s = 1; s < Math.min(step, 6); s++) if (problem(s)) return false; return true; }
+function flag(step: number, invalid: boolean) { return attempted.has(step) && invalid ? 'true' : undefined; }
+
+const warnings = computed(() => {
+  const list: string[] = [];
+  for (const q of form.questions) {
+    if (q.role === 'informational' || !q.criterion) continue;
+    const missing = missingFor(q.criterion);
+    if (missing.length) list.push(`“${q.title}” can’t be compared for ${missing.join(', ')} yet because matching option facts are missing. Ranking may be blocked until these are researched or the question is changed to context only.`);
+  }
+  if (form.questions.length && !form.questions.some(q => q.role !== 'informational')) list.push('Every question is context only, so all options will rank equally.');
+  return list;
+});
+
 const saveError = ref('');
+async function show(step: number) {
+  direction.value = step >= currentStep.value ? 1 : -1;
+  currentStep.value = step; visited.value = Math.max(visited.value, step); saveError.value = '';
+  await nextTick();
+  if (stepTop.value && stepTop.value.getBoundingClientRect().top < 0) stepTop.value.scrollIntoView({ block: 'start' });
+  // Wait for the outgoing step to leave before moving focus to the new heading.
+  setTimeout(() => stepHeading.value?.focus({ preventScroll: true }), 260);
+}
+async function nextStep() {
+  attempted.add(currentStep.value);
+  const issue = problem(currentStep.value);
+  if (issue) { saveError.value = issue; return; }
+  if (currentStep.value === 2) { tidyOptions(); startOverviews(); }
+  if (currentStep.value === 3) startQuestions();
+  if (currentStep.value === 4) await fillMissing();
+  if (currentStep.value < 5) show(currentStep.value + 1);
+}
+// Overviews run in the background while the organiser reads; saving happens first.
+let overviewWork: Promise<void> | undefined;
+function startOverviews() {
+  overviewWork ??= research.overviews().catch(error => { research.state.message = error instanceof Error ? error.message : 'The draft could not be saved for research.'; }).finally(() => { overviewWork = undefined; });
+  return overviewWork;
+}
+// Questions are drafted once; later visits keep the organiser's edits.
+async function startQuestions() {
+  if (form.questions.length || research.state.questions === 'loading') return;
+  if (overviewWork) await overviewWork;
+  if (!alive) return;
+  const drafted = await research.draftQuestions();
+  if (!alive || form.questions.length) return;
+  form.questions.push(...(drafted.length ? drafted : [blankQuestion()]));
+  await research.fit(form.questions);
+}
+// Before review, fill in any question whose fit is still unknown (e.g. ones added by hand).
+let fitWork: Promise<void> | undefined;
+async function fillMissing() {
+  if (fitWork) return fitWork;
+  if (!alive || form.publishAttempted) return;
+  form.questions.forEach(ensureCriterion);
+  fitWork = research.fit(form.questions.filter(canFit)).finally(() => { fitWork = undefined; });
+  return fitWork;
+}
+function prevStep() { if (currentStep.value > 1) show(currentStep.value - 1); }
+function goToStep(target: number) {
+  if (target === currentStep.value) return;
+  for (let s = 1; s < target; s++) {
+    const issue = problem(s);
+    if (issue) { attempted.add(s); saveError.value = s === currentStep.value ? issue : `Finish “${steps[s - 1]}” first. ${issue}`; return; }
+  }
+  if (currentStep.value === 2) { tidyOptions(); startOverviews(); }
+  if (target === 4) startQuestions();
+  show(target);
+}
+
+const dirty = computed(() => !!(form.title || form.description || form.category || form.location || form.startDateRange || form.decisionOptions?.some(o => o.title)));
+function leave() {
+  if (storageFailed.value && dirty.value && !window.confirm('Browser storage is unavailable. Leaving may lose your unsaved edits. Continue?')) return;
+  emit('navigate', 'dashboard');
+}
+
+function addDecisionOption() { form.decisionOptions?.push({ title: '', facts: [], identity: { source_url: '' } }); }
+function removeDecisionOption(index: number) {
+  const [gone] = form.decisionOptions!.splice(index, 1);
+  if (gone?.id) (form.removedOptionIds ??= []).push(gone.id);
+}
+// Enter on an option name moves to the next one, adding a row at the end.
+async function enterOption(index: number) {
+  if (index === (form.decisionOptions?.length || 0) - 1 && (form.decisionOptions?.length || 0) < 8 && form.decisionOptions![index]!.title.trim()) addDecisionOption();
+  await nextTick();
+  (document.querySelectorAll<HTMLInputElement>('.option-input input:not(.link-input)')[index + 1])?.focus();
+}
+function tidyOptions() {
+  form.decisionOptions = (form.decisionOptions || []).filter(o => o.title.trim() || o.id);
+  for (const o of form.decisionOptions) { o.title = o.title.trim(); if (o.identity?.source_url) o.identity.source_url = o.identity.source_url.trim(); }
+}
+
+const blankQuestion = (): Question => ({ title: '', description: '', role: 'soft', type: 'Single choice', criterion: '', options: ['', ''] });
+const addQuestion = () => { form.questions.push(blankQuestion()); };
+const removeQuestion = (index: number) => { const [gone] = form.questions.splice(index, 1); if (gone?.id) (form.removedQuestionIds ??= []).push(gone.id); };
+const addOption = (qIndex: number) => { form.questions[qIndex]?.options.push(''); };
+const removeOption = (qIndex: number, oIndex: number) => {
+  const question = form.questions[qIndex];
+  if (question && question.options.length > 1) question.options.splice(oIndex, 1);
+};
+
+const isSaving = ref(false);
 const submitForm = async (): Promise<void> => {
   if (isSaving.value) return;
+  for (let s = 1; s < 5; s++) if (problem(s)) { goToStep(s + 1); return; }
+  form.questions.forEach(ensureCriterion);
   isSaving.value = true; saveError.value = '';
   try {
-    const saved = await apiService.createForm(form, auth.userID, auth.username);
+    // Empty choice rows are a typing convenience, not answers.
+    for (const q of form.questions) if (hasChoices(q)) q.options = q.options.map(o => o.trim()).filter(Boolean); else q.options = [];
+    if (!form.decisionQuestion?.trim()) form.decisionQuestion = questionPlaceholder.value;
+    await draftSave;
+    const saved = await apiService.publishForm(form, auth.userID, auth.username);
+    removeCheckpoint(recoveryKey);
     emit('published', JSON.parse(JSON.stringify(saved)));
   } catch (error) {
-    saveError.value = (error instanceof Error ? error.message : 'Unable to publish.') + (form.id ? ' Your saved draft is retained; retry in this tab.' : '');
+    const text = error instanceof ApiError && error.code === 'INVALID_DEFINITION' ? 'Some questions don’t match the details they compare. Check the question types, then publish again.'
+      : error instanceof Error ? error.message : 'Unable to publish.';
+    saveError.value = text + (form.id ? ' Your draft is saved.' : '');
   } finally { isSaving.value = false; }
 };
 </script>
 
 <style scoped>
-.creator-layout {
-  min-height: 100vh;
-  background-color: #EFECE9;
-}
-
-.creator-wrapper {
-  padding: 32px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.creator-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-/* Step indicator bar */
-.step-indicator-bar {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  background: white;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.step-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #718096;
-  font-size: 0.85rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.step-pill.active {
-  background-color: #EBF8FF;
-  color: #3182CE; font-weight: 700;
-}
-
-.step-pill.completed {
-  color: #2F855A;
-}
-
-.step-pill.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.step-number { width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #EDF2F7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-}
-
-.step-pill.active .step-number {
-  background: #3182CE;
-  color: white;
-}
-
-.card {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-  border: 1px dashed #CBD5E0;
-}
-
-.step-title {
-  margin-bottom: 18px;
-  color: #2D3748;
-  font-size: 1.1rem;
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 16px;
-}
-
-.input-group label {
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #2D3748;
-}
-
-.input-group input,
-.input-group select,
-.input-group textarea,
-.question-title-input {
-  padding: 10px 12px;
-  border: 1px solid #E2E8F0;
-  border-radius: 6px;
-  background-color: #F8FAFC;
-}
-
-.textarea-multiline{
-  white-space: pre-wrap;
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.input-row {
-  display: flex;
-  gap: 16px;
-}
-
-.flex-1 { flex: 1; }
-
-.summary-card {
-  background: #F7FAFC;
-  border: 1px solid #E2E8F0;
-  padding: 16px; border-radius:
-  8px; margin-bottom: 20px;
-}
-
-.summary-card h4 {
-  margin-bottom: 8px;
-  color: #4A5568;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #4A5568;
-}
-
-.full-width {
-  grid-column: span 2;
-}
-
-.multiline-summary .description-text {
-  margin-top: 4px;
-  white-space: pre-wrap;
-  background: #EDF2F7;
-  padding: 8px 12px;
-  border-radius: 4px;
-  color: #2D3748;
-}
-
-.section-heading {
-  margin: 16px 0 12px 0;
-  color: #2D3748;
-}
-
-.question-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.question-title-input {
-  flex: 1;
-}
-
-.question-controls {
-  display: flex;
-  /* align-items: center; */
-  gap: 8px;
-}
-
-.btn-icon-delete {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: #A0AEC0;
-  cursor: pointer;
-}
-
-.btn-icon-delete:hover {
-  color: #E53E3E;
-}
-
-.options-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-left: 12px;
-}
-
-.options-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.option-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.option-row input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #E2E8F0;
-  border-radius: 6px;
-}
-
-.radio-indicator {
-  color: #A0AEC0;
-}
-
-.radio-indicator.active {
-  color: #38A169;
-}
-
-.question-description-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #E2E8F0;
-  border-radius: 6px;
-  background-color: #F8FAFC;
-  font-size: 0.875rem;
-  margin-top: 8px;
-}
-
-.field-section-label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #4A5568;
-  margin-bottom: 6px;
-  display: block;
-}
-
-.btn-add-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #2799B2;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  width: fit-content;
-  margin-top: 6px;
-}
-
-.btn-add-option:hover {
-  background-color: #2F855A;
-}
-
-.btn-add-option .radio-indicator {
-  color: white;
-}
-
-.btn-publish { background-color: #38A169; }
-
-/* Short answer styling */
-.short-answer-container {
-  padding-left: 12px;
-}
-
-.disabled-input {
-  width: 100%;
-  padding: 10px 12px;
-  background-color: #EDF2F7;
-  border: 1px solid #CBD5E0;
-  border-radius: 6px;
-  color: #A0AEC0;
-}
-
-/* Duration / Calendar Widget styling */
-.duration-container {
-  padding-left: 12px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.calendar-widget {
-  background: white;
-  border: 1px solid #CBD5E0;
-  border-radius: 8px;
-  padding: 16px;
-  width: 280px;
-}
-
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  font-size: 0.85rem;
-  margin-bottom: 12px;
-  color: #2D3748;
-}
-
-.cal-nav {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-weight: bold;
-  color: #4A5568;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  gap: 4px;
-  font-size: 0.8rem;
-}
-
-.cal-day-header {
-  font-weight: 600;
-  color: #718096;
-  padding-bottom: 4px;
-}
-
-.cal-date {
-  padding: 6px 0;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #2D3748;
-}
-
-.cal-date:hover {
-  background-color: #EDF2F7;
-}
-
-.cal-date.selected {
-  background-color: #3182CE;
-  color: white;
-  font-weight: bold;
-}
-
-.add-question-container {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.btn-add-question {
-  background: white;
-  border: 1px dashed #CBD5E0;
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  font-size: 1.5rem;
-  color: #4A5568;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-add-question:hover {
-  background-color: #EDF2F7;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 24px;
-}
-
-.btn-primary {
-  background-color: #3182CE;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  font-weight: bold;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background-color: #2B6CB0;
-}
-
-.btn-secondary {
-  background: none;
-  border: 1px solid #CBD5E0;
-  color: #4A5568;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background-color: #EDF2F7;
-}
-
-.btn-remove-option {
-  background: none;
-  border: none;
-  color: #E53E3E;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0 6px;
-}
-
-.btn-remove-option:hover {
-  color: #C53030;
-}
-
-.currency-badge {
-  font-weight: bold;
-  color: #2F855A;
-  padding: 0 4px;
-}
-
-.location-icon {
-  font-size: 0.9rem;
-}
-
-.checkbox-setting {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px dashed #E2E8F0;
-}
-
-.checkbox-label {
-  font-size: 0.85rem;
-  color: #4A5568;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.helper-subtitle {
-  font-size: 0.85rem;
-  color: #4A5568;
-  margin-bottom: 8px;
-}
-
-/* Wizard Navigation Actions */
-.wizard-actions {
-  display: flex;
-  justify-content:
-  space-between; margin-top: 24px;
-}
+.creator-wrapper { max-width: 1200px; margin: auto; padding: 48px 32px 80px; }
+.builder-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; }
+
+.step-indicator-bar { align-self: start; position: sticky; top: 24px; }
+.step-list { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.step-track { position: absolute; left: 24.5px; top: 24px; bottom: 24px; width: 1px; background: #cdd8cf; }
+.step-track > span { display: block; width: 100%; height: 100%; background: var(--accent); transform-origin: top; transform: scaleY(var(--value)); transition: transform var(--slow) var(--ease-out); }
+.step-pill { position: relative; border: 0; background: transparent; justify-content: flex-start; text-align: left; padding: 9px 12px; font-size: .8125rem; color: var(--muted); }
+.step-pill:hover:not(:disabled) { background: #e9eee8; color: var(--ink); }
+.step-pill.active, .step-pill.active:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
+.step-pill.completed { color: var(--ink); }
+.step-pill.locked { color: #7d8a84; }
+.step-pill:disabled { background: transparent; }
+.step-number { width: 26px; min-width: 26px; flex: 0 0 26px; height: 26px; border: 1px solid #a6b8aa; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; background: var(--ground); transition: background-color var(--base) ease-out, border-color var(--base) ease-out, color var(--base) ease-out; }
+.step-number .ui-icon { width: 14px; height: 14px; }
+.step-pill.active .step-number { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-pill.completed .step-number { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.step-hint { font-size: .75rem; color: var(--muted); padding: 20px 12px; }
+
+.form-builder { min-width: 0; }
+.step-top { scroll-margin-top: 24px; }
+.form-builder > [role='alert'] { margin-bottom: 16px; }
+.step-card { background: #fff; padding: 32px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 24px; }
+.step-eyebrow { font-size: .75rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.step-title { font-size: 1.375rem; margin-bottom: 8px; }
+.step-lede { color: var(--muted); font-size: .875rem; margin-bottom: 8px; }
+.step-card > label:first-of-type { margin-top: 24px; }
+.step-card > label { margin-bottom: 7px; }
+.step-card > input + .helper-text { margin-bottom: 4px; }
+.field-error { color: var(--danger); }
+.field-warning { color: #805114; }
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.input-row label { margin-bottom: 8px; }
+.category-field { margin-top: 24px; }
+.category-option { align-items: flex-start; }
+.category-option input, .role-option input { margin-top: 2px; }
+.category-option > span, .role-option > span { display: flex; flex-direction: column; gap: 2px; margin-left: 4px; }
+.category-option small, .role-option small { color: var(--muted); font-weight: 400; font-size: .8125rem; line-height: 1.4; }
+.category-field[aria-invalid='true'] .choice-option:not(:has(:checked)) { border-color: #d9a8a2; }
+
+.sub-heading { font-size: 1rem; margin: 32px 0 4px; padding-top: 24px; border-top: 1px solid var(--line); }
+.options-field { margin-top: 28px; }
+.options-field legend .optional { font-variant-numeric: tabular-nums; }
+.option-inputs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.option-input { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfa; }
+.option-index { display: grid; place-items: center; width: 28px; height: 28px; margin-top: 9px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .75rem; font-weight: 650; flex-shrink: 0; }
+.option-fields { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.option-fields input:first-child { font-weight: 600; }
+.link-input { font-size: .875rem; min-height: 40px; }
+.option-input > button { margin-top: 1px; }
+.currency-field { max-width: 220px; margin-top: 24px; }
+.overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; margin-top: 20px; }
+.card-tools { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 14px; }
+.kind-field { margin: 0; font-size: .75rem; }
+.kind-field select { min-height: 36px; padding: 4px 34px 4px 10px; font-size: .8125rem; margin-top: 4px; }
+.overview-note { margin-top: 18px; }
+.drafting { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding: 14px 16px; border-radius: 8px; background: #f3f6f2; color: var(--muted); font-size: .875rem; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+.question-list { display: grid; gap: 16px; margin-top: 24px; }
+.question-card { border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px 24px; background: #fbfcfa; }
+.question-top { display: flex; align-items: center; justify-content: space-between; min-height: 36px; margin-bottom: 4px; }
+.question-top h3 { margin: 0; font-size: .875rem; color: var(--muted); font-weight: 600; }
+.question-header { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 0 16px; }
+.question-header label, .question-card > label { margin: 10px 0; }
+.question-title-field input { font-weight: 600; }
+.choices { margin: 18px 0 8px; }
+.choices-label { font-size: .875rem; font-weight: 600; margin-bottom: 10px; }
+.option-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.choice-marker { width: 17px; height: 17px; border: 1.5px solid #9bad9f; border-radius: 50%; flex-shrink: 0; }
+.choice-marker.square { border-radius: 4px; }
+.btn-add-option { background: transparent; border-color: transparent; color: var(--accent); padding-left: 0; }
+.btn-add-option:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--accent-hover); }
+.question-card .callout { margin: 16px 0 4px; }
+.role-field { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.role-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.role-option { align-items: flex-start; }
+.role-option.unavailable { opacity: .55; }
+.criterion-field label { margin: 18px 0 0; max-width: 420px; }
+.criterion-field .helper-text { max-width: 60ch; }
+.add-question { margin-top: 20px; }
+
+.review-block { padding: 20px 0; border-top: 1px solid var(--line); }
+.review-block:first-of-type { margin-top: 20px; }
+.review-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.review-heading h3 { margin: 0; font-size: 1rem; display: flex; gap: 8px; align-items: baseline; }
+.review-heading h3 .muted { font-size: .8125rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; font-size: .875rem; margin: 0; }
+.summary-grid div { min-width: 0; overflow-wrap: anywhere; }
+.summary-grid dt { color: var(--muted); font-size: .75rem; margin-bottom: 2px; }
+.summary-grid dd { margin: 0; }
+.full-width { grid-column: 1 / -1; }
+.multiline-summary { white-space: pre-wrap; }
+.review-list { list-style: none; margin: 0; padding: 0; counter-reset: item; }
+.review-list li { counter-increment: item; display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; font-size: .875rem; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
+.review-list li:last-child { border-bottom: 0; }
+.review-list li > span:first-child::before { content: counter(item) '.'; color: var(--muted); margin-right: 10px; font-variant-numeric: tabular-nums; }
+.review-list .muted { flex-shrink: 0; font-size: .8125rem; }
+.callout.warning ul { margin: 0; padding-left: 20px; }
+.callout.warning li + li { margin-top: 4px; }
+
+.wizard-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 8px 0; }
+.btn-publish { min-width: 160px; }
+
+/* Step changes slide in the direction of travel. */
+.step-forward-enter-active, .step-back-enter-active { transition: opacity var(--base) var(--ease-out), transform var(--base) var(--ease-out); }
+.step-forward-leave-active, .step-back-leave-active { transition: opacity 120ms var(--ease-in), transform 120ms var(--ease-in); }
+.step-forward-enter-from { opacity: 0; transform: translateX(16px); }
+.step-forward-leave-to { opacity: 0; transform: translateX(-10px); }
+.step-back-enter-from { opacity: 0; transform: translateX(-16px); }
+.step-back-leave-to { opacity: 0; transform: translateX(10px); }
+
+@media(max-width: 900px) { .builder-layout { grid-template-columns: 165px minmax(0,1fr); gap: 24px; } .step-card { padding: 24px; } .role-options { grid-template-columns: minmax(0, 1fr); } .question-header { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 700px) {
+  .creator-wrapper { padding: 32px 20px 48px; } .builder-layout { grid-template-columns: minmax(0,1fr); gap: 24px; }
+  .step-indicator-bar { position: relative; top: 0; }
+  .step-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 4px; margin: -4px; gap: 4px; }
+  .step-track { left: 10%; right: 10%; top: 25px; bottom: auto; width: auto; height: 1px; }
+  .step-track > span { transform-origin: left; transform: scaleX(var(--value)); }
+  .step-pill { min-width: 0; flex-direction: column; align-items: center; padding: 8px 2px; font-size: .6875rem; gap: 6px; text-align: center; }
+  .step-pill:hover:not(:disabled) { background: transparent; }
+  .step-label { overflow-wrap: anywhere; }
+  .step-hint { display: none; } .step-card { padding: 20px; } .step-title { font-size: 1.25rem; }
+  .question-card { padding: 16px; }
+  .input-row, .summary-grid { grid-template-columns: minmax(0,1fr); gap: 0; }
+  .summary-grid { gap: 12px; }
+  .wizard-actions { flex-direction: column-reverse; } .wizard-actions button { width: 100%; }
+}
+@media(max-width:380px) { .step-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } .step-track { display: none; } }
 </style>
