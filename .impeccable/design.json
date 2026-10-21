@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T01:44:50.423Z",
+  "title": "Design System: What to do?",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Working ink",
+        "canonical": "#243440",
+        "tonalRamp": [
+          "oklch(15% 0.03018 241.29)",
+          "oklch(26.43% 0.03018 241.29)",
+          "oklch(37.86% 0.03018 241.29)",
+          "oklch(49.29% 0.03018 241.29)",
+          "oklch(60.71% 0.03018 241.29)",
+          "oklch(72.14% 0.03018 241.29)",
+          "oklch(83.57% 0.03018 241.29)",
+          "oklch(95% 0.03018 241.29)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted slate",
+        "canonical": "#59676e",
+        "tonalRamp": [
+          "oklch(15% 0.02040 229.35)",
+          "oklch(26.43% 0.02040 229.35)",
+          "oklch(37.86% 0.02040 229.35)",
+          "oklch(49.29% 0.02040 229.35)",
+          "oklch(60.71% 0.02040 229.35)",
+          "oklch(72.14% 0.02040 229.35)",
+          "oklch(83.57% 0.02040 229.35)",
+          "oklch(95% 0.02040 229.35)"
+        ]
+      },
+      "navy": {
+        "role": "neutral",
+        "displayName": "Working navy",
+        "canonical": "#182e3b",
+        "tonalRamp": [
+          "oklch(15% 0.03678 235.92)",
+          "oklch(26.43% 0.03678 235.92)",
+          "oklch(37.86% 0.03678 235.92)",
+          "oklch(49.29% 0.03678 235.92)",
+          "oklch(60.71% 0.03678 235.92)",
+          "oklch(72.14% 0.03678 235.92)",
+          "oklch(83.57% 0.03678 235.92)",
+          "oklch(95% 0.03678 235.92)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White working surface",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Warm ground",
+        "canonical": "#f4f5f2",
+        "tonalRamp": [
+          "oklch(15% 0.00410 121.56)",
+          "oklch(26.43% 0.00410 121.56)",
+          "oklch(37.86% 0.00410 121.56)",
+          "oklch(49.29% 0.00410 121.56)",
+          "oklch(60.71% 0.00410 121.56)",
+          "oklch(72.14% 0.00410 121.56)",
+          "oklch(83.57% 0.00410 121.56)",
+          "oklch(95% 0.00410 121.56)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Quiet line",
+        "canonical": "#dce2de",
+        "tonalRamp": [
+          "oklch(15% 0.00838 157.08)",
+          "oklch(26.43% 0.00838 157.08)",
+          "oklch(37.86% 0.00838 157.08)",
+          "oklch(49.29% 0.00838 157.08)",
+          "oklch(60.71% 0.00838 157.08)",
+          "oklch(72.14% 0.00838 157.08)",
+          "oklch(83.57% 0.00838 157.08)",
+          "oklch(95% 0.00838 157.08)"
+        ]
+      },
+      "control-line": {
+        "role": "neutral",
+        "displayName": "Control boundary",
+        "canonical": "#809387",
+        "tonalRamp": [
+          "oklch(15% 0.02804 157.82)",
+          "oklch(26.43% 0.02804 157.82)",
+          "oklch(37.86% 0.02804 157.82)",
+          "oklch(49.29% 0.02804 157.82)",
+          "oklch(60.71% 0.02804 157.82)",
+          "oklch(72.14% 0.02804 157.82)",
+          "oklch(83.57% 0.02804 157.82)",
+          "oklch(95% 0.02804 157.82)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Considered green",
+        "canonical": "#24614e",
+        "tonalRamp": [
+          "oklch(15% 0.07063 169.49)",
+          "oklch(26.43% 0.07063 169.49)",
+          "oklch(37.86% 0.07063 169.49)",
+          "oklch(49.29% 0.07063 169.49)",
+          "oklch(60.71% 0.07063 169.49)",
+          "oklch(72.14% 0.07063 169.49)",
+          "oklch(83.57% 0.07063 169.49)",
+          "oklch(95% 0.07063 169.49)"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Deep green",
+        "canonical": "#194b3b",
+        "tonalRamp": [
+          "oklch(15% 0.06050 168.72)",
+          "oklch(26.43% 0.06050 168.72)",
+          "oklch(37.86% 0.06050 168.72)",
+          "oklch(49.29% 0.06050 168.72)",
+          "oklch(60.71% 0.06050 168.72)",
+          "oklch(72.14% 0.06050 168.72)",
+          "oklch(83.57% 0.06050 168.72)",
+          "oklch(95% 0.06050 168.72)"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Pale green",
+        "canonical": "#e8f1eb",
+        "tonalRamp": [
+          "oklch(15% 0.01242 157.00)",
+          "oklch(26.43% 0.01242 157.00)",
+          "oklch(37.86% 0.01242 157.00)",
+          "oklch(49.29% 0.01242 157.00)",
+          "oklch(60.71% 0.01242 157.00)",
+          "oklch(72.14% 0.01242 157.00)",
+          "oklch(83.57% 0.01242 157.00)",
+          "oklch(95% 0.01242 157.00)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Error red",
+        "canonical": "#9b3030",
+        "tonalRamp": [
+          "oklch(15% 0.14248 24.45)",
+          "oklch(26.43% 0.14248 24.45)",
+          "oklch(37.86% 0.14248 24.45)",
+          "oklch(49.29% 0.14248 24.45)",
+          "oklch(60.71% 0.14248 24.45)",
+          "oklch(72.14% 0.14248 24.45)",
+          "oklch(83.57% 0.14248 24.45)",
+          "oklch(95% 0.14248 24.45)"
+        ]
+      },
+      "danger-soft": {
+        "role": "secondary",
+        "displayName": "Pale error",
+        "canonical": "#fff0ed",
+        "tonalRamp": [
+          "oklch(15% 0.01678 31.08)",
+          "oklch(26.43% 0.01678 31.08)",
+          "oklch(37.86% 0.01678 31.08)",
+          "oklch(49.29% 0.01678 31.08)",
+          "oklch(60.71% 0.01678 31.08)",
+          "oklch(72.14% 0.01678 31.08)",
+          "oklch(83.57% 0.01678 31.08)",
+          "oklch(95% 0.01678 31.08)"
+        ]
+      },
+      "badge-neutral": {
+        "role": "neutral",
+        "displayName": "Neutral badge ground",
+        "canonical": "#edf0ed",
+        "tonalRamp": [
+          "oklch(15% 0.00509 145.54)",
+          "oklch(26.43% 0.00509 145.54)",
+          "oklch(37.86% 0.00509 145.54)",
+          "oklch(49.29% 0.00509 145.54)",
+          "oklch(60.71% 0.00509 145.54)",
+          "oklch(72.14% 0.00509 145.54)",
+          "oklch(83.57% 0.00509 145.54)",
+          "oklch(95% 0.00509 145.54)"
+        ]
+      },
+      "badge-neutral-ink": {
+        "role": "neutral",
+        "displayName": "Neutral badge ink",
+        "canonical": "#435349",
+        "tonalRamp": [
+          "oklch(15% 0.02593 157.67)",
+          "oklch(26.43% 0.02593 157.67)",
+          "oklch(37.86% 0.02593 157.67)",
+          "oklch(49.29% 0.02593 157.67)",
+          "oklch(60.71% 0.02593 157.67)",
+          "oklch(72.14% 0.02593 157.67)",
+          "oklch(83.57% 0.02593 157.67)",
+          "oklch(95% 0.02593 157.67)"
+        ]
+      },
+      "reviewing-soft": {
+        "role": "secondary",
+        "displayName": "Pale amber",
+        "canonical": "#fff1d9",
+        "tonalRamp": [
+          "oklch(15% 0.03494 81.28)",
+          "oklch(26.43% 0.03494 81.28)",
+          "oklch(37.86% 0.03494 81.28)",
+          "oklch(49.29% 0.03494 81.28)",
+          "oklch(60.71% 0.03494 81.28)",
+          "oklch(72.14% 0.03494 81.28)",
+          "oklch(83.57% 0.03494 81.28)",
+          "oklch(95% 0.03494 81.28)"
+        ]
+      },
+      "reviewing-ink": {
+        "role": "secondary",
+        "displayName": "Review amber",
+        "canonical": "#805114",
+        "tonalRamp": [
+          "oklch(15% 0.09570 67.59)",
+          "oklch(26.43% 0.09570 67.59)",
+          "oklch(37.86% 0.09570 67.59)",
+          "oklch(49.29% 0.09570 67.59)",
+          "oklch(60.71% 0.09570 67.59)",
+          "oklch(72.14% 0.09570 67.59)",
+          "oklch(83.57% 0.09570 67.59)",
+          "oklch(95% 0.09570 67.59)"
+        ]
+      },
+      "confirmed-soft": {
+        "role": "secondary",
+        "displayName": "Pale blue",
+        "canonical": "#e5edf6",
+        "tonalRamp": [
+          "oklch(15% 0.01488 251.16)",
+          "oklch(26.43% 0.01488 251.16)",
+          "oklch(37.86% 0.01488 251.16)",
+          "oklch(49.29% 0.01488 251.16)",
+          "oklch(60.71% 0.01488 251.16)",
+          "oklch(72.14% 0.01488 251.16)",
+          "oklch(83.57% 0.01488 251.16)",
+          "oklch(95% 0.01488 251.16)"
+        ]
+      },
+      "confirmed-ink": {
+        "role": "secondary",
+        "displayName": "Confirmed blue",
+        "canonical": "#294e74",
+        "tonalRamp": [
+          "oklch(15% 0.07690 250.73)",
+          "oklch(26.43% 0.07690 250.73)",
+          "oklch(37.86% 0.07690 250.73)",
+          "oklch(49.29% 0.07690 250.73)",
+          "oklch(60.71% 0.07690 250.73)",
+          "oklch(72.14% 0.07690 250.73)",
+          "oklch(83.57% 0.07690 250.73)",
+          "oklch(95% 0.07690 250.73)"
+        ]
+      },
+      "nav-current": {
+        "role": "neutral",
+        "displayName": "Current navigation navy",
+        "canonical": "#304b59",
+        "tonalRamp": [
+          "oklch(15% 0.04035 231.71)",
+          "oklch(26.43% 0.04035 231.71)",
+          "oklch(37.86% 0.04035 231.71)",
+          "oklch(49.29% 0.04035 231.71)",
+          "oklch(60.71% 0.04035 231.71)",
+          "oklch(72.14% 0.04035 231.71)",
+          "oklch(83.57% 0.04035 231.71)",
+          "oklch(95% 0.04035 231.71)"
+        ]
+      },
+      "focus": {
+        "role": "secondary",
+        "displayName": "Keyboard focus amber",
+        "canonical": "#c17828",
+        "tonalRamp": [
+          "oklch(15% 0.12853 63.39)",
+          "oklch(26.43% 0.12853 63.39)",
+          "oklch(37.86% 0.12853 63.39)",
+          "oklch(49.29% 0.12853 63.39)",
+          "oklch(60.71% 0.12853 63.39)",
+          "oklch(72.14% 0.12853 63.39)",
+          "oklch(83.57% 0.12853 63.39)",
+          "oklch(95% 0.12853 63.39)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Login display",
+        "purpose": "Introductory login headline; responsive sizes are documented in DESIGN.md."
+      },
+      "headline": {
+        "displayName": "Page headline",
+        "purpose": "Dashboard, creator and round page heading."
+      },
+      "section": {
+        "displayName": "Section heading",
+        "purpose": "Panel headings and major form sections."
+      },
+      "title": {
+        "displayName": "Subsection title",
+        "purpose": "Options, private review and subordinate headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default application reading text."
+      },
+      "label": {
+        "displayName": "Field label",
+        "purpose": "Persistent labels on native form controls."
+      },
+      "badge": {
+        "displayName": "Status label",
+        "purpose": "Compact lifecycle and draft badges."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "control-colour-transition",
+        "value": "background-color 160ms ease-out, border-color 160ms ease-out",
+        "purpose": "Button state feedback only; removed under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "login-intermediate",
+        "value": "1000px"
+      },
+      {
+        "name": "shell-and-creator-intermediate",
+        "value": "900px"
+      },
+      {
+        "name": "table-density",
+        "value": "800px"
+      },
+      {
+        "name": "mobile-layout",
+        "value": "700px"
+      },
+      {
+        "name": "session-header-wrap",
+        "value": "600px"
+      },
+      {
+        "name": "narrow-creator-steps",
+        "value": "380px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Green action for the next concrete task.",
+      "html": "<button class=\"ds-btn-primary\">Create form<svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14m-6-6 6 6-6 6\"/></svg></button>",
+      "css": ".ds-btn-primary{font-family:'Public Sans',sans-serif;cursor:pointer;min-height:44px;padding:10px 16px;border:1px solid var(--control-line, #809387);border-radius:7px;background:var(--surface, #fff);color:var(--ink, #243440);font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.4;white-space:normal;transition:background-color 160ms ease-out,border-color 160ms ease-out}.ds-btn-primary:hover:not(:disabled){background:#edf1ed;border-color:#83988b}.ds-btn-primary:active:not(:disabled){background:#e0e9e2}.ds-btn-primary{background:var(--accent, #24614e);border-color:var(--accent, #24614e);color:#fff}.ds-btn-primary:hover:not(:disabled),.ds-btn-primary:active:not(:disabled){background:var(--accent-hover, #194b3b);border-color:var(--accent-hover, #194b3b)}.ds-btn-primary:disabled{cursor:not-allowed;background:#e7ebe7;border-color:#d4dcd5;color:#64716a}.ds-btn-primary:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-btn-primary{transition:none}}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered action for refresh, draft saving and returning.",
+      "html": "<button class=\"ds-btn-secondary\">Save draft</button>",
+      "css": ".ds-btn-secondary{font-family:'Public Sans',sans-serif;cursor:pointer;min-height:44px;padding:10px 16px;border:1px solid var(--control-line, #809387);border-radius:7px;background:var(--surface, #fff);color:var(--ink, #243440);font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.4;white-space:normal;transition:background-color 160ms ease-out,border-color 160ms ease-out}.ds-btn-secondary:hover:not(:disabled){background:#edf1ed;border-color:#83988b}.ds-btn-secondary:active:not(:disabled){background:#e0e9e2}.ds-btn-secondary:disabled{cursor:not-allowed;background:#e7ebe7;border-color:#d4dcd5;color:#64716a}.ds-btn-secondary:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-btn-secondary{transition:none}}"
+    },
+    {
+      "name": "Quiet button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Lower-emphasis action within an existing region.",
+      "html": "<button class=\"ds-btn-quiet\">Clear filters</button>",
+      "css": ".ds-btn-quiet{font-family:'Public Sans',sans-serif;cursor:pointer;min-height:44px;padding:10px 16px;border:1px solid var(--control-line, #809387);border-radius:7px;background:var(--surface, #fff);color:var(--ink, #243440);font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.4;white-space:normal;transition:background-color 160ms ease-out,border-color 160ms ease-out}.ds-btn-quiet:hover:not(:disabled){background:#edf1ed;border-color:#83988b}.ds-btn-quiet:active:not(:disabled){background:#e0e9e2}.ds-btn-quiet{background:transparent;border-color:transparent}.ds-btn-quiet:disabled{cursor:not-allowed;background:#e7ebe7;border-color:#d4dcd5;color:#64716a}.ds-btn-quiet:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-btn-quiet{transition:none}}"
+    },
+    {
+      "name": "Danger button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive text treatment; may combine with quiet styling in the app.",
+      "html": "<button class=\"ds-btn-danger\">Remove answer choice</button>",
+      "css": ".ds-btn-danger{font-family:'Public Sans',sans-serif;cursor:pointer;min-height:44px;padding:10px 16px;border:1px solid var(--control-line, #809387);border-radius:7px;background:var(--surface, #fff);color:var(--ink, #243440);font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.4;white-space:normal;transition:background-color 160ms ease-out,border-color 160ms ease-out}.ds-btn-danger:hover:not(:disabled){background:#edf1ed;border-color:#83988b}.ds-btn-danger:active:not(:disabled){background:#e0e9e2}.ds-btn-danger{color:var(--danger, #9b3030)}.ds-btn-danger:disabled{cursor:not-allowed;background:#e7ebe7;border-color:#d4dcd5;color:#64716a}.ds-btn-danger:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-btn-danger{transition:none}}"
+    },
+    {
+      "name": "Labelled text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Native text entry with persistent label and helper copy.",
+      "html": "<label class=\"ds-field\">Option name<input class=\"ds-input\" placeholder=\"Name the choice you’re considering\" required><span class=\"ds-help\">Add the choices your group will consider.</span></label>",
+      "css": ".ds-field{font-family:'Public Sans',sans-serif;display:block;margin:18px 0;font-size:.875rem;line-height:1.6;font-weight:600;color:var(--ink, #243440)}.ds-input{font-family:'Public Sans',sans-serif;display:block;margin-top:7px;width:100%;max-width:100%;min-width:0;min-height:46px;padding:10px 12px;border:1px solid var(--control-line, #809387);border-radius:6px;background:var(--surface, #fff);color:var(--ink, #243440);caret-color:var(--accent, #24614e);font-size:1rem;font-weight:400;line-height:1.6}.ds-input::placeholder{color:#65726c;opacity:1}.ds-input:disabled{background:#edf0ed;color:#65716a}.ds-help{display:block;margin:8px 0 0;font-size:.8125rem;font-weight:400;color:var(--muted, #59676e)}.ds-input:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}"
+    },
+    {
+      "name": "Session navigation",
+      "kind": "nav",
+      "refersTo": "navigation-current",
+      "description": "The authenticated navy shell with the current My forms destination.",
+      "html": "<header class=\"ds-nav\"><button class=\"ds-home-brand ds-brand\" aria-label=\"What to do? Home\"><svg class=\"ds-brand-mark\" viewBox=\"0 0 32 32\" fill=\"none\" aria-hidden=\"true\"><path d=\"M5 7h9v9H5zM18 7h9v9h-9zM5 20h9v6H5z\" fill=\"currentColor\" opacity=\".5\"/><path d=\"m18 23 3 3 7-8\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>What to do?</button><nav aria-label=\"Main navigation\"><button class=\"ds-nav-button\" aria-current=\"page\">My forms</button></nav><button class=\"ds-nav-button\">Sign out</button></header>",
+      "css": ".ds-nav{font-family:'Public Sans',sans-serif;display:flex;flex-wrap:wrap;align-items:center;gap:16px;background:var(--navy, #182e3b);color:#f1f5f6;padding:12px 24px}.ds-brand{font-size:1.125rem;font-weight:700;letter-spacing:-.025em}.ds-nav-button{font-family:'Public Sans',sans-serif;cursor:pointer;min-height:44px;padding:10px 16px;border:1px solid transparent;border-radius:7px;background:transparent;color:#d9e3e8;font-size:.875rem;font-weight:600;line-height:1.4;transition:background-color 160ms ease-out,border-color 160ms ease-out}.ds-nav-button[aria-current=\"page\"],.ds-nav-button:hover{background:var(--nav-current, #304b59);color:#fff}.ds-nav-button:active{background:var(--nav-current, #304b59);color:#fff}.ds-nav-button:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}@media(max-width:600px){.ds-nav{padding:12px 16px;gap:8px}.ds-brand{flex:1 1 100%}.ds-nav-button{font-size:.75rem;padding:10px 7px}}@media(prefers-reduced-motion:reduce){.ds-nav-button{transition:none}}.ds-home-brand{font-family:'Public Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;min-height:44px;line-height:1.4;background:transparent;border:0;color:inherit;padding:0}.ds-home-brand:hover{background:transparent;color:#c6e0d2}.ds-brand-mark{width:29px;height:29px}.ds-home-brand:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}"
+    },
+    {
+      "name": "Lifecycle status badges",
+      "kind": "chip",
+      "refersTo": "badge-collecting",
+      "description": "Text-labelled collecting, reviewing and confirmed states; not interactive filters.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-collecting\">Collecting</span><span class=\"ds-badge ds-reviewing\">Reviewing</span><span class=\"ds-badge ds-confirmed\">Confirmed</span></div>",
+      "css": ".ds-badges{display:flex;gap:12px;flex-wrap:wrap}.ds-badge{font-family:'Public Sans',sans-serif;display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:5px;font-size:.75rem;font-weight:650;line-height:1.6;white-space:nowrap;background:var(--badge-neutral, #edf0ed);color:var(--badge-neutral-ink, #435349)}.ds-badge:before{content:\"\";width:6px;height:6px;border-radius:50%;background:currentColor}.ds-collecting{background:var(--accent-soft, #e8f1eb);color:var(--accent, #24614e)}.ds-reviewing{background:var(--reviewing-soft, #fff1d9);color:var(--reviewing-ink, #805114)}.ds-confirmed{background:var(--confirmed-soft, #e5edf6);color:var(--confirmed-ink, #294e74)}"
+    },
+    {
+      "name": "Working panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat bordered container for a coherent task.",
+      "html": "<section class=\"ds-panel\"><h2>Options to compare</h2><p>Add the choices and the facts your group will consider.</p></section>",
+      "css": ".ds-panel{font-family:'Public Sans',sans-serif;background:var(--surface, #fff);color:var(--ink, #243440);border:1px solid var(--line, #dce2de);border-radius:var(--radius,12px);padding:28px;margin:24px 0;line-height:1.6}.ds-panel h2{margin:0 0 6px;font-size:1.375rem;font-weight:650;line-height:1.3;letter-spacing:-.02em}.ds-panel p{margin:0;max-width:72ch;color:var(--muted, #59676e);font-size:.875rem}@media(max-width:700px){.ds-panel{padding:20px;margin:16px 0}}"
+    },
+    {
+      "name": "Decision lifecycle progress",
+      "kind": "custom",
+      "description": "Three labelled phases, with a filled current marker and a completed SVG check.",
+      "html": "<ol class=\"ds-progress\" aria-label=\"Decision progress\"><li class=\"ds-complete\"><span class=\"ds-phase-dot\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"/></svg></span>Collect responses</li><li class=\"ds-current\" aria-current=\"step\"><span class=\"ds-phase-dot\">2</span>Review options</li><li><span class=\"ds-phase-dot\">3</span>Confirm choice</li></ol>",
+      "css": ".ds-progress{font-family:'Public Sans',sans-serif;display:flex;list-style:none;padding:0 0 28px;margin:28px 0;border-bottom:1px solid var(--line, #dce2de);gap:40px;line-height:1.6}.ds-progress li{display:flex;align-items:center;gap:10px;color:var(--muted, #59676e);font-size:.8125rem}.ds-phase-dot{border:1px solid #aab9ae;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;font-size:.75rem;flex-shrink:0}.ds-progress .ds-current{color:var(--accent, #24614e);font-weight:650}.ds-current .ds-phase-dot{background:var(--accent, #24614e);color:#fff;border-color:var(--accent, #24614e)}.ds-complete .ds-phase-dot{color:var(--accent, #24614e);background:var(--accent-soft, #e8f1eb);border-color:transparent}@media(max-width:700px){.ds-progress{gap:12px;justify-content:space-between}.ds-progress li{flex-direction:column;align-items:flex-start;font-size:.6875rem;flex:1}}"
+    },
+    {
+      "name": "Private interpretation review",
+      "kind": "custom",
+      "description": "Tonal private review above response actions, with plain-language preview guidance and collapsed technical diagnostics.",
+      "html": "<section class=\"ds-review\"><h3>Your private interpretation</h3><p>Review status: ready. If you edit an answer, review it again before confirming.</p><ul><li>This preview interprets your answers. The organiser calculates option rankings after collection closes.</li></ul><details class=\"ds-review-diagnostics\"><summary>Technical details</summary><ul><li>EXECUTION_ADAPTER_REQUIRED</li></ul></details><label><input type=\"checkbox\"> I reviewed these requirements and confirm they match my answers.</label></section>",
+      "css": ".ds-review{font-family:'Public Sans',sans-serif;background:#edf3ed;border-radius:7px;padding:24px;margin:24px 0;overflow-wrap:anywhere;color:var(--ink, #243440);line-height:1.6}.ds-review h3{margin:0 0 10px;font-size:1.125rem;line-height:1.4;font-weight:650}.ds-review p{max-width:72ch;margin:0 0 16px;font-size:.875rem;color:#3c5947}.ds-review label{display:block;margin:18px 0 0;font-size:.875rem;font-weight:600}.ds-review input{width:19px;height:19px;margin:0 8px 0 0;accent-color:var(--accent, #24614e);vertical-align:middle}.ds-review input:focus-visible{outline:3px solid var(--focus, #c17828);outline-offset:3px}@media(max-width:700px){.ds-review{padding:20px}}.ds-review li{font-size:.875rem;color:#3c5947}.ds-review-diagnostics{border-top:1px solid #c4d3c7;margin-top:16px}.ds-review-diagnostics li{font-size:.75rem}.ds-review-diagnostics summary{min-height:44px;padding:10px 0;cursor:pointer;font-weight:600;font-size:.875rem}.ds-review-diagnostics summary:focus-visible{outline:3px solid var(--focus,#c17828);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Shared Workspace",
+    "overview": "A calm shared workspace for decisions: clear options, visible progress and considered actions. The navy application shell and green action states give professional organisations a credible working interface; warm near-white surfaces and plain language keep the same interface approachable for friends and informal groups. This is an Operate application, with the connected task taking priority over decorative storytelling.\n\nThe implemented system uses one visual language across audiences. Separate business and casual themes would introduce a distinction the shared decision workflow does not need. Shared CSS tokens and native form controls keep existing Vue flows consistent and responsive without another UI framework or a parallel component API. These are documented implementation choices, not a claim that the user approved individual token values.",
+    "keyCharacteristics": [
+      "One navy application header with a restrained geometric brand mark.",
+      "White bordered working surfaces on a warm near-white ground.",
+      "Green actions and current steps; text-labelled lifecycle states.",
+      "Public Sans throughout, with compact supporting text and readable task headings.",
+      "Responsive tables, form steps and action rows preserve the same workflows."
+    ],
+    "rules": [
+      {
+        "name": "The Shared Workspace Rule",
+        "body": "Use the same palette and component language for professional and informal groups; let the decision content establish the context.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Use Public Sans for headings, controls and body copy; establish hierarchy through size, weight and spacing.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Surface Rule",
+        "body": "Separate working regions with background tone, thin borders and spacing; the implemented surfaces do not use box shadows.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use green for primary actions and the current step, with visible text describing the action or state.",
+      "Do retain the single session header, labelled native controls and visible keyboard focus.",
+      "Do reflow tables into labelled mobile rows and keep all five creator steps visible on phones.",
+      "Do keep private interpretation above submission actions and distinguish personal review from group results.",
+      "Do explain date and location context truthfully and show validation close to the working form."
+    ],
+    "donts": [
+      "Don't introduce separate business and casual themes for the same workflow.",
+      "Don't make colour or an icon the sole explanation of a decision state.",
+      "Don't replace real options or native date inputs with an illustrative calendar that implies scheduling capabilities.",
+      "Don't substitute text glyphs for the existing inline SVG icon vocabulary."
+    ]
+  }
+}

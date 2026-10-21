@@ -18,3 +18,9 @@ venv/
 
 participation-service-main/.engine-artifacts/*
 !participation-service-main/.engine-artifacts/.gitkeep
+
+# Local UI review captures and Impeccable runtime data
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/live/
+.impeccable/config.local.json
