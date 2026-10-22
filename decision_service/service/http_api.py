@@ -187,7 +187,7 @@ class DecisionHandler(BaseHTTPRequestHandler):
                 return self.send_json(503, {"code": "FACT_COLLECTOR_NOT_CONFIGURED"})
             task = body.get("task")
             refs = body.get("refs") if isinstance(body.get("refs"), dict) else {}
-            if task not in {"overviews", "questions", "fit"} or not isinstance(body.get("input"), dict) or not all(
+            if task not in {"overviews", "questions", "facts"} or not isinstance(body.get("input"), dict) or not all(
                     isinstance(refs.get(key), str) and refs[key] for key in ("plan_id", "round_id")):
                 return self.send_json(400, {"code": "INVALID_INPUT"})
             # Only the organiser's option names, links, plan question and region reach providers.

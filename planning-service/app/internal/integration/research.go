@@ -32,7 +32,7 @@ func roundPlan(r *http.Request) uuid.UUID {
 	return planID
 }
 
-// Research suggests overviews, questions and option fit to the organiser before publication.
+// Research provides public overviews, question drafts and sourced option facts.
 func (h *Handler) Research(w http.ResponseWriter, r *http.Request) {
 	id, ok := rowID(w, r)
 	if !ok {

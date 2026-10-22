@@ -124,6 +124,24 @@
         "collection": {
           "type": "object"
         },
+        "supplemented_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["option_id", "attribute_id", "value", "value_type", "unit", "source_text", "sources", "retrieved_at"],
+            "properties": {
+              "option_id": {"type": "string"},
+              "attribute_id": {"type": "string"},
+              "value": {"type": ["string", "number", "boolean", "array"]},
+              "value_type": {"enum": ["category", "number", "decimal", "boolean", "tag_set"]},
+              "unit": {"type": ["string", "null"]},
+              "source_text": {"type": "string"},
+              "retrieved_at": {"type": ["string", "null"]},
+              "sources": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["url"], "properties": {"url": {"type": "string"}, "title": {"type": "string"}}}}
+            }
+          }
+        },
         "recommendation_view": {
           "$ref": "#/$defs/recommendation_view"
         }

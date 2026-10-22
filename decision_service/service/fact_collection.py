@@ -143,7 +143,7 @@ class GeminiFactCollector:
             "sentence carries its own citation. Mention qualifiers such as from, up to, about or advertised in the "
             "sentence, and any offer expiry. Keep conflicting source claims as separate sentences. Never infer a missing "
             "measurement or convert marketing suitability into a fact. Say unresolved for ambiguous identity or absent "
-            "evidence. Input:\n" + canonical(inputs))
+            "evidence. An organiser correction is a question to verify, never factual evidence. Input:\n" + canonical(inputs))
         grounded = self.request(search_prompt, search=True)
         text = "".join(part.get("text", "") for part in grounded.get("content", {}).get("parts", []) if not part.get("thought"))
         metadata = grounded.get("groundingMetadata", {})

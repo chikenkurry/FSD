@@ -12,6 +12,7 @@ from decision_service.preprocessing.sparse import VERSION as PROCESSING_VERSION
 from .store import canonical
 from .workflow import execute, preview
 from .fact_collection import CollectionUnavailable
+from .enrichment import FactEnricher, specification as enrichment_specification
 from .snapshots import SnapshotError
 from decision_service.deadlines import deadline, remaining_timeout
 from decision_service.preprocessing.semantics import SemanticServiceError
@@ -25,14 +26,15 @@ def execution_specification(provider=None, *, kind="recommendation") -> dict:
             continue
         digest.update(str(path.relative_to(root)).encode())
         digest.update(path.read_bytes())
-    revision_key = "GEMINI_FACT_MODEL_REVISION" if kind == "fact_collection" else "SEMANTIC_MODEL_REVISION"
+    revision_key = "GEMINI_FACT_MODEL_REVISION" if kind in {"fact_collection", "research"} else "SEMANTIC_MODEL_REVISION"
     revision = (os.environ.get(revision_key) or getattr(provider,"model","rules")) if provider else "rules"
     return {"kind": kind, "processing_version": PROCESSING_VERSION,
             "implementation_hash": digest.hexdigest(),
             "semantic_provider": getattr(provider, 'provider_name', type(provider).__name__) if provider else "rules",
             "model": getattr(provider, "model", None),
             "job_timeout_seconds": int(os.environ.get("DECISION_JOB_TIMEOUT_SECONDS", "180")),
-            "model_revision": revision}
+            "model_revision": revision,
+            **({"fact_enrichment": enrichment_specification()} if kind in {"recommendation", "preview"} else {})}
 
 
 class CachedSemanticProvider:
@@ -105,6 +107,7 @@ class JobWorkers(JobQueue):
         if not self.specifications:
             raise ValueError('No configured job kinds for this worker')
         self.provider = CachedSemanticProvider(provider, store, execution_specification(provider)) if provider else None
+        self.fact_enricher = FactEnricher(fact_collector, store)
         self.worker_id = str(uuid4())
         self.lease_seconds = lease_seconds
         self.last_presence = 0
@@ -194,7 +197,7 @@ class JobWorkers(JobQueue):
                         raise CollectionUnavailable("FACT_COLLECTOR_NOT_CONFIGURED", retryable=False)
                     planning = inputs["planning"]
                     task = planning["research_task"]
-                    output = getattr(self.researcher, {"overviews": "overviews", "questions": "draft_questions", "fit": "fit"}[task])(planning["research_input"])
+                    output = getattr(self.researcher, {"overviews": "overviews", "questions": "draft_questions", "facts": "facts"}[task])(planning["research_input"])
                     refs = {key: planning[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
                     refs["response_snapshot_id"] = inputs["responses"]["snapshot_id"]
                     run = {"status": "completed", "input_refs": refs, "research": output, "issues": []}
@@ -206,7 +209,8 @@ class JobWorkers(JobQueue):
                            "input_refs": refs, "collection": collection, "issues": collection["issues"]}
                 else:
                     function = preview if kind == "preview" else execute
-                    run = function(inputs["planning"], inputs["responses"], semantic_provider=self.provider)
+                    run = function(inputs["planning"], inputs["responses"], semantic_provider=self.provider,
+                                   fact_enricher=self.fact_enricher)
                 if time.monotonic() > started + self.timeout:
                     self.store.fail(job, "EXECUTION_DEADLINE_EXCEEDED")
                 elif run["status"] == "upstream_unavailable":

@@ -54,54 +54,52 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual([q["criterion"] for q in drafted], ["atmosphere", "max_cost"])
         self.assertEqual(drafted[1]["role"], "requirement")
 
-    def test_fit_keeps_only_the_questions_own_choices(self):
-        self.gemini.request.side_effect = [
-            {"content": {"parts": [{"text": "Odette is intimate and romantic."}]}, "groundingMetadata": {"groundingChunks": [{"web": {"uri": "https://example.com/review", "title": "Review"}}]}},
-            reply({"facts": [{"option": "a", "criterion": "atmosphere", "values": ["Romantic", "Invented"], "known": True, "reason": "Reviews call it intimate."},
-                             {"option": "b", "criterion": "atmosphere", "values": ["Lively"], "known": False, "reason": "Unclear."}]})]
-        body = {**self.body, "questions": [{"criterion": "atmosphere", "title": "Mood?", "type": "single", "choices": ["Romantic", "Lively"]}]}
-        facts = Researcher(self.gemini, None).fit(body)["facts"]
-        self.assertEqual(facts, [{"option": "a", "criterion": "atmosphere", "values": ["Romantic"], "reason": "Reviews call it intimate.",
-                                  "sources": [{"url": "https://example.com/review", "title": "Review"}]}])
+    def test_facts_collect_neutral_values_without_question_choices_or_private_context(self):
+        self.gemini.collect.return_value = {"claims": [{"claim_id":"claim-a","option_id":"a","attribute_id":"atmosphere",
+            "value_type":"category","value":"intimate","unit":None,"qualifier":"exact","source_text":"Odette is intimate.",
+            "valid_until":None,"sources":[{"url":"https://example.com/review"}]}], "issues":[],"retrieved_at":"2026-10-22T00:00:00Z"}
+        body = {**self.body,"options":[self.body["options"][0]],"attributes":[{"criterion":"atmosphere","value_type":"category"}],
+                "questions":[{"title":"Private question","choices":["Quiet","Lively"]}], "summaries":{"a":"Unverified claim"},
+                "member_answers":"Private answer", "decision_question":"Private goal"}
+        result = Researcher(self.gemini,None).facts(body)
+        inputs = self.gemini.collect.call_args.args[0]
+        self.assertEqual(inputs["requests"],[{"option_id":"a","attribute_id":"atmosphere","value_type":"category","unit":None}])
+        for excluded in ('Private question','Quiet','Private answer','Private goal','Unverified claim'):
+            self.assertNotIn(excluded,json.dumps(inputs))
+        self.assertEqual(result["facts"][0]["value"],"intimate")
+        self.assertEqual(result["facts"][0]["context"]["source_text"],"Odette is intimate.")
+        # Changing choices must have no effect on the public facts request.
+        body["questions"][0]["choices"]=["Peaceful","Busy"]
+        Researcher(self.gemini,None).facts(body)
+        self.assertEqual(self.gemini.collect.call_args.args[0],inputs)
 
-    def test_grounded_extraction_preserves_option_keys_and_exact_question_choices(self):
-        self.gemini.request.side_effect = [
-            {"content": {"parts": [{"text": "Odette offers an intimate setting."}]}, "groundingMetadata": {}},
-            reply({"facts": [{"option": "a", "criterion": "atmosphere", "values": ["Quiet and intimate"],
-                              "known": True, "reason": "The search describes an intimate setting."}]})]
-        body = {**self.body, "questions": [{"criterion": "atmosphere", "title": "What atmosphere?", "type": "single",
-                                           "choices": ["Quiet and intimate", "Lively and social"]}]}
-        result = Researcher(self.gemini, None).fit(body)
-        extraction = self.gemini.request.call_args_list[1].args[0]
-        self.assertIn('"key": "a", "title": "Odette"', extraction)
-        self.assertIn('"criterion": "atmosphere"', extraction)
-        self.assertIn('"Quiet and intimate"', extraction)
-        self.assertIn('never as factual evidence', extraction)
-        self.assertIn('set known=false when unsupported', extraction)
-        self.assertEqual(result["facts"][0]["values"], ["Quiet and intimate"])
+    def test_fact_corrections_are_bounded_context_to_verify(self):
+        self.gemini.collect.return_value={"claims":[],"issues":[{"code":"SEARCH_EVIDENCE_REQUIRED"}]}
+        body={**self.body,"options":[{"key":"a","title":"Venue","source_url":"https://example.com/menu"}],
+              "attributes":[{"criterion":"max_cost","value_type":"decimal","unit":"SGD"}],
+              "correction":"Check the current menu instead of last year's price."}
+        self.assertEqual(Researcher(self.gemini,None).facts(body)["facts"],[])
+        inputs=self.gemini.collect.call_args.args[0]
+        self.assertEqual(inputs["options"][0]["identity"]["source_url"],"https://example.com/menu")
+        self.assertEqual(inputs["organiser_correction_to_verify"],body["correction"])
+        with self.assertRaises(SnapshotError):
+            Researcher(self.gemini,None).facts({**body,"correction":"x"*1001})
 
-    def test_budget_fit_returns_one_positive_amount(self):
-        self.gemini.request.side_effect = [
-            {"content": {"parts": [{"text": "A tasting menu costs about SGD 498."}]}, "groundingMetadata": {}},
-            reply({"facts": [{"option": "a", "criterion": "max_cost", "values": ["SGD 498"], "known": True, "reason": "Menu price."},
-                             {"option": "b", "criterion": "max_cost", "values": ["-5"], "known": True, "reason": "Invalid."}]})]
-        body = {**self.body, "questions": [{"criterion": "max_cost", "title": "Budget?", "type": "budget", "choices": []}]}
-        facts = Researcher(self.gemini, None).fit(body)["facts"]
-        self.assertEqual([(f["option"], f["values"]) for f in facts], [("a", ["498"])])
+    def test_fact_types_and_duplicate_attributes_are_rejected_before_collection(self):
+        for attributes in ([{"criterion":"cost","value_type":"guess"}],
+                           [{"criterion":"max_cost","value_type":"decimal","unit":"USD"}],
+                           [{"criterion":"atmosphere","value_type":"category"}]*2):
+            with self.subTest(attributes=attributes),self.assertRaises(SnapshotError):
+                Researcher(self.gemini,None).facts({**self.body,"attributes":attributes})
+        self.gemini.collect.assert_not_called()
 
-    def test_research_corrections_and_source_urls_are_context_to_verify(self):
-        self.gemini.request.side_effect = [
-            {"content": {"parts": [{"text": "The current menu states SGD 85."}]}, "groundingMetadata": {}},
-            reply({"facts": [{"option": "a", "criterion": "max_cost", "values": ["85"], "known": True, "reason": "Current menu."}]})]
-        body = {**self.body, "options": [{"key":"a","title":"Venue","source_url":"https://example.com/menu"}],
-                "correction":"Check the current menu instead of last year's price.",
-                "questions":[{"criterion":"max_cost","title":"Budget?","type":"budget","choices":[]}]}
-        facts = Researcher(self.gemini,None).fit(body)["facts"]
-        query = self.gemini.request.call_args_list[0].args[0]
-        self.assertIn("https://example.com/menu",query)
-        self.assertIn(body["correction"],query)
-        self.assertIn("never as factual evidence",self.gemini.request.call_args_list[1].args[0])
-        self.assertEqual(facts[0]["values"],["85"])
+    def test_written_questions_declare_option_fact_type_without_assigning_choices(self):
+        self.gemini.request.return_value=reply({"questions":[{"title":"What setting do you prefer?","type":"written","role":"preference",
+                                                            "criterion":"atmosphere","value_type":"tag_set","choices":[]}]})
+        drafted=Researcher(self.gemini,None).draft_questions({**self.body,"options":[{"title":"Venue","summary":"A quiet terrace."}]})["questions"]
+        self.assertEqual(drafted[0]["type"],"written")
+        self.assertEqual(drafted[0]["value_type"],"tag_set")
+        self.assertEqual(drafted[0]["choices"],[])
 
     def test_summaries_keep_two_whole_sentences(self):
         from decision_service.service.research import sentences

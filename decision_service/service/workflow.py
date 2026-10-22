@@ -7,7 +7,7 @@ from .snapshots import map_snapshots
 from .views import member_review, public_result
 
 
-def execute(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
+def execute(planning: dict, responses: dict, *, semantic_provider=None, fact_enricher=None) -> dict:
     plan, reply = map_snapshots(planning, responses)
     refs = {key: planning[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
     refs["response_snapshot_id"] = responses["snapshot_id"]
@@ -19,16 +19,22 @@ def execute(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
     if responses.get("preferences"):
         return {"status": "unsupported", "input_refs": refs, "member_states": member_states,
                 "issues": [{"code": "ACTIVITY_RATINGS_NOT_SUPPORTED"}]}
+    enrichment = None
+    if fact_enricher is not None:
+        planning, enrichment = fact_enricher.enrich(planning, responses)
+        plan, reply = map_snapshots(planning, responses)
     policy = {"group_objective": plan["group_objective"]} if plan.get("group_objective") else None
     processed = preprocess(plan, reply, policy=policy, semantic_provider=semantic_provider)
     packet = processed.get("preparation")
     base = {"input_refs": refs, "processing": processed, "member_states": member_states}
+    if enrichment is not None:
+        base["fact_enrichment"] = enrichment
     if not packet or packet["status"] != "ready":
         return {**base, "status": packet["status"] if packet else processed["status"], "issues": processed["issues"]}
     return {**base, **execute_preparation(packet, plan, responses)}
 
 
-def preview(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
+def preview(planning: dict, responses: dict, *, semantic_provider=None, fact_enricher=None) -> dict:
     """Interpret one member's current draft without ranking or freezing it."""
     if len(responses.get("participants", [])) != 1 or type(responses.get("response_revision")) is not int:
         from .snapshots import SnapshotError
@@ -39,6 +45,10 @@ def preview(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
     # Draft status does not prevent extraction; missing required answers still produce issues.
     member["response_status"] = "complete"
     plan, reply = map_snapshots(planning, responses)
+    enrichment = None
+    if fact_enricher is not None:
+        planning, enrichment = fact_enricher.enrich(planning, responses)
+        plan, reply = map_snapshots(planning, responses)
     policy = {"group_objective": plan["group_objective"]} if plan.get("group_objective") else None
     processed = preprocess(plan, reply, policy=policy, semantic_provider=semantic_provider)
     refs = {key: planning[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
@@ -51,6 +61,7 @@ def preview(planning: dict, responses: dict, *, semantic_provider=None) -> dict:
         status = adapted["status"]
         issues.extend(adapted.get("issues", []))
     return {"status": status,
+            **({"fact_enrichment": enrichment} if enrichment is not None else {}),
             "input_refs": refs, "member_states": {member["participant_id"]: "draft"},
             "processing": processed, "issues": issues,
             "preview_member_id": member["participant_id"], "response_revision": responses["response_revision"]}

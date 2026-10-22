@@ -110,7 +110,7 @@ services:
       <<: *decision-environment
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       DECISION_WORKERS: ${DECISION_WORKERS:-2}
-  # Organiser research (overviews, drafted questions, option fit) runs on its own pool
+  # Organiser research (overviews, drafted questions, option facts) runs on its own pool
   # so a slow web search never delays recommendations or previews.
   decision-research:
     build: *decision-build
@@ -127,6 +127,7 @@ services:
     command: [python, -m, decision_service.service, --role, worker, --kinds, preview]
     environment:
       <<: *decision-environment
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       DECISION_WORKERS: ${DECISION_PREVIEW_WORKERS:-1}
 volumes:
   planning-data:

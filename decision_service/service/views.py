@@ -155,12 +155,22 @@ def public_result(run: dict) -> dict:
              for row in preparation.get("fact_requests", [])]
     scenarios = [{key: row[key] for key in ("option_id", "duration_days", "earliest_start_date", "latest_start_date", "cost_evidence_status") if key in row}
                  for row in preparation.get("scenario_requests", [])]
+    supplemented = []
+    for row in run.get("fact_enrichment", {}).get("applied_facts", []):
+        fact = row["fact"]
+        context = fact.get("context", {})
+        supplemented.append({"option_id": row["option_id"], "attribute_id": fact["criterion"],
+            "value": deepcopy(fact["value"]), "value_type": fact["value_type"], "unit": fact.get("unit"),
+            "source_text": context.get("source_text", ""),
+            "sources": [{k:s[k] for k in ("url", "title") if k in s} for s in context.get("sources", [])],
+            "retrieved_at": context.get("retrieved_at")})
     return {"run_id": run["run_id"], "status": run["status"], "input_refs": run["input_refs"],
             **({"collection": deepcopy(run["collection"])} if "collection" in run else {}),
             **({"research": deepcopy(run["research"])} if "research" in run else {}),
             "job_state": run.get("job_state", "completed"),
             "execution_specification": run.get("execution_specification", {}),
             "result": result, "fact_requests": facts, "scenario_requests": scenarios,
+            "supplemented_facts": supplemented,
             "recommendation_view": recommendation_view(run),
             "issues": [{"code": issue.get("code", "PROCESSING_ISSUE")} for issue in run.get("issues", [])
                        if not issue.get("path", "").startswith("responses.participants.")]}
