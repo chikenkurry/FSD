@@ -63,6 +63,10 @@ their internal URLs and shared token, applies database migrations at startup,
 and stores databases and Decision artifacts in named volumes. Local Go, Node
 and PostgreSQL installations are not required for this setup.
 
+See [core journey recovery](integration/CORE_JOURNEY_RECOVERY.md) for fact
+correction/research, explicit approval, safe collection closure, new-round
+revision, automatic result updates and server-backed draft recovery.
+
 | Service | Responsibility | Local address |
 | --- | --- | --- |
 | Planning | Plans, options, questions, membership, guest sessions and round lifecycle | `http://127.0.0.1:18080` |

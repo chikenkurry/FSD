@@ -162,18 +162,22 @@ long-running Compose services were healthy; the migration job exited successfull
   IDs in the current creator so acknowledged partial work can be retried. There is
   no distributed transaction across these calls. An ambiguous network timeout can
   still require checking saved drafts; creation is not universally idempotent.
-- Lifecycle authority and revision checks stay server-side. The UI retains an
-  operation ID for confirmation retries and polls jobs for a bounded period; a
-  running job can subsequently be read with Refresh status.
+- Lifecycle authority and revision checks stay server-side. The UI retains
+  operation IDs for confirmation/reopen retries. Visible workspaces resume polling
+  stored pending recommendations after reload and discover confirmation updates;
+  they stop after confirmation or unmount and pause network polls while hidden.
 - Email added on the frontend branch is now backed by migration 004. It defaults
   to empty for guest users; a partial case-insensitive unique index applies only
   to nonempty addresses. Existing usernames, users and sessions are preserved.
 - The form creator currently publishes ordinary **options** decisions. Its date
   range/location are context, not generated time slots or enforced availability.
-  AI research is organiser-side and pre-publication; every result is a suggestion
-  the organiser can change. Dedicated scheduled/scenario creation, rich multi-window
-  availability editing, draft recovery across browser sessions, round-definition
-  editing/reopening, a review screen for quoted Gemini fact claims, and external
+  AI research is organiser-side and pre-publication. Organisers can correct
+  overviews, request fresh research, edit comparison facts and explicitly approve
+  them before publication. Server-backed draft recovery, joined-plan discovery,
+  new-round revision and automatic result updates are described in
+  [core journey recovery](../integration/CORE_JOURNEY_RECOVERY.md).
+  Dedicated scheduled/scenario creation, rich multi-window availability editing,
+  a review screen for the separate quoted Gemini claim API, and external
   authentication remain separate UI work.
   Existing API routes continue to provide these backend capabilities. Existing
   multi-window responses are protected from edits by this limited renderer.
@@ -255,8 +259,9 @@ UI sources. These checks are not a full accessibility certification.
 
 Creator fields, the current step, acknowledged plan/option/question/round IDs and
 web-written research briefs are checkpointed synchronously in session storage.
-Returning from the dashboard resumes the tab's current draft; publishing clears
-that checkpoint. In-flight research run IDs are keyed by user, round, task and
+Saved drafts are also recoverable from Planning without that checkpoint, including
+the wizard step. The server remains authoritative for the latest round identity.
+Publishing clears the tab checkpoint. In-flight research run IDs are keyed by user, round, task and
 exact input, so refresh polls the existing run rather than blindly starting another.
 Completed overview identities are retained; renamed options or changed context are
 researched again. Google Places details/photos are not checkpointed: they reload

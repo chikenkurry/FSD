@@ -102,9 +102,12 @@ so adding a question later triggers lookups for that question alone.
   links. The organiser sees **AI estimate** beside each one and can change it;
   organiser edits replace the estimate. Prices for budget questions are estimated
   the same way as a typical total cost per person.
-- These facts carry `status: confirmed` so the published decision can rank, as the
-  organiser reviewed them before publishing. The `estimated` flag preserves their
-  origin. Exact, quoted claims still go through
+- These facts remain `status: estimated` during draft saving. The organiser must
+  explicitly check each comparison before it becomes `confirmed`; approval writes
+  `context.reviewed: true` while preserving its AI origin. Definitions changed
+  after approval require a new review. **Research again** requests a fresh lookup,
+  optionally with a correction note, and preserves the old value until the lookup
+  finishes. See [core journey recovery](CORE_JOURNEY_RECOVERY.md). Exact, quoted claims still go through
   [Gemini fact collection](BACKEND_HARDENING.md#gemini-fact-collection) when stricter
   evidence is required.
 
