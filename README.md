@@ -13,7 +13,7 @@ Create plan, options and questions
 
 This checkout provides backend APIs, durable recommendation jobs, private draft
 previews, Gemini Search fact collection with evidence review, AI option research
-(overviews, drafted questions and option fit, with Google Places for venues), and
+(overviews, drafted questions and sourced option facts, with Google Places for venues), and
 versioned RSVPs. The Vue frontend supports AI-assisted form creation, a step-by-step
 member response flow, private review, recommendations, confirmation and RSVP. See [the full-system and frontend guide](frontend/README.md)
 for startup, mobile testing, design choices and remaining UI scope. Legacy per-activity ratings return
@@ -146,7 +146,7 @@ evaluation and benchmark tools retain their deterministic rules baseline.
 Change the URL and model to match your Ollama installation. Model outputs still
 pass preprocessing validation before ranking. This enables interpretation of
 answers. Gemini handles organiser-side research separately when GEMINI_API_KEY is
-configured: option overviews, drafted questions and option fit
+configured: option overviews, drafted questions and sourced option facts
 ([option research](integration/OPTION_RESEARCH.md)), plus quoted fact collection.
 
 ## Logs and shutdown
@@ -164,7 +164,8 @@ the [integration guide](integration/README.md#run-and-check).
 ## Service documentation
 
 - [Integration guide and API lifecycle](integration/README.md)
-- [AI option research, Google Places and option fit](integration/OPTION_RESEARCH.md)
+- [Facts, semantics and deterministic ranking](decision_service/docs/FACTS_AND_SEMANTICS.md)
+- [AI option research, Google Places and sourced option facts](integration/OPTION_RESEARCH.md)
 - [Shared snapshot schemas](contracts/snapshots.schema.json)
 - [Decision setup and examples](decision_service/docs/README.md)
 - [Decision processing flow](decision_service/docs/FLOW.md)

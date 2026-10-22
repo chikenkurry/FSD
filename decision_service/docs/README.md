@@ -1,5 +1,10 @@
 # Decision preprocessing prototype
 
+The current integrated ownership and evidence policy is documented in
+[Facts, meaning and deterministic decisions](FACTS_AND_SEMANTICS.md): reusable
+Gemini facts, local member interpretation, deterministic ranking, automatic
+supplementation and a single organiser option review.
+
 ## Shared persistence and process roles
 
 The integrated stack uses PostgreSQL and separate API/worker processes.

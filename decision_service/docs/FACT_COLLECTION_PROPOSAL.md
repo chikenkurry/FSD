@@ -1,9 +1,13 @@
 # Fact collection proposal
 
+Implemented core flow: [Facts, meaning and deterministic decisions](FACTS_AND_SEMANTICS.md). The creator now uses this grounded collector for reusable attributes; the former question-choice fit task has been removed.
+
 The Gemini Search collector and reviewed acceptance path are now implemented;
 see [the backend guide](../../integration/BACKEND_HARDENING.md#gemini-fact-collection).
 The research proposal below is retained as design context. Independent source
-verification and automatic acceptance policies remain separate work.
+verification remains a limitation. The implemented design now includes a bounded
+automatic adoption policy for exact, current, non-conflicting grounded facts; see
+the current design above. The proposal below describes the earlier manual path.
 
 Research date: 8 October 2026. No collector, network client, source connector,
 scraper, or automated approval was implemented for this proposal.

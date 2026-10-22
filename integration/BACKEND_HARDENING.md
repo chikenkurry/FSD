@@ -134,9 +134,15 @@ its history; predicted availability never creates an RSVP.
 
 ## Gemini fact collection
 
-For organiser-side overviews, drafted questions and option fit (including Google
+For organiser-side overviews, drafted questions and reusable option facts (including Google
 Places), see [AI option research](OPTION_RESEARCH.md). The collection described
 here is the stricter path for exact, quoted claims.
+
+New `facts-v1` option rounds also support bounded automatic supplementation in
+preview/recommendation workers. Exact, current, cited, non-conflicting findings
+are eligible under a recorded evidence policy, distinct from human review. This
+does not change the explicit acceptance API below. See [facts and semantics](../decision_service/docs/FACTS_AND_SEMANTICS.md)
+for privacy, cache, correction preservation, replay and unresolved-result rules.
 
 Configure `GEMINI_API_KEY` and optionally `GEMINI_FACT_MODEL` in the root env file.
 Member interpretation remains rules/Ollama; Gemini is a separate evidence collector.

@@ -1,18 +1,20 @@
 # AI option research
 
 Organisers enter options by name. Before publishing, the system looks each one up,
-drafts questions for the group, and works out how every option fits each question.
-All three steps are suggestions: the organiser sees and can change every result,
-and nothing is shared with members until the form is published.
+drafts questions for the group, and collects reusable sourced option attributes.
+The leader reviews the options once and can correct details or request fresh
+research. Questions and publishing have no per-fact approval gate. Missing facts
+are supplemented during Decision processing. Nothing is shared before publication.
 
 ```text
-Options entered ──► overviews (per option, in parallel)      ~5 s
-                      kind → Google Places / web search / AI description
-                ──► drafted questions (from overviews)        ~7 s
-                ──► option fit (per question's own choices)   ~25 s
-                      estimates stored as option facts with reason + sources
-                ──► organiser edits ──► publish
+Options -> display overviews -> optional question drafts
+        -> typed attribute requests -> grounded facts -> optional correction
+Published facts -> missing evidence supplementation
+                + member answers -> Decision interpretation -> algorithm ranking
 ```
+
+The design and rejected alternatives are documented in
+[Facts, meaning and deterministic decisions](../decision_service/docs/FACTS_AND_SEMANTICS.md).
 
 ## Configuration
 
@@ -20,7 +22,7 @@ Both keys live in `FSD/.env` (git-ignored); see [.env_example](../.env_example).
 
 | Variable | Needed for | Without it |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | Option kinds, web overviews, drafted questions, option fit, existing fact collection | Organisers enter details and questions themselves; the UI says research is unavailable |
+| `GEMINI_API_KEY` | Option kinds, web overviews, drafted questions and grounded fact collection | Organisers enter details and questions themselves; the UI says research is unavailable |
 | `GOOGLE_PLACES_API_KEY` | Venue photos, ratings, review summaries, price level, address, opening hours | Venues are described from web search only, without photos |
 | `DECISION_RESEARCH_WORKERS` | Research slots in the dedicated worker (default 6, 1–8) | — |
 
@@ -35,7 +37,7 @@ explains. CI relies on this, as it runs without provider keys.
 After changing keys, recreate the services that read them:
 
 ```sh
-docker compose -f compose.integration.yaml up -d decision decision-research
+docker compose -f compose.integration.yaml up -d decision decision-worker decision-preview decision-research
 ```
 
 Rebuild **all** Decision services together after code changes
@@ -68,19 +70,19 @@ Organiser-only POSTs go through Planning's guard; reads require plan membership.
 
 | Planning route | Purpose |
 | --- | --- |
-| `POST /v1/rounds/{draft}/research` | Admit `{"task": "overviews" \| "questions" \| "fit", "input": {...}}`. Draft rounds only (`409 FROZEN_HISTORY` once published). Returns a run, `202` while pending |
+| `POST /v1/rounds/{draft}/research` | Admit `{"task": "overviews" \| "questions" \| "facts", "input": {...}}`. Draft rounds only (`409 FROZEN_HISTORY` once published). Returns a run, `202` while pending |
 | `GET /v1/rounds/{draft}/research?run={id}` | Poll a run. Organiser-only, and only for runs admitted for this plan and round |
 | `GET /v1/rounds/{round}/place?place_id=` | Live place card for display. Only for place IDs saved on this plan's options |
 | `GET /v1/rounds/{round}/place-photo?name=` | Proxied photo bytes, with the same plan check |
 
 Decision exposes the matching internal routes (`/internal/research`,
 `/internal/places/{id}`, `/internal/places/{id}/photos/{ref}`). Research jobs use
-the durable job queue with their own `research` kind and worker pool, so a slow web
-search never delays recommendations or previews.
+the durable job queue with their own `research` kind and worker pool. Organiser
+lookups do not occupy recommendation/preview slots. Those workers may perform a
+bounded missing-fact lookup as part of their own processing.
 
 The frontend submits **one overview job per option** and renders each card as soon
-as its job completes. Fit is requested only for questions whose facts are missing,
-so adding a question later triggers lookups for that question alone.
+as its job completes. Fact research requests only missing attributes. Questions sharing an attribute reuse its facts, and changing answer choices does not trigger another lookup.
 
 ## Data handling
 
@@ -96,22 +98,25 @@ so adding a question later triggers lookups for that question alone.
   links) are saved as the option's `metadata.brief` and published in the member
   snapshot. Cards combine this stored brief with live Places details, so organisers
   and members see the same overview. Summaries are kept to two short sentences.
-- **Option fit becomes option facts** whose value is always one of the question's
-  own choices, so the existing matcher compares like with like. Each fact keeps
-  `context.estimated: true`, the model's one-sentence reason and up to three source
-  links. The organiser sees **AI estimate** beside each one and can change it;
-  organiser edits replace the estimate. Prices for budget questions are estimated
-  the same way as a typical total cost per person.
-- These facts remain `status: estimated` during draft saving. The organiser must
-  explicitly check each comparison before it becomes `confirmed`; approval writes
-  `context.reviewed: true` while preserving its AI origin. Definitions changed
-  after approval require a new review. **Research again** requests a fresh lookup,
-  optionally with a correction note, and preserves the old value until the lookup
-  finishes. See [core journey recovery](CORE_JOURNEY_RECOVERY.md). Exact, quoted claims still go through
-  [Gemini fact collection](BACKEND_HARDENING.md#gemini-fact-collection) when stricter
-  evidence is required.
+- **Scoring facts** use the grounded collector with typed attributes, exact excerpts,
+  provider citations and retained qualifiers. They are independent of answer
+  choices. Only option identities, links, region, attributes, currency/cost scope
+  and an optional public correction note go to fact research. Neither question
+  text nor member inputs are sent. Overviews are not factual evidence.
+- Exact, cited, current, non-conflicting findings are eligible automatically with
+  `verification=grounded_search`, distinct from human review. Conflicting and
+  conditional claims remain unresolved. **Use my correction** records an organiser
+  assertion. Fresh research preserves concurrent edits. Missing evidence stays unknown. See [core journey recovery](CORE_JOURNEY_RECOVERY.md).
+- Decision interprets written answers and resolves synonyms against the fact
+  vocabulary. It then passes typed meanings to the deterministic algorithm.
+  New option rounds supplement missing typed attributes before interpretation,
+  retaining the adopted evidence in the run for offline replay. Public results
+  show the supplemented facts and citations. Old published rounds retain their
+  existing choice-label policy.
 
-## Measured on 2026-10-21
+## Historical measurements of the former flow (2026-10-21)
+
+These timings predate the neutral-fact refactor and are not benchmarks of the current collector.
 
 Live run with three Singapore restaurants (Odette, Burnt Ends, Lau Pa Sat):
 overviews for all three in ~5–6 s, with Places ratings, price levels and nine
@@ -126,11 +131,13 @@ the Places region check. Times depend on provider latency and quota.
 ## Tests
 
 - `decision_service/tests/test_research.py`: kind classification and region
-  re-sorting, fallbacks without Places, question validation, fit restricted to each
-  question's own choices, budget amount parsing, and input validation before any
-  provider call. Providers are mocked.
+  re-sorting, fallbacks without Places, written question validation, public fact-request isolation, neutral values,
+  correction notes and input validation before any provider call. Providers are mocked.
 - `frontend/tests/lifecycle.spec.ts`: the browser journey uses fixed research
   responses, then publishes, invites, answers, ranks, confirms and RSVPs.
+- `decision_service/tests/test_fact_enrichment.py`: supplementation, conflict/expiry
+  handling, private-payload isolation, correction preservation, shared cache and
+  offline replay.
 - Live provider calls are not part of the automated suites.
 
 ## Known limits

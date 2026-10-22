@@ -44,7 +44,7 @@ class ServiceJourneyTests(unittest.TestCase):
                     raise
                 time.sleep(0.2)
 
-    def create_plan(self, *, unknown=False, scheduled=False, late_join=False):
+    def create_plan(self, *, unknown=False, scheduled=False, late_join=False, facts_policy=False):
         owner = call(PLANNING, 'POST', '/v1/users', {'username': 'integration-'+str(uuid4())}, status=201)
         member = call(PLANNING, 'POST', '/v1/users', {'username': 'integration-'+str(uuid4())}, status=201)
         plan = call(PLANNING, 'POST', '/v1/plans', {
@@ -82,6 +82,8 @@ class ServiceJourneyTests(unittest.TestCase):
         round_record = call(PLANNING,'POST',f"/v1/rounds/plans/{plan['id']}",{},owner['session_token'],201)
         settings = {'currency':'SGD','currency_minor_digits':2,'cost_scope':'per_person_total','timezone':'UTC',
                     'execution_mode':'scheduled' if scheduled else 'options'}
+        if facts_policy:
+            settings['interpretation_policy']='facts-v1'
         published = call(PLANNING,'POST',f"/v1/rounds/{round_record['id']}/publish",settings,owner['session_token'])
         repeat = call(PLANNING,'POST',f"/v1/rounds/{round_record['id']}/publish",settings,owner['session_token'])
         self.assertEqual(published['option_snapshot_id'],repeat['option_snapshot_id'])
@@ -125,6 +127,7 @@ class ServiceJourneyTests(unittest.TestCase):
 
     def test_publish_submit_freeze_rank_confirm_and_reopen(self):
         owner,member,plan,options,question,round_record,published,form=self.create_plan()
+        self.assertNotIn('interpretation_policy',form)
         self.assertEqual({q['question_id'] for q in form['questions']},{question['id']})
         self.submit(owner,round_record,question,published['option_revision'],budget=True)
         body,submitted=self.submit(member,round_record,question,published['option_revision'])
@@ -189,6 +192,31 @@ class ServiceJourneyTests(unittest.TestCase):
         reviewed=call(PARTICIPATION,'PUT',own,body|{'expectedRevision':copied['revision'],
             'acknowledgedOptionRevision':next_publication['option_revision']},member['session_token'])
         call(PARTICIPATION,'POST',own+'/submit',{'expectedRevision':reviewed['revision']},member['session_token'])
+
+    def test_fact_based_publication_preserves_policy_through_closure_and_ranking(self):
+        owner,member,plan,options,question,round_record,published,form=self.create_plan(facts_policy=True)
+        self.assertEqual(form['interpretation_policy'],'facts-v1')
+        for user in (owner,member):
+            self.submit(user,round_record,question,published['option_revision'])
+        root=f"/v1/rounds/{round_record['id']}"
+        call(PLANNING,'POST',root+'/close',{},owner['session_token'])
+        self.assertEqual(self.recommendation(root,owner)['status'],'ranked')
+        self.assertEqual(call(PLANNING,'GET',root+'/form',token=member['session_token']),form)
+
+    def test_fact_based_missing_evidence_does_not_block_publication_but_unresolved_result_stays_explicit(self):
+        owner,member,plan,options,question,round_record,published,form=self.create_plan(unknown=True,facts_policy=True)
+        self.assertEqual(form['interpretation_policy'],'facts-v1')
+        for user in (owner,member):
+            self.submit(user,round_record,question,published['option_revision'])
+        root=f"/v1/rounds/{round_record['id']}"
+        call(PLANNING,'POST',root+'/close',{},owner['session_token'])
+        result=self.recommendation(root,owner)
+        # Synthetic options intentionally have no research identity. Do not send
+        # them to a live provider or treat absent evidence as a confirmed value.
+        self.assertEqual(result['status'],'needs_information')
+        self.assertEqual(result['recommendation_view']['next_action'],'OPTION_FACTS_REQUIRED')
+        self.assertTrue(result['fact_requests'])
+        self.assertEqual(call(PLANNING,'GET',root+'/form',token=member['session_token']),form)
 
     def test_missing_member_keeps_collection_open(self):
         owner,member,plan,options,question,round_record,published,form=self.create_plan()

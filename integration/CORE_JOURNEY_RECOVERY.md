@@ -1,6 +1,6 @@
 # Completing and recovering a decision
 
-The normal journey is create → review comparison facts → publish → collect and
+The normal journey is create → review options once → publish → collect and
 privately review responses → close → calculate → confirm → RSVP. This change
 completes the recovery paths around that journey without changing its ranking
 policy or the ownership of Planning, Participation and Decision data.
@@ -12,23 +12,27 @@ again** for each option. An edited summary is labelled as organiser corrected;
 it does not pretend to be unmodified Google Places or web content. Google Places
 ratings, photos and credits remain display-only provider content.
 
-The Review step shows a comparison table grouped by option and question. The
-organiser can edit each value, record a source/verification note, inspect research
-citations and request fresh research with a bounded correction note. Only public
-option information and the organiser's note reach Gemini; member answers and
-private notes are not part of research requests.
+The Overview step includes an optional **View or correct supporting facts**
+editor. The organiser can edit a value, record a source, inspect citations and
+request fresh research with a bounded correction note. Only public option
+information and that note reach Gemini. Member answers and private notes stay local.
 
-Research facts start as `estimated`. Saving a draft preserves that state. Checking
-the approval box writes `status=confirmed` and `context.reviewed=true`. Earlier
-AI estimates that were saved as confirmed without this explicit approval are
-presented for review. Publishing through the creator requires valid, approved
-facts for every scored/required question and option. A context-only question
-needs no comparison fact. The low-level API still supports incomplete definitions
-for diagnostic workflows; this creator check is not a new claim of independent
-verification by the system.
+There is no fact-approval checklist at the Questions or Review steps. Publishing
+validates the form structure and does not wait for research. Exact, cited, current,
+non-conflicting findings can be used automatically; **Use my correction** records
+an explicit organiser assertion. Missing evidence remains unresolved rather than
+blocking the invitation flow.
 
-An input signature covers the option, summary, source identity, question, choices,
-units, currency and decision context. Changes invalidate earlier approvals. Slow
+Preview and recommendation workers supplement missing typed option facts through
+Gemini. They preserve confirmed corrections and record applied evidence with the
+run, without changing the published snapshot. Identical public lookups share a
+versioned six-hour cache; collection is bounded by 64 pairs and the job deadline.
+Unavailable, conditional or conflicting evidence may still block a final ranking.
+The result displays **Evidence added during calculation** with values and sources.
+
+An input signature covers the option, summary, source identity, location, attribute
+type and unit. Identity/attribute changes invalidate earlier approvals. Question
+wording and answer-choice edits preserve reusable facts. Slow
 research is applied only when both the definition and the current fact still
 match the version that was researched. It cannot replace a correction made while
 the request was running. Unchanged saved overviews are reused when a draft is
@@ -38,13 +42,38 @@ Explicit **Research again** adds a fresh request identity, bypassing reuse of a
 previous completed research job. Automatic retries/resumption retain that same
 identity. The existing value remains visible while research runs; requesting
 verification removes its earlier approval. No-evidence and failed requests keep
-the value and explain what happened. A successful replacement requires approval
-again. Empty research results are not evidence that an attribute is absent.
+the value and explain what happened. An exact, cited, non-conflicting replacement can be used automatically. Empty research results are not evidence that an attribute is absent.
 
 An organiser's approval is a human assertion, not proof that a web claim is true.
 Dietary and other safety-sensitive requirements should be checked with a reliable
 source or the provider. The separate quoted-claim collection/acceptance APIs retain
 their stricter provenance checks.
+
+## Public facts, private meanings and ranking
+
+Gemini gathers typed option attributes through the grounded collector, retaining
+source excerpts, citations and qualifiers. It does not classify options into
+question choices. Fact research excludes question text, choices, member answers
+and unverified overview summaries. Conflicting findings remain unresolved; conditional
+claims need verification/correction before use. Unknowns remain unknown.
+
+Decision/Ollama interprets scored written answers, including multiple criteria and
+explicit must-haves in one response. It resolves wording against the fact
+vocabulary and retains semantic evidence for replay. Known typed values take the
+deterministic fast path. Inferred requirements need member confirmation against
+the current saved revision. Unavailable or ambiguous interpretations block the
+new-flow submission rather than silently becoming context only.
+
+The algorithm performs feasibility, utility, weighting and fairness calculations
+without model calls. New publications set `interpretation_policy: facts-v1`;
+existing publications without the field retain their old declared-choice policy.
+See [the design and alternatives](../decision_service/docs/FACTS_AND_SEMANTICS.md).
+
+**Review form** opens immediately while fact research continues in the background.
+A visible status explains pending work; edits and navigation remain available.
+Publishing stays available while research runs. Slow response
+fences protect current edits. Member preview polling similarly retains a generation
+and response-revision fence, so leaving review to edit cannot apply an old meaning.
 
 ## Closing only complete responses
 
@@ -112,7 +141,8 @@ edits. A saved draft can be reopened from My forms after clearing the browser
 checkpoint or resuming the same guest session in another browser. On load, the
 server's latest round identity is checked before reusing local edits. Untitled
 drafts before a name/category is provided, and changes not yet acknowledged by the
-server, still rely on the current tab checkpoint. Multi-request draft saving is
+server, still rely on the current tab checkpoint. Refresh resumes an interrupted
+debounced save even when no further edit occurs. Multi-request draft saving is
 not a distributed transaction; ambiguous initial creation failures remain a
 documented limitation.
 
@@ -137,9 +167,16 @@ Run `python3 integration/test_http_lifecycle.py`, Participation's unit tests, an
 the frontend Playwright suite across desktop and mobile projects. Research/browser
 fixtures are synthetic; those checks do not establish live provider accuracy.
 
-Verified locally on 22 October 2026: 355 Decision tests (including PostgreSQL
+Earlier recovery baseline on 22 October 2026 (before the current supplementation changes): 355 Decision tests (including PostgreSQL
 store tests), 65 Participation unit tests, 15 HTTP integration journeys and all
-27 Playwright tests across desktop, mobile and 320-pixel mobile widths passed.
+30 Playwright tests across desktop, mobile and 320-pixel mobile widths passed,
+including pending research that must not block opening the review step.
 Planning's Go tests and build, the frontend type check and production build,
 and `git diff --check` also passed. The local Compose stack was rebuilt and both
 additive migrations were applied.
+
+Current neutral-fact/supplementation verification: 368 Decision tests, 17 HTTP
+integration journeys and 42 browser checks passed. Live Gemini supplementation
+and a two-member Ollama interpretation-to-ranking journey also passed. See
+[the current design](../decision_service/docs/FACTS_AND_SEMANTICS.md#verification-on-22-october-2026)
+for scope and provider-check limits.

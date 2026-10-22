@@ -50,17 +50,18 @@ Run the `up` command again after pulling code changes. Do not add `--volumes` to
      usually within seconds. Venues get Google Places photos, rating, price level and
      address; destinations, events and activities get web or general summaries. Each
      card shows the detected type (Place, Destination, Event, Activity), which the
-     organiser can change. This is what members will see.
+     organiser can change. Review the options here once; optional supporting facts
+     can be corrected or researched again here. This is what members will see.
    - **Questions:** AI drafts three to five questions from the overviews, such as
      budget, atmosphere, food style or dress code. Edit, remove or add questions;
-     AI matches options to ranking questions automatically before review.
-   - **Review:** check everything, including warnings for any option with an
-     unknown fit, then publish. Nothing is shared before publishing.
+     no per-question fact review is required. Written answers can express preferences and explicit requirements.
+   - **Review:** check the plan and questions, then publish. Background research
+     and missing facts do not block publishing. Nothing is shared before publishing.
 
    See [option research](../integration/OPTION_RESEARCH.md) for providers, keys,
    option kinds and data handling. Without `GEMINI_API_KEY` the steps still work;
-   the organiser writes questions, and options without matching facts are flagged
-   during review.
+   the organiser writes questions. Ranking reports unresolved evidence if it cannot
+   obtain the facts it needs.
 3. Create an invitation link. Open it in a private window or different browser.
    The invitee enters only their name, then sees the main question and the option
    overview cards before starting. Opening a second ordinary tab may copy session
@@ -70,17 +71,16 @@ Run the `up` command again after pulling code changes. Do not add `--volumes` to
    private interpretation; requirements need explicit confirmation before **Submit
    response** unlocks. Each step saves the draft. Editing answers clears the review.
 5. The organiser refreshes submission progress, closes collection, and calculates
-   the recommendation. Closing freezes the roster/responses even if a member is
-   incomplete, which can block ranking. Results show recommendations, alternatives,
+   the recommendation. Closing is blocked until every member has submitted a complete response; the backend checks this atomically before freezing. Results show recommendations, alternatives,
    primary ties, option costs, times where present, and aggregate unavailable states.
-6. The organiser confirms an eligible candidate. Members check for results and save
+6. The organiser confirms an eligible candidate. Members receive automatic result updates and save
    their own RSVP against the confirmed selection version. Reloading retains backend
    state; the dashboard opens the latest round for an organiser's plan.
 
-AI fit values are always one of the question's own choices, so the matcher compares
-like with like. Budget questions are requirements compared with each option's
-per-person cost (`max_cost`, Exact amount, in the chosen currency). Missing fits
-leave that question unable to rank those options, and the Review step lists them.
+Option facts retain their own evidenced values, independent of question choices.
+Decision resolves member wording and synonyms, then the algorithm applies typed
+comparisons. Written answers can mix preferences and must-haves; members review
+and confirm inferred requirements. See [the design](../decision_service/docs/FACTS_AND_SEMANTICS.md).
 
 ## Mobile layout
 
@@ -136,7 +136,7 @@ Verified on 2026-10-21: nine browser checks passed across the three viewports wi
 the AI-assisted creator and step-by-step member flow; 344 Decision tests (including
 `test_research.py`), Planning's Go tests and all 14 connected HTTP journeys passed.
 A separate live run with real Singapore venues returned Places overviews in about
-5 seconds, drafted questions and option fit, published, and showed nine photos to an
+5 seconds, drafted questions and option facts, published, and showed nine photos to an
 invited member.
 
 Verified on 2026-10-19: the production Docker build/type check passed; six browser
@@ -171,9 +171,9 @@ long-running Compose services were healthy; the migration job exited successfull
   to nonempty addresses. Existing usernames, users and sessions are preserved.
 - The form creator currently publishes ordinary **options** decisions. Its date
   range/location are context, not generated time slots or enforced availability.
-  AI research is organiser-side and pre-publication. Organisers can correct
-  overviews, request fresh research, edit comparison facts and explicitly approve
-  them before publication. Server-backed draft recovery, joined-plan discovery,
+  Organisers can correct overviews, request fresh research and save supporting-fact
+  corrections during option review. Decision also supplements missing facts during
+  preview and recommendation processing. Server-backed draft recovery, joined-plan discovery,
   new-round revision and automatic result updates are described in
   [core journey recovery](../integration/CORE_JOURNEY_RECOVERY.md).
   Dedicated scheduled/scenario creation, rich multi-window availability editing,
@@ -211,7 +211,7 @@ private/shared state separation and responsive composition.
   Search/status filters operate on the loaded organiser forms; they are not a new
   server-wide search or pagination feature. The API currently loads at most 20.
 - The creator asks for as little as possible: names, the main question and option
-  names. AI research fills in overviews, questions and option fit, each visibly
+  names. AI research fills in overviews, questions and option facts, each visibly
   labelled (photo credits, "From the web", "General description by AI", "AI
   estimate") so organisers can tell sourced content from model judgement. Inline
   validation keeps recovery beside the work.
@@ -277,22 +277,22 @@ browser tab, not cross-device recovery or recovery after clearing/closing the ta
 Ambiguous network failures before a creation ID is returned remain subject to the
 existing server API's idempotency limits.
 
-“Worth checking” lists missing comparison facts, not missing display overviews.
-Grounded extraction must receive the original option keys, criterion IDs and exact
-choice labels alongside search evidence. Unsupported claims remain missing rather
-than invented. Review displays incomplete/failed research and offers a retry;
-unresolved questions can be revised or explicitly changed to Context only.
-Missing required facts can block ranking, so the UI does not promise the scorer
-will simply ignore them. Importance ratings cannot be treated as a venue attribute;
-question drafting asks for preferences over evidenced option attributes instead.
+Supporting facts are edited in Overview, with no per-question approval gate.
+Grounded extraction receives option identities and typed attributes, excluding
+question choices and member answers. Decision supplements missing facts during
+preview/recommendation processing and records adopted evidence with the run.
+Exact, cited, current, non-conflicting claims are eligible automatically; confirmed
+organiser corrections are preserved. Unresolved evidence can still block ranking.
+The results show any added evidence and citations. See the current design document
+for eligibility, caching, replay and compatibility details.
 
 Verified on 2026-10-21: production build/type check passed; 18 Chromium checks
 passed across desktop, Pixel-sized and 320px viewports. Tests refresh partial
 creator edits, pending overview jobs, drafted questions, final review and a failed
 publish attempt, then finish the real two-member lifecycle without duplicate plans.
 Member refresh checks cover unsaved answers, extras, review position and explicit
-re-confirmation. Focused fixtures verify empty-fit retry and storage-full feedback.
+re-confirmation. Focused fixtures verify missing-fact retry and storage-full feedback.
 Nine Python research tests passed in the application’s Python 3.12 container,
-including retaining the option/criterion/choice mapping during grounded extraction.
+Those checks predate the current neutral-fact refactor; see the design document for its new coverage.
 Live restaurant claim accuracy and a successful paid Gemini retry are not claimed
 by these deterministic regression tests.
