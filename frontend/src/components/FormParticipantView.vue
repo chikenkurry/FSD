@@ -57,6 +57,7 @@
             <button type="button" class="btn-quiet" @click="back"><UiIcon name="back" />Back</button>
             <button type="submit" class="btn-primary btn-large">{{ busy ? 'Saving…' : answered(page.q) || page.q.required ? 'Next' : 'Skip' }}<UiIcon v-if="!busy" name="arrow" /></button>
           </div>
+          <details v-if="guided" class="done-options"><summary>See the options ({{ snapshot.options.length }})</summary><OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" compact /></details>
         </fieldset>
       </form>
 
@@ -67,6 +68,7 @@
           <p class="lede">Both are optional.</p>
           <fieldset class="answer-group restrictions">
             <legend>Can you take part in every option?</legend>
+            <p class="helper-text restriction-hint">Choosing “I can’t join this” rules the option out for the group.</p>
             <div v-for="option in snapshot.options" :key="option.option_id" class="restriction-row">
               <span>{{ option.title }}</span>
               <select v-model="flags[option.option_id]" :aria-label="`${option.title}: can you take part?`"><option value="">I can join</option><option value="CANNOT_JOIN">I can’t join this</option><option value="NEEDS_INFORMATION">I need more information</option></select>
@@ -80,6 +82,7 @@
             <button type="button" class="btn-quiet" @click="back"><UiIcon name="back" />Back</button>
             <button type="submit" class="btn-primary btn-large">{{ busy ? 'Saving…' : 'Review answers' }}<UiIcon v-if="!busy" name="arrow" /></button>
           </div>
+          <details v-if="guided" class="done-options"><summary>See the options ({{ snapshot.options.length }})</summary><OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" compact /></details>
         </fieldset>
       </form>
 
@@ -88,9 +91,9 @@
         <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">Review your answers</h2>
         <p class="lede">Check everything before you submit. You can change your answers until collection closes.</p>
         <dl class="answer-summary">
-          <div v-for="(q, i) in snapshot.questions" :key="q.question_id" class="rise" :style="{ '--i': i }">
-            <dt>{{ q.label }}</dt>
-            <dd><span :class="{ muted: !answered(q) }">{{ answerText(q) }}</span><button v-if="!closed" type="button" class="btn-quiet btn-small" @click="go(questionPage(i))">Change<span class="sr-only"> answer to {{ q.label }}</span></button></dd>
+          <div v-for="(q, i) in snapshot.questions" :key="q.question_id" :class="['rise', { 'has-issue': !!questionIssue(q.question_id) }]" :style="{ '--i': i }">
+            <dt>{{ q.label }}<span v-if="questionIssue(q.question_id)" class="question-issue">{{ issueLabel(questionIssue(q.question_id)!) }}</span></dt>
+            <dd><span :class="{ muted: !answered(q) }">{{ answerText(q) }}</span><button v-if="!closed" type="button" class="btn-quiet btn-small" @click="go(questionPage(i))">{{ questionIssue(q.question_id) ? 'Clarify' : 'Change' }}<span class="sr-only"> answer to {{ q.label }}</span></button></dd>
           </div>
           <div v-if="flagCount || privateNote" class="rise" :style="{ '--i': total }">
             <dt>Extras</dt>
@@ -198,6 +201,9 @@ function issueLabel(issue: Review['issues'][number]) {
   if (issue.code === 'SEMANTIC_SERVICE_UNAVAILABLE') return 'The meaning check is unavailable. Try again; your saved answers are kept.';
   if (issue.code === 'SEMANTIC_PROVIDER_REQUIRED') return 'Written answers need a meaning check before submission. Ask the organiser to check the service configuration.';
   return issue.message || issue.code.toLowerCase().replaceAll('_', ' ');
+}
+function questionIssue(questionId: string) {
+  return review.value?.issues.find(i => i.question_id === questionId && i.code !== 'CONFIRM_REQUIREMENT');
 }
 function choiceId(choice: Choice) { return typeof choice === 'string' ? choice : choice.choice_id; }
 function choiceLabel(choice: Choice) { return typeof choice === 'string' ? choice : choice.label; }
@@ -400,7 +406,8 @@ onMounted(async () => { await load(); if (loaded && !submitted.value && !closed.
 .flow-actions .helper-text { margin: 0; }
 .btn-large { min-height: 50px; padding: 12px 24px; font-size: 1rem; min-width: 150px; }
 .restrictions { margin-top: 8px; }
-.restrictions > legend { margin-bottom: 12px; }
+.restrictions > legend { margin-bottom: 4px; }
+.restriction-hint { margin: 0 0 12px; }
 .restriction-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 240px); gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: .9375rem; overflow-wrap: anywhere; }
 .note-field { position: relative; margin-top: 24px; }
 .char-count { position: absolute; right: 0; top: 0; font-size: .75rem; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -408,6 +415,8 @@ onMounted(async () => { await load(); if (loaded && !submitted.value && !closed.
 .answer-summary > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; padding: 12px 16px; font-size: .875rem; }
 .answer-summary > div + div { border-top: 1px solid var(--line); }
 .answer-summary dt { color: var(--muted); overflow-wrap: anywhere; }
+.answer-summary > div.has-issue { background: #fff9ed; }
+.question-issue { display: block; margin-top: 4px; font-size: .75rem; font-weight: 600; color: #805114; }
 .answer-summary dd { margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; overflow-wrap: anywhere; }
 .answer-summary dd .muted { font-weight: 400; }
 .answer-summary dd button { flex-shrink: 0; color: var(--accent); }

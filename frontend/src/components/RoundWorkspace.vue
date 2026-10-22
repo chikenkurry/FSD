@@ -6,7 +6,7 @@
     <template v-else-if="snapshot && plan">
       <header class="round-header page-heading">
         <div>
-          <div class="round-meta"><Transition name="swap" mode="out-in"><span :key="displayState" :class="['badge', displayState.toLowerCase()]">{{ stateLabel(displayState) }}</span></Transition><span>{{ organiser ? 'You’re organising' : 'You’re a member' }}</span><span aria-hidden="true">·</span><span>Costs in {{ snapshot.currency }}</span></div>
+          <div class="round-meta"><Transition name="swap" mode="out-in"><span :key="displayState" :class="['badge', displayState.toLowerCase()]">{{ stateLabel(displayState) }}</span></Transition><span>{{ organiser ? 'You’re organising' : 'You’re a member' }}</span><span aria-hidden="true">·</span><span>Costs in {{ snapshot.currency }}</span><template v-if="roundList.length > 1"><span aria-hidden="true">·</span><span>Round {{ currentRoundNumber }} of {{ roundList.length }}</span></template><button v-if="!historical && snapshot.previous_round_id" type="button" class="btn-quiet btn-small round-switch" @click="emit('open-round', snapshot.previous_round_id)">View earlier round</button></div>
           <h1>{{ plan.title }}</h1>
           <p v-if="snapshot.decision_question && snapshot.decision_question !== plan.title" class="decision-question">{{ snapshot.decision_question }}</p>
           <p v-if="plan.description" class="plan-description">{{ plan.description }}</p>
@@ -32,12 +32,13 @@
           </div>
           <div class="actions">
             <button class="btn-primary" v-if="plan.state === 'COLLECTING' && !shareUrl" :disabled="busy" @click="makeInvite"><UiIcon name="people" />Create invitation link</button>
+            <button type="button" v-if="plan.state === 'COLLECTING' && ownIncomplete" @click="scrollToOwnResponse">Answer your response</button>
             <button v-if="plan.state === 'COLLECTING'" :disabled="busy || !readiness?.can_close" @click="close">Close collection</button>
             <button class="btn-primary" v-if="plan.state === 'REVIEWING'" :disabled="busy || run?.status === 'pending'" @click="recommend">{{ calculating || run?.status === 'pending' ? 'Calculating…' : run?.status === 'failed' ? 'Retry recommendation' : run ? 'Recalculate' : 'Calculate recommendation' }}<UiIcon v-if="!calculating && run?.status !== 'pending'" name="arrow" /></button>
           </div>
           <div v-if="plan.state === 'COLLECTING' && readiness && !readiness.can_close" class="callout warning">
             <p>Collection stays open until every member has submitted a complete, current response.</p>
-            <ul><li v-for="(member,index) in readiness.members_status.filter(m=>m.status!=='complete')" :key="index">{{ member.name }}: {{ member.status === 'stale' ? 'Needs to review the current form' : 'Awaiting complete submission' }}</li></ul>
+            <ul class="incomplete-list"><li v-for="(member,index) in readiness.members_status.filter(m=>m.status!=='complete')" :key="member.id || index"><span>{{ member.name }}<template v-if="member.user_id === auth.userID"> (you)</template>: {{ member.status === 'stale' ? 'Needs to review the current form' : 'Awaiting complete submission' }}</span><button v-if="member.id && member.role !== 'ORGANISER' && member.user_id !== auth.userID" type="button" class="btn-quiet btn-danger btn-small" :disabled="busy" @click="removeRosterMember(member)">Remove</button></li></ul>
           </div>
           <Transition name="reveal">
             <div v-if="shareUrl && plan.state === 'COLLECTING'" class="invitation-field">
@@ -55,14 +56,16 @@
         <h2>Need to change the decision?</h2><p>Revise the options, facts or questions in a new round. This round and any confirmed choice remain in the history. Members review their answers again.</p>
         <button :disabled="busy" @click="reopen">Revise in a new round</button>
       </section>
-      <p v-if="historical" class="callout">You’re viewing an earlier round. Its result is preserved; RSVPs for it are read-only.</p>
+      <div v-if="historical" class="callout historical-callout"><p>You’re viewing an earlier round. Its result is preserved; RSVPs for it are read-only.</p><button v-if="latestRoundId && latestRoundId !== roundId" type="button" class="btn-small" @click="openLatestRound">Open latest round<UiIcon name="arrow" /></button></div>
 
       <section class="options-section" aria-labelledby="options-heading">
         <h2 id="options-heading">Options being considered <span class="muted">{{ snapshot.options.length }}</span></h2>
         <OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" :chosen="selection?.candidate_id" compact />
       </section>
 
-      <FormParticipantView v-if="plan.state === 'COLLECTING' && !historical" :round-id="roundId" :snapshot="snapshot" @saved="updateProgress" />
+      <div v-if="plan.state === 'COLLECTING' && !historical" ref="ownResponseBox">
+        <FormParticipantView :round-id="roundId" :snapshot="snapshot" @saved="updateProgress" />
+      </div>
 
       <Transition name="reveal">
         <section class="recommendation-section" v-if="run" aria-labelledby="recommendation-heading">
@@ -98,7 +101,7 @@
           </div>
           <div v-if="run.recommendation_view.unavailable_candidates.length" class="unavailable">
             <h3>Ruled out</h3>
-            <ul><li v-for="candidate in run.recommendation_view.unavailable_candidates" :key="candidate.candidate_id"><span>{{ candidate.title }}</span><span class="muted">{{ unavailableLabel(candidate.status) }}</span></li></ul>
+            <ul><li v-for="candidate in run.recommendation_view.unavailable_candidates" :key="candidate.candidate_id"><span>{{ candidate.title }}</span><span class="muted">{{ unavailableReason(candidate) }}</span></li></ul>
           </div>
         </section>
       </Transition>
@@ -109,13 +112,25 @@
             <span class="seal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg></span>
             <div><h2 id="selection-heading">Confirmed selection</h2><p class="selected-title">{{ selectedTitle }}</p></div>
           </div>
+          <p v-if="selectedSummary" class="selected-summary">{{ selectedSummary }}</p>
           <p class="muted">The choice is confirmed. Let your group know whether you’ll be joining.</p>
+          <div v-if="rsvpSummary && rsvpSummary.total > 0" class="rsvp-summary" aria-label="Group attendance">
+            <span><strong>{{ rsvpSummary.going }}</strong> going</span>
+            <span aria-hidden="true">·</span>
+            <span><strong>{{ rsvpSummary.maybe }}</strong> maybe</span>
+            <span aria-hidden="true">·</span>
+            <span><strong>{{ rsvpSummary.declined }}</strong> not joining</span>
+          </div>
+          <p v-if="organiser && !historical && rsvpSummary && rsvpSummary.declined > 0" class="callout warning rsvp-decline-note">
+            {{ rsvpSummary.declined === 1 ? '1 member can’t join' : `${rsvpSummary.declined} members can’t join` }} this confirmed choice. Revise in a new round above if the group needs to choose another option.
+          </p>
           <fieldset class="rsvp" :disabled="busy || historical">
             <legend>Your RSVP</legend>
             <div class="choice-list rsvp-options">
               <label v-for="o in rsvpOptions" :key="o.value" class="choice-option"><input type="radio" name="rsvp" :value="o.value" v-model="rsvpStatus" />{{ o.label }}</label>
             </div>
             <div class="rsvp-actions"><button class="btn-primary" :disabled="busy || !rsvpStatus || rsvpStatus === savedRsvp" @click="saveRsvp">{{ savedRsvp ? 'Update RSVP' : 'Save RSVP' }}</button>
+              <button type="button" @click="downloadCalendar"><UiIcon name="document" />Calendar (.ics)</button>
               <Transition name="reveal"><p v-if="notice" role="status" class="saved-note"><UiIcon name="check" />{{ notice }}</p></Transition></div>
           </fieldset>
           <p class="helper-text">Selection version {{ selection.selection_version }}</p>
@@ -130,18 +145,21 @@ import UiIcon from './UiIcon.vue';
 import FormParticipantView from './FormParticipantView.vue';
 import OptionCards from './OptionCards.vue';
 import { apiService, ApiError, request } from '@/services/api';
+import { checkpointKey, readCheckpoint, writeCheckpoint } from '@/services/checkpoints';
 import { operationId } from '@/services/ids';
 import { factLabel } from '@/services/facts';
 import { useAuthStore } from '@/stores/auth';
-import type { Snapshot, PlanRow, Run, Selection, Candidate } from '@/types/form';
+import type { Snapshot, PlanRow, Round, Run, Selection, Candidate, ReadinessMember, RsvpSummary } from '@/types/form';
 const props = defineProps<{ roundId: string; inviteToken?: string }>();
 const emit=defineEmits<{(event:'open-round',id:string):void;(event:'open-draft',id:string):void}>();
-const auth = useAuthStore(); const snapshot = ref<Snapshot>(); const plan = ref<PlanRow>();
+const auth = useAuthStore(); const snapshot = ref<Snapshot>(); const plan = ref<PlanRow>(); const roundList = ref<Round[]>([]);
 const run = ref<Run>(); const selection = ref<Selection>(); const busy = ref(false); const error = ref('');
-const shareUrl = ref(''); const copied = ref(false); const notice = ref(''); const calculating = ref(false);
-const readiness = ref<{ submitted: number; members: number; can_close:boolean; members_status:{name:string;status:string}[] }>(); const progressError = ref('');
+const inviteCheckpointKey = computed(() => checkpointKey(auth.userID, `invite:${props.roundId}`));
+const shareUrl = ref(readCheckpoint<string>(inviteCheckpointKey.value) || ''); const copied = ref(false); const notice = ref(''); const calculating = ref(false);
+const readiness = ref<{ submitted: number; members: number; can_close:boolean; members_status:ReadinessMember[] }>(); const progressError = ref('');
 const backgroundError=ref('');const historical=ref(false);let pollTimer:ReturnType<typeof setTimeout> | undefined;let polling=false;
-const rsvpStatus = ref(''); const savedRsvp = ref(''); const rsvpRevision = ref(0); let alive = true;
+const rsvpStatus = ref(''); const savedRsvp = ref(''); const rsvpRevision = ref(0); const rsvpSummary = ref<RsvpSummary>(); let alive = true;
+const ownResponseBox = ref<HTMLElement>();
 const rsvpOptions = [{ value: 'GOING', label: 'Going' }, { value: 'MAYBE', label: 'Maybe' }, { value: 'DECLINED', label: 'Not joining' }];
 const organiser = computed(() => plan.value?.created_by_user_id === auth.userID);
 const displayState=computed(()=>historical.value ? selection.value ? 'CONFIRMED':'REVIEWING' : plan.value?.state || '');
@@ -150,7 +168,12 @@ const memberCollecting = computed(() => !organiser.value && !historical.value &&
 const hasPreferences = computed(() => snapshot.value?.questions.some(question => question.role === 'soft' || !question.role));
 const candidates = computed(() => run.value?.recommendation_view.recommendation ? [run.value.recommendation_view.recommendation, ...run.value.recommendation_view.alternatives] : []);
 const paretoIds = computed(() => new Set(run.value?.recommendation_view.pareto_alternatives.map(row => row.candidate_id)));
-const selectedTitle = computed(() => candidates.value.find(row => row.candidate_id === selection.value?.candidate_id)?.title || snapshot.value?.options.find(row => row.option_id === selection.value?.candidate_id)?.title || 'Selection confirmed');
+const selectedOption = computed(() => snapshot.value?.options.find(row => row.option_id === selection.value?.candidate_id));
+const selectedTitle = computed(() => candidates.value.find(row => row.candidate_id === selection.value?.candidate_id)?.title || selectedOption.value?.title || 'Selection confirmed');
+const selectedSummary = computed(() => selectedOption.value?.brief?.summary || selectedOption.value?.description || '');
+const ownIncomplete = computed(() => !!readiness.value?.members_status.some(m => m.user_id === auth.userID && m.status !== 'complete'));
+const currentRoundNumber = computed(() => roundList.value.find(r => r.id === props.roundId)?.round_number || 1);
+const latestRoundId = computed(() => [...roundList.value].sort((a, b) => b.round_number - a.round_number)[0]?.id || '');
 const actionMessages: Record<string,string> = {
   OPTION_FACTS_REQUIRED: 'Some option facts remain unresolved after the evidence check. The organiser can correct them or try fresh research by revising in a new round.',
   RESPONSES_OR_CONFIRMATIONS_REQUIRED: 'Responses or requirement confirmations are incomplete. Review the round before requesting another calculation.',
@@ -160,7 +183,19 @@ const actionMessages: Record<string,string> = {
 const nextAction = computed(() => actionMessages[run.value?.recommendation_view.next_action || ''] ?? '');
 function stateLabel(value: string) { return value.toLowerCase().replaceAll('_', ' ').replace(/^./, c => c.toUpperCase()); }
 function safeSource(value:string){try{return new URL(value).protocol==='https:';}catch{return false;}}
-function unavailableLabel(status: string) { return ({ INFEASIBLE: 'Doesn’t meet the group’s requirements' } as Record<string,string>)[status] || stateLabel(status); }
+function unavailableLabel(status: string) { return ({ INFEASIBLE: 'Doesn’t meet the group’s requirements', UNRESOLVED: 'Needs verified option details' } as Record<string,string>)[status.toUpperCase()] || stateLabel(status); }
+function unavailableReason(candidate: { candidate_id: string; status: string }) {
+  if (candidate.status.toUpperCase() === 'UNRESOLVED') {
+    const missing = (run.value?.fact_requests || []).filter(f => f.option_id === candidate.candidate_id).map(f => factLabel(f.attribute_id));
+    if (missing.length) return `Needs verified details: ${missing.join(', ')}`;
+  }
+  return unavailableLabel(candidate.status);
+}
+function scrollToOwnResponse() { ownResponseBox.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function openLatestRound() {
+  if (plan.value?.state === 'DRAFT' && organiser.value && snapshot.value) emit('open-draft', snapshot.value.plan_id);
+  else if (latestRoundId.value) emit('open-round', latestRoundId.value);
+}
 function ordinal(n: number) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]!); }
 const phase = computed(() => selection.value ? 2 : plan.value?.state === 'REVIEWING' ? 1 : plan.value?.state === 'CONFIRMED' ? 2 : 0);
 function percent(value: number) { return `${Math.round(value*100)}%`; }
@@ -172,21 +207,26 @@ async function load() {
   snapshot.value = await apiService.snapshot(props.roundId);
   plan.value = await apiService.plan(snapshot.value.plan_id);
   const rounds=await apiService.rounds(snapshot.value.plan_id);
+  roundList.value = [...rounds.data].sort((a,b)=>a.round_number-b.round_number);
   historical.value=[...rounds.data].sort((a,b)=>b.round_number-a.round_number)[0]?.id!==props.roundId;
   run.value = await optional(() => apiService.result(props.roundId));
   selection.value = await optional(() => apiService.selection(props.roundId));
-  if (selection.value) { const own = await apiService.rsvp(props.roundId); rsvpRevision.value = own.revision; rsvpStatus.value = savedRsvp.value = own.status || ''; }
+  if (selection.value) { const own = await apiService.rsvp(props.roundId); rsvpRevision.value = own.revision; rsvpStatus.value = savedRsvp.value = own.status || ''; rsvpSummary.value = own.summary; }
   await updateProgress();
 }
 async function refresh() { await act(load); }
 async function updateProgress() {
   if (!organiser.value || plan.value?.state !== 'COLLECTING') { readiness.value = undefined; return; }
   try {
-    const row = await request<{ member_count:number; complete_count:number; can_close:boolean; members:{name:string;status:string}[]; progress: { submittedCount?:number } }>(`/api/planning/v1/rounds/${props.roundId}/readiness`);
+    const row = await request<{ member_count:number; complete_count:number; can_close:boolean; members:ReadinessMember[]; progress: { submittedCount?:number } }>(`/api/planning/v1/rounds/${props.roundId}/readiness`);
     readiness.value = { submitted: row.complete_count, members: row.member_count, can_close:row.can_close, members_status:row.members }; progressError.value = '';
   } catch { readiness.value = undefined; progressError.value = 'Progress could not be loaded. Refresh before closing.'; }
 }
-async function makeInvite() { await act(async () => { const invite=await apiService.invite(snapshot.value!.plan_id,auth.userID); shareUrl.value=`${location.origin}/#${new URLSearchParams({round:props.roundId,invite:invite.token})}`; }); }
+async function removeRosterMember(member: ReadinessMember) {
+  if (!member.id || !window.confirm(`Remove ${member.name} from this plan?`)) return;
+  await act(async () => { await apiService.removeMember(member.id!); await updateProgress(); });
+}
+async function makeInvite() { await act(async () => { const invite=await apiService.invite(snapshot.value!.plan_id,auth.userID); shareUrl.value=`${location.origin}/#${new URLSearchParams({round:props.roundId,invite:invite.token})}`; writeCheckpoint(inviteCheckpointKey.value, shareUrl.value); }); }
 async function copyInvite() { await act(async () => { await navigator.clipboard.writeText(shareUrl.value); copied.value=true; setTimeout(() => { copied.value = false; }, 2400); }); }
 async function close() {
   const count = readiness.value ? ` ${readiness.value.submitted} of ${readiness.value.members} members have submitted.` : '';
@@ -206,11 +246,11 @@ async function pollStatus(){
   polling=true;
   try{
     const current=await apiService.plan(snapshot.value!.plan_id);if(!alive)return;const previousState=plan.value?.state;plan.value=current;
-    if(current.state!==previousState){const rounds=await apiService.rounds(snapshot.value!.plan_id);if(alive)historical.value=[...rounds.data].sort((a,b)=>b.round_number-a.round_number)[0]?.id!==props.roundId;}
+    if(current.state!==previousState){const rounds=await apiService.rounds(snapshot.value!.plan_id);if(alive){roundList.value=[...rounds.data].sort((a,b)=>a.round_number-b.round_number);historical.value=[...rounds.data].sort((a,b)=>b.round_number-a.round_number)[0]?.id!==props.roundId;}}
     if(current.state==='COLLECTING' && !historical.value){await updateProgress();backgroundError.value='';return;}
     const latestRun=await optional(()=>apiService.result(props.roundId));if(!alive)return;run.value=latestRun;
     const chosen=await optional(()=>apiService.selection(props.roundId));if(!alive)return;
-    if(chosen && !selection.value){selection.value=chosen;const own=await apiService.rsvp(props.roundId);if(!alive)return;rsvpRevision.value=own.revision;rsvpStatus.value=savedRsvp.value=own.status || '';}
+    if(chosen){const first=!selection.value;selection.value=chosen;const own=await apiService.rsvp(props.roundId);if(!alive)return;rsvpSummary.value=own.summary;if(first){rsvpRevision.value=own.revision;rsvpStatus.value=savedRsvp.value=own.status || '';}}
     await updateProgress();backgroundError.value='';
   }catch{if(alive)backgroundError.value='Status could not be updated. Your saved response and background calculation are retained; updates will retry.';}
   finally{polling=false;schedulePoll();}
@@ -224,7 +264,31 @@ async function confirm(candidate: Candidate) {
     selection.value=await apiService.confirm(props.roundId,run.value!.run_id,candidate.candidate_id,operation); await load();
   });
 }
-async function saveRsvp() { notice.value = ''; await act(async () => { await apiService.saveRsvp(props.roundId,selection.value!.selection_version,rsvpRevision.value,rsvpStatus.value); const own=await apiService.rsvp(props.roundId);rsvpRevision.value=own.revision;savedRsvp.value=own.status || rsvpStatus.value;notice.value='RSVP saved.'; }); }
+async function saveRsvp() { notice.value = ''; await act(async () => { await apiService.saveRsvp(props.roundId,selection.value!.selection_version,rsvpRevision.value,rsvpStatus.value); const own=await apiService.rsvp(props.roundId);rsvpRevision.value=own.revision;savedRsvp.value=own.status || rsvpStatus.value;rsvpSummary.value=own.summary;notice.value='RSVP saved.'; }); }
+function downloadCalendar() {
+  if (!plan.value || !selection.value) return;
+  const candidate = candidates.value.find(c => c.candidate_id === selection.value?.candidate_id);
+  const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const now = new Date();
+  const start = candidate?.start_at ? new Date(candidate.start_at) : new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 19, 0, 0);
+  const end = candidate?.end_at ? new Date(candidate.end_at) : new Date(start.getTime() + 7200000);
+  const clean = (v?: string) => (v || '').replace(/\r?\n/g, '\\n').replace(/[,;]/g, '\\$&');
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//What2Do//Confirmed Plan//EN', 'BEGIN:VEVENT',
+    `UID:${props.roundId}-v${selection.value.selection_version}@what2do`,
+    `DTSTAMP:${stamp(now)}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
+    `SUMMARY:${clean(`${plan.value.title}: ${selectedTitle.value}`)}`,
+    ...(selectedSummary.value ? [`DESCRIPTION:${clean(selectedSummary.value)}`] : []),
+    ...(selectedOption.value?.brief?.where ? [`LOCATION:${clean(selectedOption.value.brief.where)}`] : []),
+    'END:VEVENT', 'END:VCALENDAR',
+  ];
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = `${plan.value.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'plan'}.ics`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 onMounted(async () => { await act(async () => {
   if (props.inviteToken) {
     try { await apiService.snapshot(props.roundId); }
@@ -304,6 +368,13 @@ onUnmounted(()=>{alive=false;clearTimeout(pollTimer);document.removeEventListene
 .unavailable li + li { border-top: 1px solid var(--line); }
 .unavailable li > span:first-child { text-decoration: line-through; text-decoration-color: #9aa79f; }
 
+.round-switch { padding: 2px 8px; min-height: 28px; font-size: .75rem; color: var(--accent); }
+.historical-callout { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.historical-callout p { margin: 0; }
+.incomplete-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.selected-summary { font-size: .875rem; color: var(--ink); margin: 0 0 10px; }
+.rsvp-summary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 14px; margin-bottom: 12px; border-radius: 7px; background: #f3f6f2; border: 1px solid var(--line); font-size: .8125rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rsvp-decline-note { margin: 0 0 16px; }
 .selection-panel { border-color: #a9c5b2; }
 .selection-head { display: flex; align-items: center; gap: 18px; margin-bottom: 12px; }
 .selection-head h2 { font-size: .875rem; color: var(--accent); margin-bottom: 2px; letter-spacing: 0; }
