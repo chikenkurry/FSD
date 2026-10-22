@@ -322,7 +322,7 @@ function syncFactSignatures(){
 watch(()=>JSON.stringify([form.currency,form.location,form.decisionOptions?.map(o=>[o.title,o.summary,o.identity]),reviewDefinitions.value]),syncFactSignatures,{flush:'sync',immediate:true});
 watch(()=>form.currency,()=>{for(const q of form.questions)if(q.criterion==='max_cost')q.unit=form.currency || 'SGD';});
 async function loadServerDraft(){
-  if(!props.planId)return;
+  if(!props.planId || (restored && restored.form.roundId))return;
   loadingDraft.value=true;draftLoadError.value='';
   try{ const row=await apiService.loadFormDraft(props.planId);
     if(restored && restored.form.roundId===row.roundId)return;
@@ -451,7 +451,6 @@ const saveError = ref('');
 async function show(step: number) {
   direction.value = step >= currentStep.value ? 1 : -1;
   currentStep.value = step; visited.value = Math.max(visited.value, step); saveError.value = '';
-  if (!loadingDraft.value && !draftLoadError.value && !isSaving.value && form.id && form.title.trim() && form.category && !form.publishAttempted) void saveServerDraft();
   await nextTick();
   if (stepTop.value && stepTop.value.getBoundingClientRect().top < 0) stepTop.value.scrollIntoView({ block: 'start' });
   // Wait for the outgoing step to leave before moving focus to the new heading.

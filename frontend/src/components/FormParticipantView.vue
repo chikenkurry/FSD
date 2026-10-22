@@ -91,9 +91,9 @@
         <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">Review your answers</h2>
         <p class="lede">Check everything before you submit. You can change your answers until collection closes.</p>
         <dl class="answer-summary">
-          <div v-for="(q, i) in snapshot.questions" :key="q.question_id" :class="['rise', { 'has-issue': !!questionIssue(q.question_id) }]" :style="{ '--i': i }">
-            <dt>{{ q.label }}<span v-if="questionIssue(q.question_id)" class="question-issue">{{ issueLabel(questionIssue(q.question_id)!) }}</span></dt>
-            <dd><span :class="{ muted: !answered(q) }">{{ answerText(q) }}</span><button v-if="!closed" type="button" class="btn-quiet btn-small" @click="go(questionPage(i))">{{ questionIssue(q.question_id) ? 'Clarify' : 'Change' }}<span class="sr-only"> answer to {{ q.label }}</span></button></dd>
+          <div v-for="(q, i) in snapshot.questions" :key="q.question_id" class="rise" :style="{ '--i': i }">
+            <dt>{{ q.label }}</dt>
+            <dd><span :class="{ muted: !answered(q) }">{{ answerText(q) }}</span><button v-if="!closed" type="button" class="btn-quiet btn-small" @click="go(questionPage(i))">Change<span class="sr-only"> answer to {{ q.label }}</span></button></dd>
           </div>
           <div v-if="flagCount || privateNote" class="rise" :style="{ '--i': total }">
             <dt>Extras</dt>
@@ -101,29 +101,12 @@
           </div>
         </dl>
 
-        <div class="interpretation-box" aria-live="polite">
-          <div v-if="busyAction === 'preview'" class="checking"><span class="pulse" aria-hidden="true"></span>Checking how your answers will be read…</div>
-          <template v-else-if="review">
-            <h3>How your answers will be read</h3>
-            <p v-for="(issue, i) in review.issues" :key="i" class="helper-text">{{ issueLabel(issue) }}</p>
-            <button v-if="interpretationBlocked && !closed" type="button" class="btn-quiet btn-small" @click="preview">Check interpretation again</button>
-            <dl class="interpretation" v-if="review.preferences?.length || requirements.length">
-              <div v-for="(row,index) in review.preferences" :key="`p${index}`"><dt>{{ humanise(row.attribute_id) }}</dt><dd>{{ preferenceText(row) }} <span class="kind">{{ row.polarity === 'avoid' ? 'Avoid' : 'Preference' }}</span></dd></div>
-              <div v-for="(row,index) in requirements" :key="`r${index}`"><dt>{{ humanise(row.attribute_id) }}</dt><dd>{{ ruleLabel(row.constraint_rule) }} {{ display(row.required_value) }} {{ row.unit || '' }} <span class="kind requirement">Requirement</span></dd></div>
-            </dl>
-            <details v-if="review.issues.length" class="review-diagnostics"><summary>Technical details</summary><ul><li v-for="(issue, index) in review.issues" :key="index">{{ issue.code }}<template v-if="issue.message">: {{ issue.message }}</template></li></ul></details>
-            <label v-if="requirements.length" class="confirm-row choice-option"><input v-model="confirmed" type="checkbox" :disabled="closed" />These requirements match my answers.</label>
-          </template>
-          <p v-else-if="previewError" class="helper-text">{{ previewError }} <button type="button" class="btn-quiet btn-small" @click="preview">Try again</button></p>
-        </div>
-
         <Transition name="reveal"><p v-if="error" role="alert" class="error">{{ error }}</p></Transition>
         <p v-if="closed" class="callout">{{ unsupportedEditor ? 'This response is read-only to preserve its availability windows.' : 'This round is closed. Your submitted response remains available here.' }}</p>
         <div v-else class="flow-actions split">
           <button type="button" class="btn-quiet" @click="back"><UiIcon name="back" />Back</button>
-          <button type="submit" class="btn-primary btn-large" :disabled="busy || interpretationBlocked || (!!requirements.length && !confirmed)" :aria-describedby="requirements.length ? 'submit-hint' : undefined">{{ busyAction === 'submit' ? 'Submitting…' : draft.status === 'SUBMITTED' ? 'Update response' : 'Submit response' }}<UiIcon v-if="busyAction !== 'submit'" name="check" /></button>
+          <button type="submit" class="btn-primary btn-large" :disabled="busy">{{ busyAction === 'submit' ? 'Submitting…' : draft.status === 'SUBMITTED' ? 'Update response' : 'Submit response' }}<UiIcon v-if="busyAction !== 'submit'" name="check" /></button>
         </div>
-        <p v-if="!closed && requirements.length && !confirmed" id="submit-hint" class="helper-text submit-hint">Confirm the requirements above to submit.</p>
       </form>
 
       <!-- Submitted -->
@@ -145,11 +128,11 @@
 <script setup lang="ts">
 import UiIcon from './UiIcon.vue';
 import OptionCards from './OptionCards.vue';
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import { apiService } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
-import type { Snapshot, Draft, Answer, Review, Choice, PublishedQuestion } from '@/types/form';
+import type { Snapshot, Draft, Answer, Choice, PublishedQuestion } from '@/types/form';
 const props = withDefaults(defineProps<{ roundId: string; snapshot: Snapshot; title?: string; description?: string; guided?: boolean }>(), { title: '', description: '', guided: false });
 const emit = defineEmits<{ (e: 'saved'): void; (e: 'refresh'): void }>();
 const auth = useAuthStore();
@@ -161,10 +144,10 @@ type Page = { kind: 'intro' } | { kind: 'question'; q: PublishedQuestion; index:
 const draft = ref<Draft>(); const values = reactive<Record<string, AnswerValue>>({});
 const dates = reactive<Record<string, { start: string; end: string }>>({}); const flags = reactive<Record<string,string>>({});
 const availableStart = ref(''); const availableEnd = ref(''); const privateNote = ref('');
-const review = ref<Review>(); const confirmed = ref(false); const busy = ref(false); const busyAction = ref(''); const error = ref(''); const previewError = ref(''); const unsupportedEditor = ref(false);
+const busy = ref(false); const busyAction = ref(''); const error = ref(''); const unsupportedEditor = ref(false);
 const heading = ref<HTMLElement>();
 const at = ref(0); const direction = ref(1); const submitted = ref(false);
-let alive = true; let savedState = ''; let loaded = false;
+let savedState = ''; let loaded = false;
 const recoveryKey = checkpointKey(auth.userID, `response:${props.roundId}`);
 const definition = JSON.stringify([props.snapshot.option_revision, props.snapshot.questions]);
 interface ResponseRecovery {
@@ -196,31 +179,11 @@ const progressValue = computed(() => (at.value - firstQuestion.value + 1) / (pag
 const progressLabel = computed(() => page.value.kind === 'question' ? `Question ${page.value.index + 1} of ${total.value}` : page.value.kind === 'extras' ? 'Almost done' : 'Review');
 
 function roleHint(role?: string) { return role === 'hard' ? 'Requirement · options that don’t match are ruled out' : role === 'informational' ? 'For context · doesn’t affect the ranking' : 'Preference · helps rank the options'; }
-function issueLabel(issue: Review['issues'][number]) {
-  if (issue.code === 'EXECUTION_ADAPTER_REQUIRED') return 'This preview interprets your answers. The organiser calculates option rankings after collection closes.';
-  if (issue.code === 'SEMANTIC_SERVICE_UNAVAILABLE') return 'The meaning check is unavailable. Try again; your saved answers are kept.';
-  if (issue.code === 'SEMANTIC_PROVIDER_REQUIRED') return 'Written answers need a meaning check before submission. Ask the organiser to check the service configuration.';
-  return issue.message || issue.code.toLowerCase().replaceAll('_', ' ');
-}
-function questionIssue(questionId: string) {
-  return review.value?.issues.find(i => i.question_id === questionId && i.code !== 'CONFIRM_REQUIREMENT');
-}
 function choiceId(choice: Choice) { return typeof choice === 'string' ? choice : choice.choice_id; }
 function choiceLabel(choice: Choice) { return typeof choice === 'string' ? choice : choice.label; }
-function ruleLabel(rule: string) { return ({ equals_v1:'must be', maximum_v1:'at most', minimum_v1:'at least', less_than_v1:'less than', greater_than_v1:'more than', within_range_v1:'within', not_equals_v1:'must not be', contains_all_v1:'must include all of', excludes_all_v1:'must exclude' } as Record<string,string>)[rule] || 'requirement'; }
-function humanise(id: string) { return id === 'max_cost' ? 'Cost per person' : id.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase()); }
-function display(value: unknown): string { if(value && typeof value==='object' && !Array.isArray(value)){const bounds=value as {lower?:unknown;upper?:unknown};return `${bounds.lower==null?'no minimum':display(bounds.lower)} to ${bounds.upper==null?'no maximum':display(bounds.upper)}`;}return Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? ''); }
-function preferenceText(row: NonNullable<Review['preferences']>[number]) { return row.kind==='indifferent'?'No preference':row.utility_rule==='numeric_maximize_v1'?'Higher is better':row.utility_rule==='numeric_minimize_v1'?'Lower is better':display(row.preferred_value); }
 const closed = computed(() => unsupportedEditor.value || (!!draft.value && draft.value.round.state !== 'COLLECTING'));
-const requirements = computed(() => (review.value?.constraints || []).filter(row => row.kind !== 'unlimited'));
-const hasRequirementQuestions = computed(() => props.snapshot.questions.some(q => q.role === 'hard'));
-const interpretationBlocked = computed(() => {
-  if (!review.value) return props.snapshot.interpretation_policy === 'facts-v1' || hasRequirementQuestions.value;
-  return ['upstream_unavailable','invalid_input','failed'].includes(review.value.status) || review.value.issues.some(i => ['AMBIGUOUS_ANSWER','CONFLICTING_ANSWER','SEMANTIC_PROVIDER_REQUIRED','SEMANTIC_SERVICE_UNAVAILABLE','AMBIGUOUS_CANONICAL_LABEL','UNGROUNDED_SEMANTIC_RESULT','MISSING_ANSWER','AMBIGUOUS_NUMERIC_INTENT'].includes(i.code));
-});
 const answeredCount = computed(() => answers().length);
 const flagCount = computed(() => Object.values(flags).filter(Boolean).length);
-watch([values, dates, flags, availableStart, availableEnd], () => { review.value = undefined; confirmed.value = false; }, { deep: true, flush: 'sync' });
 
 function valueOf(q: PublishedQuestion) {
   const date = dates[q.question_id];
@@ -239,26 +202,15 @@ function answerText(q: PublishedQuestion) {
 }
 function state() { return JSON.stringify([answers(), flags, privateNote.value, availableStart.value, availableEnd.value]); }
 
-async function save(useConfirmation = false) {
+async function save() {
   if (!draft.value) throw new Error('Reload your response first.');
   const list: Answer[] = answers();
-  if (useConfirmation) {
-    if (!review.value || review.value.response_revision !== draft.value.revision) throw new Error('Review the current saved revision first.');
-    for (const answer of list) {
-      const own = requirements.value.filter(row => row.source_question_id === answer.question_id);
-      if (own.length) {
-        answer.reviewed_revision = draft.value.revision;
-        answer.confirmed_requirements = own.map(row => ({ attribute_id: row.attribute_id, required_value: row.required_value, constraint_rule: row.constraint_rule, unit: row.unit ?? null }));
-      }
-    }
-  }
   const availability = props.snapshot.execution_mode === 'scheduled' && availableStart.value && availableEnd.value ?
     [{ startAt: new Date(availableStart.value).toISOString(), endAt: new Date(availableEnd.value).toISOString() }] : draft.value.availability;
   draft.value = await apiService.saveDraft(props.roundId, { expectedRevision: draft.value.revision, acknowledgedOptionRevision: props.snapshot.option_revision,
     availability, budget: draft.value.budget.kind === 'CAP' ? { kind: 'CAP', capMinor: draft.value.budget.capMinor } : { kind: draft.value.budget.kind },
     activityAnswers: Object.entries(flags).filter(([,value]) => value).map(([activityId,kind]) => ({ activityId, kind })), privateNote: privateNote.value, answers: list });
   savedState = state();
-  review.value = undefined; confirmed.value = false;
 }
 async function action(name: string, fn: () => Promise<void>) {
   if (busy.value) return false; busy.value = true; busyAction.value = name; error.value = '';
@@ -266,12 +218,9 @@ async function action(name: string, fn: () => Promise<void>) {
   finally { busy.value = false; busyAction.value = ''; }
 }
 
-let previewGeneration = 0;
 function go(index: number) {
-  if (busyAction.value === 'preview' && pages.value[index]?.kind !== 'review') { previewGeneration++; busy.value=false; busyAction.value=''; }
   direction.value = submitted.value || index >= at.value ? 1 : -1;
   error.value = ''; submitted.value = false; at.value = index;
-  if (pages.value[index]?.kind === 'review' && !closed.value && !review.value) preview();
 }
 function back() { go(Math.max(0, at.value - 1)); }
 function problem() {
@@ -294,39 +243,16 @@ async function next() {
 function focusHeading() { heading.value?.focus({ preventScroll: true }); }
 watch(at, async () => { await nextTick(); const top = document.querySelector('.response-flow'); if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 
-async function preview() {
-  if (busy.value) return;
-  previewError.value = '';
-  busy.value = true; busyAction.value = 'preview';
-  const generation=++previewGeneration;
-  try {
-    if (state() !== savedState || !draft.value!.revision) await save();
-    const revision=draft.value!.revision;
-    await apiService.preview(props.roundId, revision);
-    const until = Date.now() + 180000;
-    while (alive && generation===previewGeneration && Date.now() < until) {
-      const result = await apiService.review(props.roundId);
-      if (generation!==previewGeneration || !alive) return;
-      if ('constraints' in result) { if(result.response_revision===revision && draft.value?.revision===revision)review.value=result;else throw new Error('Your response changed. Review the latest saved answers again.');return; }
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    if(generation!==previewGeneration || !alive)return;
-    throw new Error('Checking your answers is taking longer than usual. Your saved answers are kept; try again to resume.');
-  } catch (e) { if(generation!==previewGeneration)return;previewError.value = e instanceof Error ? e.message : 'Your answers couldn’t be checked.'; }
-  finally { if(generation===previewGeneration){busy.value = false; busyAction.value = '';} }
-}
 async function submit() {
   const ok = await action('submit', async () => {
-    if (interpretationBlocked.value) throw new Error('Review and clarify how your current answers are interpreted before submitting.');
-    if (requirements.value.length && !confirmed.value) throw new Error('Confirm the requirements after reviewing them.');
-    await save(confirmed.value);
+    if (state() !== savedState || !draft.value!.revision) await save();
     draft.value = await apiService.submit(props.roundId, draft.value!.revision);
   });
   if (ok) { direction.value = 1; submitted.value = true; }
 }
 async function copyEarlier(){
   const ok=await action('copy',async()=>{await apiService.copyResponse(props.roundId,props.snapshot.previous_round_id!);});
-  if(ok){await load();review.value=undefined;confirmed.value=false;recoveryNotice.value='Earlier answers copied as a draft. Check each answer and review requirements again before submitting.';}
+  if(ok){await load();recoveryNotice.value='Earlier answers copied as a draft. Check each answer before submitting.';}
 }
 async function load() { await action('load', async () => {
   const own = await apiService.draft(props.roundId); draft.value = own; privateNote.value = own.privateNote || '';
@@ -356,7 +282,7 @@ async function load() { await action('load', async () => {
         submitted.value = false;
       }
       at.value = Math.max(0, Math.min(pages.value.length - 1, recovered.at));
-      recoveryNotice.value = 'Your response and place in the form were restored. Review requirements again before submitting.';
+      recoveryNotice.value = 'Your response and place in the form were restored.';
     } else if (recovered) {
       removeCheckpoint(recoveryKey);
       recoveryNotice.value = 'A newer response or form version was found. Loaded the saved server response instead of older browser edits.';
@@ -364,7 +290,7 @@ async function load() { await action('load', async () => {
   }
   loaded = true;
 }); }
-onMounted(async () => { await load(); if (loaded && !submitted.value && !closed.value && page.value.kind === 'review') await preview(); }); onUnmounted(() => { alive = false; });
+onMounted(() => { void load(); });
 </script>
 <style scoped>
 .response-flow { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px; margin: 24px 0; overflow: hidden; scroll-margin-top: 24px; }
@@ -415,28 +341,9 @@ onMounted(async () => { await load(); if (loaded && !submitted.value && !closed.
 .answer-summary > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; padding: 12px 16px; font-size: .875rem; }
 .answer-summary > div + div { border-top: 1px solid var(--line); }
 .answer-summary dt { color: var(--muted); overflow-wrap: anywhere; }
-.answer-summary > div.has-issue { background: #fff9ed; }
-.question-issue { display: block; margin-top: 4px; font-size: .75rem; font-weight: 600; color: #805114; }
 .answer-summary dd { margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; overflow-wrap: anywhere; }
 .answer-summary dd .muted { font-weight: 400; }
 .answer-summary dd button { flex-shrink: 0; color: var(--accent); }
-.interpretation-box { margin-top: 20px; }
-.interpretation-box:empty { display: none; }
-.interpretation-box > * + * { margin-top: 12px; }
-.interpretation-box h3 { font-size: .9375rem; margin-bottom: 4px; }
-.checking { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 8px; background: #f3f6f2; color: var(--muted); font-size: .875rem; }
-.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
-.interpretation { margin: 0; display: grid; gap: 1px; background: #c9dccd; border: 1px solid #c9dccd; border-radius: 8px; overflow: hidden; }
-.interpretation > div { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; gap: 16px; padding: 10px 14px; background: #f7faf7; font-size: .875rem; }
-.interpretation dt { color: var(--muted); }
-.interpretation dd { margin: 0; font-weight: 600; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
-.kind { font-size: .6875rem; font-weight: 600; color: var(--muted); }
-.kind.requirement { color: #805114; }
-.review-diagnostics { border-color: var(--line); }
-.review-diagnostics li { font-size: .75rem; }
-.confirm-row { font-size: .875rem; }
-.submit-hint { text-align: right; max-width: none; }
 .done { text-align: center; padding: 24px 0 8px; }
 .done .lede { margin-left: auto; margin-right: auto; }
 .seal { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 50%; background: var(--accent); animation: pop-in 420ms var(--ease-out) both; }

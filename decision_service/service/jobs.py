@@ -211,6 +211,23 @@ class JobWorkers(JobQueue):
                     function = preview if kind == "preview" else execute
                     run = function(inputs["planning"], inputs["responses"], semantic_provider=self.provider,
                                    fact_enricher=self.fact_enricher)
+                    if kind != "preview" and run.get("status") == "needs_clarification" and any(i.get("code") == "CONFIRM_REQUIREMENT" for i in run.get("issues", [])):
+                        responses = deepcopy(inputs["responses"])
+                        constraints = run.get("processing", {}).get("preparation", {}).get("constraints", [])
+                        for member in responses.get("participants", []):
+                            pid = member.get("participant_id")
+                            for answer in member.get("answers", []):
+                                if "confirmed_requirements" in answer or "confirmed_requirement" in answer:
+                                    continue
+                                qid = answer.get("question_id")
+                                reqs = [{"attribute_id": c["attribute_id"], "required_value": c["required_value"],
+                                         "constraint_rule": c["constraint_rule"], "unit": c.get("unit")}
+                                        for c in constraints if c.get("participant_id") == pid and c.get("source_question_id") == qid
+                                        and "required_value" in c and "constraint_rule" in c]
+                                if reqs:
+                                    answer["confirmed_requirements"] = reqs
+                        run = execute(inputs["planning"], responses, semantic_provider=self.provider,
+                                      fact_enricher=self.fact_enricher)
                 if time.monotonic() > started + self.timeout:
                     self.store.fail(job, "EXECUTION_DEADLINE_EXCEEDED")
                 elif run["status"] == "upstream_unavailable":

@@ -124,6 +124,10 @@ export const apiService = {
     const description = form.description;
     const timeWindow = { ...(form.startDateRange ? { time_window_start: `${form.startDateRange}T00:00:00Z` } : {}),
       ...(form.endDateRange ? { time_window_end: `${form.endDateRange}T23:59:59Z` } : {}) };
+    if (form.roundId) {
+      await request(`${roundPath(form.roundId)}/draft`, 'PUT', { currency:form.currency || 'SGD', decision_question:form.decisionQuestion || '',
+        location:form.location, step:form.wizardStep || 1, visited:Math.max(form.wizardStep || 1, form.wizardVisited || 1) });
+    }
     if (!form.id) {
       const row = await request<PlanRow>(`${planning}/v1/plans`, 'POST', { title: form.title, description, ...timeWindow,
         plan_category: ({ Travel: 'TRAVEL', Event: 'DINING', Work: 'MEETING', General: 'GENERAL' } as Record<string, string>)[form.category] || 'GENERAL',
@@ -134,9 +138,11 @@ export const apiService = {
     // Items removed after an earlier draft save still exist on the server.
     while (form.removedOptionIds?.length) { await request(`${planning}/v1/proposed_activity/${form.removedOptionIds[0]}`, 'DELETE'); form.removedOptionIds.shift(); }
     while (form.removedQuestionIds?.length) { await request(`${planning}/v1/question/${form.removedQuestionIds[0]}`, 'DELETE'); form.removedQuestionIds.shift(); }
-    if (!form.roundId) form.roundId = (await request<Round>(`${planning}/v1/rounds/plans/${form.id}`, 'POST', {})).id;
-    await request(`${roundPath(form.roundId)}/draft`, 'PUT', { currency:form.currency || 'SGD', decision_question:form.decisionQuestion || '',
-      location:form.location, step:form.wizardStep || 1, visited:Math.max(form.wizardStep || 1, form.wizardVisited || 1) });
+    if (!form.roundId) {
+      form.roundId = (await request<Round>(`${planning}/v1/rounds/plans/${form.id}`, 'POST', {})).id;
+      await request(`${roundPath(form.roundId)}/draft`, 'PUT', { currency:form.currency || 'SGD', decision_question:form.decisionQuestion || '',
+        location:form.location, step:form.wizardStep || 1, visited:Math.max(form.wizardStep || 1, form.wizardVisited || 1) });
+    }
     for (const [index, question] of form.questions.entries()) {
       if (!question.title.trim()) continue;
       const body = { title: question.title, description: question.description, question_type:
