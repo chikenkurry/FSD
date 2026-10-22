@@ -168,6 +168,20 @@ func (h *PlanMemberHandler) RemoveMember(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	existing, err := h.repo.GetMemberByID(r.Context(), memberID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMemberNotFound) {
+			WriteError(w, http.StatusNotFound, "Member not found")
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, "Failed to remove member")
+		return
+	}
+	if existing.Role == model.MemberRoleOrganiser {
+		WriteError(w, http.StatusConflict, "Cannot remove the plan organiser")
+		return
+	}
+
 	if err := h.repo.RemoveMember(r.Context(), memberID); err != nil {
 		if errors.Is(err, repository.ErrMemberNotFound) {
 			WriteError(w, http.StatusNotFound, "Member not found")

@@ -177,7 +177,9 @@ class ServiceJourneyTests(unittest.TestCase):
         reopened=call(PLANNING,'POST',root+'/reopen',operation,owner['session_token'])
         self.assertNotEqual(reopened['id'],round_record['id'])
         call(PARTICIPATION,'PUT',own_rsvp,rsvp|{'expectedRevision':going['revision'],'status':'MAYBE'},member['session_token'],409)
-        self.assertEqual(call(PARTICIPATION,'GET',own_rsvp,token=member['session_token'])['status'],'GOING')
+        rsvp_state=call(PARTICIPATION,'GET',own_rsvp,token=member['session_token'])
+        self.assertEqual(rsvp_state['status'],'GOING')
+        self.assertEqual(rsvp_state['summary'],{'going':1,'maybe':0,'declined':0,'total':1})
         self.assertEqual(reopened['id'],call(PLANNING,'POST',root+'/reopen',operation,owner['session_token'])['id'])
         self.assertEqual(call(PLANNING,'GET',root+'/form',token=owner['session_token']),form)
         call(PLANNING,'POST',root+'/recommendations',{},owner['session_token'],409)
@@ -419,6 +421,21 @@ class ServiceJourneyTests(unittest.TestCase):
               'availability':[],'budget':{'kind':'UNANSWERED'},
               'activityAnswers':[{'activityId':options[0]['id'],'kind':'RATING','rating':4}],
               'answers':[{'question_id':question['id'],'value':1.2}]},member['session_token'],400)
+
+    def test_removing_incomplete_member_unblocks_close_and_organiser_cannot_be_removed(self):
+        owner,member,plan,options,question,round_record,published,form = self.create_plan()
+        self.submit(owner,round_record,question,published['option_revision'])
+        root=f"/v1/rounds/{round_record['id']}"
+        readiness=call(PLANNING,'GET',root+'/readiness',token=owner['session_token'])
+        self.assertFalse(readiness['can_close'])
+        by_user={m['user_id']:m for m in readiness['members']}
+        self.assertEqual(by_user[owner['id']]['role'],'ORGANISER')
+        self.assertEqual(by_user[member['id']]['role'],'MEMBER')
+        call(PLANNING,'DELETE',f"/v1/members/{by_user[owner['id']]['id']}",token=owner['session_token'],status=409)
+        call(PLANNING,'DELETE',f"/v1/members/{by_user[member['id']]['id']}",token=owner['session_token'],status=204)
+        updated=call(PLANNING,'GET',root+'/readiness',token=owner['session_token'])
+        self.assertTrue(updated['can_close'])
+        call(PLANNING,'POST',root+'/close',{},owner['session_token'])
 
 
 if __name__=='__main__':

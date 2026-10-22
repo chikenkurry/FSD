@@ -148,7 +148,7 @@ func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 		if status == "complete" {
 			complete++
 		}
-		rows = append(rows, map[string]any{"name": member.DisplayName, "status": status})
+		rows = append(rows, map[string]any{"id": member.ID, "user_id": member.UserID, "role": member.Role, "name": member.DisplayName, "status": status})
 	}
 	respond(w, 200, map[string]any{"round_id": id, "state": round.State, "member_count": len(members), "complete_count": complete,
 		"can_close": len(members) > 0 && complete == len(members), "members": rows, "progress": progress, "definition": check})

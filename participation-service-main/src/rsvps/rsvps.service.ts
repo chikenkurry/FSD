@@ -11,8 +11,20 @@ export class RsvpsService {
   constructor(private readonly prisma: PrismaService, private readonly config: AppConfig) {}
 
   async get(roundId: string, member: AuthorisedMember) {
-    const row = await this.prisma.rsvp.findUnique({ where: { roundId_memberId: { roundId, memberId: member.memberId } } });
-    return row ?? { roundId, memberId: member.memberId, revision: 0, status: null };
+    const [row, rows] = await Promise.all([
+      this.prisma.rsvp.findUnique({ where: { roundId_memberId: { roundId, memberId: member.memberId } } }),
+      this.prisma.rsvp.findMany({ where: { roundId }, select: { status: true } }),
+    ]);
+    let going = 0, maybe = 0, declined = 0;
+    for (const r of rows) {
+      if (r.status === 'GOING') going++;
+      else if (r.status === 'MAYBE') maybe++;
+      else if (r.status === 'DECLINED') declined++;
+    }
+    return {
+      ...(row ?? { roundId, memberId: member.memberId, revision: 0, status: null }),
+      summary: { going, maybe, declined, total: rows.length },
+    };
   }
 
   async save(roundId: string, member: AuthorisedMember, body: SaveRsvpDto) {
