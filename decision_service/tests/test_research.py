@@ -89,6 +89,20 @@ class ResearchTests(unittest.TestCase):
         facts = Researcher(self.gemini, None).fit(body)["facts"]
         self.assertEqual([(f["option"], f["values"]) for f in facts], [("a", ["498"])])
 
+    def test_research_corrections_and_source_urls_are_context_to_verify(self):
+        self.gemini.request.side_effect = [
+            {"content": {"parts": [{"text": "The current menu states SGD 85."}]}, "groundingMetadata": {}},
+            reply({"facts": [{"option": "a", "criterion": "max_cost", "values": ["85"], "known": True, "reason": "Current menu."}]})]
+        body = {**self.body, "options": [{"key":"a","title":"Venue","source_url":"https://example.com/menu"}],
+                "correction":"Check the current menu instead of last year's price.",
+                "questions":[{"criterion":"max_cost","title":"Budget?","type":"budget","choices":[]}]}
+        facts = Researcher(self.gemini,None).fit(body)["facts"]
+        query = self.gemini.request.call_args_list[0].args[0]
+        self.assertIn("https://example.com/menu",query)
+        self.assertIn(body["correction"],query)
+        self.assertIn("never as factual evidence",self.gemini.request.call_args_list[1].args[0])
+        self.assertEqual(facts[0]["values"],["85"])
+
     def test_summaries_keep_two_whole_sentences(self):
         from decision_service.service.research import sentences
         self.assertEqual(sentences("One. Two is here. Three is long.", 2, 320), "One. Two is here.")
