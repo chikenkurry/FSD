@@ -48,12 +48,20 @@ func (h *Handler) completeFreeze(ctx context.Context, round Round) (Round, error
 	if err := json.Unmarshal(round.EvaluationSnapshot(), &snapshot); err != nil {
 		return round, err
 	}
-	payload := map[string]any{"operationId": round.FreezeOperationID.String(), "roundId": round.ID.String(), "memberIds": snapshot.Roster}
+	payload := map[string]any{"operationId": round.FreezeOperationID.String(), "roundId": round.ID.String(), "memberIds": snapshot.Roster, "requireComplete": true}
 	if round.RosterPolicy == "close" {
 		payload["optionSnapshotId"], payload["optionRevision"] = round.OptionSnapshotID.String(), round.OptionRevision
 	}
 	result, err := h.call(ctx, h.participation, "POST", "/internal/rounds/freeze", payload)
 	if err != nil {
+		var remote RemoteError
+		if errors.As(err, &remote) && remote.Code == "RESPONSES_INCOMPLETE" {
+			// Participation rejected before writing its snapshot. Restore admission
+			// only for this exact attempted freeze; other failures remain retryable.
+			if resetErr := h.rounds.cancelFreeze(ctx, round); resetErr != nil {
+				return round, resetErr
+			}
+		}
 		return round, err
 	}
 	id, ok := result["snapshotId"].(string)

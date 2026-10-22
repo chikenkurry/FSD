@@ -123,10 +123,33 @@ func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "UPSTREAM_UNAVAILABLE")
 		return
 	}
-	var count int64
-	if h.db.Model(&model.PlanMember{}).Where("plan_id = ?", round.PlanID).Count(&count).Error != nil {
+	var members []model.PlanMember
+	if h.db.WithContext(r.Context()).Where("plan_id = ?", round.PlanID).Order("display_name, user_id").Find(&members).Error != nil {
 		fail(w, 500, "INTERNAL")
 		return
 	}
-	respond(w, 200, map[string]any{"round_id": id, "state": round.State, "member_count": count, "progress": progress, "definition": check})
+	statuses := map[string]string{}
+	if rows, ok := progress["responses"].([]any); ok {
+		for _, value := range rows {
+			if row, ok := value.(map[string]any); ok {
+				member, _ := row["memberId"].(string)
+				status, _ := row["decisionStatus"].(string)
+				statuses[member] = status
+			}
+		}
+	}
+	rows := make([]map[string]any, 0, len(members))
+	complete := 0
+	for _, member := range members {
+		status := statuses[member.UserID.String()]
+		if status == "" {
+			status = "incomplete"
+		}
+		if status == "complete" {
+			complete++
+		}
+		rows = append(rows, map[string]any{"name": member.DisplayName, "status": status})
+	}
+	respond(w, 200, map[string]any{"round_id": id, "state": round.State, "member_count": len(members), "complete_count": complete,
+		"can_close": len(members) > 0 && complete == len(members), "members": rows, "progress": progress, "definition": check})
 }

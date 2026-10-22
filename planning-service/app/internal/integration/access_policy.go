@@ -95,7 +95,7 @@ func (h *Handler) planForPath(parts []string, user uuid.UUID) (uuid.UUID, bool) 
 	if resource == "plans" && len(parts) == 2 {
 		return uuid.Nil, true
 	}
-	if resource == "plans" && len(parts) > 3 && parts[2] == "organiser" {
+	if resource == "plans" && len(parts) > 3 && (parts[2] == "organiser" || parts[2] == "member") {
 		id, err := uuid.Parse(parts[3])
 		return uuid.Nil, err == nil && id == user
 	}

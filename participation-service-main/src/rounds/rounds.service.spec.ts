@@ -94,6 +94,22 @@ describe('RoundsService.freeze', () => {
   const freezeOp = 'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1';
   const member = { memberId: MEMBER_1, planId: PLAN_ID };
 
+  it('keeps collection open and remembers rejected close commands across later submissions', async () => {
+    const { service, members, rounds } = setup();
+    await service.provision(request());
+    const command = {operationId:freezeOp,roundId:ROUND_ID,memberIds:[MEMBER_1],requireComplete:true};
+    await expect(service.freeze(command)).rejects.toMatchObject({code:'RESPONSES_INCOMPLETE'});
+    expect(rounds.rounds.get(ROUND_ID)?.state).toBe('COLLECTING');
+    await members.saveDraft(ROUND_ID,member,aDraft());
+    await members.submit(ROUND_ID,member,{expectedRevision:1});
+    // A delayed reconciler retry of the rejected operation remains rejected.
+    await expect(service.freeze(command)).rejects.toMatchObject({code:'RESPONSES_INCOMPLETE'});
+    expect(rounds.rounds.get(ROUND_ID)?.state).toBe('COLLECTING');
+    await expect(service.freeze({...command,memberIds:[MEMBER_1,MEMBER_2]})).rejects.toMatchObject({code:'OPERATION_CONFLICT'});
+    await expect(service.freeze({...command,operationId:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'})).resolves.toMatchObject({state:'FROZEN'});
+    await expect(service.freeze(command)).rejects.toMatchObject({code:'RESPONSES_INCOMPLETE'});
+  });
+
   it('freezes the round and returns a Decision-shaped snapshot', async () => {
     const { service, members } = setup();
     await service.provision(request());

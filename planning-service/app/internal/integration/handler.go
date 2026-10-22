@@ -96,6 +96,11 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 	}
 	round, err = h.completeFreeze(r.Context(), round)
 	if err != nil {
+		var remote RemoteError
+		if errors.As(err, &remote) && remote.Code == "RESPONSES_INCOMPLETE" {
+			fail(w, 409, "RESPONSES_INCOMPLETE")
+			return
+		}
 		fail(w, 503, "RETRY_FREEZE")
 		return
 	}

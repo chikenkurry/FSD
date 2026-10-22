@@ -97,6 +97,15 @@ func (r *PlanRepository) ListByOrganiser(ctx context.Context, organiserID string
 }
 
 // update updates non-empty fields of a plan
+func (r *PlanRepository) ListByMember(ctx context.Context, memberID string, limit, offset int) ([]model.Plan, error) {
+	var plans []model.Plan
+	err := database.ContextDB(ctx, r.db).Where("id IN (SELECT plan_id FROM plan_members WHERE user_id = ?)", memberID).
+		Order("created_at DESC").Limit(limit).Offset(offset).Preload("CreatedBy").
+		Preload("Members", func(db *gorm.DB) *gorm.DB { return db.Select("id", "plan_id") }).Find(&plans).Error
+	return plans, err
+}
+
+// update updates non-empty fields of a plan
 func (r *PlanRepository) Update(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*model.Plan, error) {
 	var plan model.Plan
 

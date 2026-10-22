@@ -184,6 +184,26 @@ func (s *roundStore) finalizeFreeze(ctx context.Context, id uuid.UUID, snapshotI
 	return round, err
 }
 
+func (s *roundStore) cancelFreeze(ctx context.Context, attempted Round) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var current Round
+		if err := lockPublishedRound(tx, attempted.ID, &current); err != nil {
+			return err
+		}
+		if current.State != roundLocking || current.FreezeOperationID != attempted.FreezeOperationID {
+			return nil
+		}
+		var form struct {
+			OptionSnapshotID uuid.UUID `json:"option_snapshot_id"`
+		}
+		if err := json.Unmarshal(current.Definition, &form); err != nil {
+			return err
+		}
+		return tx.Model(&current).Updates(map[string]any{"state": roundCollecting, "evaluation_definition": nil,
+			"option_snapshot_id": form.OptionSnapshotID, "freeze_operation_id": uuid.New()}).Error
+	})
+}
+
 func (s *roundStore) saveRecommendation(ctx context.Context, round Round, runID string) error {
 	id := round.ID
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

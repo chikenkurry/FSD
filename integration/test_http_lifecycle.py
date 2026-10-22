@@ -190,14 +190,19 @@ class ServiceJourneyTests(unittest.TestCase):
             'acknowledgedOptionRevision':next_publication['option_revision']},member['session_token'])
         call(PARTICIPATION,'POST',own+'/submit',{'expectedRevision':reviewed['revision']},member['session_token'])
 
-    def test_missing_member_blocks_the_decision(self):
+    def test_missing_member_keeps_collection_open(self):
         owner,member,plan,options,question,round_record,published,form=self.create_plan()
         self.submit(owner,round_record,question,published['option_revision'])
         root=f"/v1/rounds/{round_record['id']}"
+        rejected=call(PLANNING,'POST',root+'/close',{},owner['session_token'],409)
+        self.assertEqual(rejected['code'],'RESPONSES_INCOMPLETE')
+        self.assertEqual(call(PLANNING,'GET',f"/v1/plans/{plan['id']}",token=owner['session_token'])['state'],'COLLECTING')
+        readiness=call(PLANNING,'GET',root+'/readiness',token=owner['session_token'])
+        self.assertFalse(readiness['can_close'])
+        self.assertEqual(readiness['complete_count'],1)
+        self.submit(member,round_record,question,published['option_revision'])
         call(PLANNING,'POST',root+'/close',{},owner['session_token'])
-        result=self.recommendation(root,owner)
-        self.assertEqual(result['status'],'blocked')
-        self.assertIn('INCOMPLETE_RESPONSE',[issue['code'] for issue in result['issues']])
+        self.assertEqual(self.recommendation(root,owner)['status'],'ranked')
 
     def test_missing_fact_requests_review_instead_of_ranking_a_subset(self):
         owner,member,plan,options,question,round_record,published,form=self.create_plan(unknown=True)
@@ -278,9 +283,37 @@ class ServiceJourneyTests(unittest.TestCase):
     def test_join_after_close_is_rejected(self):
         owner,member,plan,options,question,round_record,published,form = self.create_plan()
         invite=call(PLANNING,'POST',f"/v1/plans/{plan['id']}/invites",{'created_by':owner['id']},owner['session_token'],201)
+        for user in (owner,member):
+            self.submit(user,round_record,question,published['option_revision'])
         call(PLANNING,'POST',f"/v1/rounds/{round_record['id']}/close",{},owner['session_token'])
         guest=call(PLANNING,'POST','/v1/users',{'username':'closed-join-'+str(uuid4())},status=201)
         call(PLANNING,'POST',f"/v1/invites/{invite['token']}/join",{'user_id':guest['id'],'display_name':'Late guest'},guest['session_token'],409)
+
+    def test_server_draft_recovery_is_organiser_only_and_joined_plans_are_discoverable(self):
+        owner,member,plan,options,question,round_record,published,form=self.create_plan()
+        for user in (owner,member):
+            self.submit(user,round_record,question,published['option_revision'])
+        root=f"/v1/rounds/{round_record['id']}"
+        call(PLANNING,'POST',root+'/close',{},owner['session_token'])
+        new_round=call(PLANNING,'POST',root+'/reopen',{'operation_id':str(uuid4())},owner['session_token'])
+        draft_root=f"/v1/rounds/{new_round['id']}"
+        state={'currency':'SGD','decision_question':'Which is easiest to carry?','location':'Singapore','step':4,'visited':5}
+        call(PLANNING,'PUT',draft_root+'/draft',state,member['session_token'],403)
+        call(PLANNING,'PUT',draft_root+'/draft',state,owner['session_token'])
+        self.assertEqual(call(PLANNING,'GET',draft_root+'/draft',token=owner['session_token'])['state'],state)
+        details=call(PLANNING,'GET',f"/v1/plans/details/{plan['id']}",token=owner['session_token'])
+        self.assertIsInstance(details['proposed_activities'][0]['metadata'],dict)
+        self.assertTrue(details['proposed_activities'][0]['metadata']['facts'])
+        call(PLANNING,'GET',draft_root+'/draft',token=member['session_token'],status=403)
+        call(PLANNING,'PUT',root+'/draft',state,owner['session_token'],409)
+        joined=call(PLANNING,'GET',f"/v1/plans/member/{member['id']}",token=member['session_token'])
+        self.assertIn(plan['id'],[row['id'] for row in joined])
+        call(PLANNING,'GET',f"/v1/plans/member/{owner['id']}",token=member['session_token'],status=403)
+        settings={'currency':'SGD','currency_minor_digits':2,'cost_scope':'per_person_total','timezone':'UTC','execution_mode':'options'}
+        call(PLANNING,'POST',draft_root+'/publish',settings,owner['session_token'])
+        next_form=call(PLANNING,'GET',draft_root+'/form',token=member['session_token'])
+        self.assertEqual(next_form['previous_round_id'],round_record['id'])
+        self.assertEqual(call(PLANNING,'GET',root+'/form',token=member['session_token']),form)
 
     def test_private_preview_is_available_before_freeze_and_stale_after_edit(self):
         owner,member,plan,options,question,round_record,published,form = self.create_plan()

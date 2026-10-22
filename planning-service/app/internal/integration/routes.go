@@ -23,5 +23,7 @@ func (h *Handler) RegisterRoundRoutes(mux *http.ServeMux, create, list http.Hand
 		})
 	}
 	dispatch("POST", posts, create)
+	gets["draft"] = h.GetCreatorDraft
 	dispatch("GET", gets, list)
+	dispatch("PUT", map[string]http.HandlerFunc{"draft": h.DefinitionCommand(h.SaveCreatorDraft)}, func(w http.ResponseWriter, r *http.Request) { fail(w, 404, "NOT_FOUND") })
 }

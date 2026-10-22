@@ -76,6 +76,8 @@ export interface FreezeUnitOfWork {
   listResponses(): Promise<ResponseRecord[]>;
 
   freeze(data: FreezeWrite): Promise<void>;
+  rejectedFreeze(operationId: string): Promise<string | null>;
+  rejectFreeze(operationId: string, payloadHash: string): Promise<void>;
 }
 
 export abstract class ResponseRepository {

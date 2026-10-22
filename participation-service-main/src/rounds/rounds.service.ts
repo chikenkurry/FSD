@@ -9,6 +9,7 @@ import { hashFreezePayload } from './freeze-hash';
 import { ProvisionRoundDto } from './provision-round.dto';
 import { hashProvisionPayload } from './provision-hash';
 import { RoundRecord, RoundRepository } from './round.repository';
+import { decisionStatus } from '../responses/response-completeness';
 
 export interface ProvisionResult {
   roundId: string;
@@ -34,7 +35,7 @@ export interface ProgressResult {
   state: string;
   submittedCount: number;
   draftCount: number;
-  responses: { memberId: string; status: string }[];
+  responses: { memberId: string; status: string; decisionStatus: string }[];
 }
 
 @Injectable()
@@ -112,6 +113,11 @@ export class RoundsService {
   async freeze(dto: FreezeRoundDto): Promise<FreezeResult> {
     const hash = hashFreezePayload(dto);
     const result = await this.responses.withRoundFreezeLock(dto.roundId, async (unit) => {
+      const rejection = await unit.rejectedFreeze(dto.operationId);
+      if (rejection) {
+        if (rejection !== hash) throw Errors.operationConflict('Rejected close command payload changed');
+        return { incomplete: true };
+      }
       if (unit.round.state === 'FROZEN') {
         if (unit.round.freezeOperationId !== dto.operationId || unit.round.freezePayloadHash !== hash) {
           throw Errors.operationConflict(
@@ -159,6 +165,12 @@ export class RoundsService {
         responses: stored,
         createdAt: new Date(),
       });
+      // Check while holding the same round lock as writes and freeze. A separate
+      // progress check cannot protect against a member editing during closure.
+      if (dto.requireComplete && snapshot.participants.some(p => p.response_status !== 'complete')) {
+        await unit.rejectFreeze(dto.operationId, hash);
+        return { incomplete: true };
+      }
       if (Buffer.byteLength(JSON.stringify(snapshot)) > 1_500_000) {
         throw Errors.invalidInput([{ field: 'responses', message: 'Combined snapshot exceeds 1.5 MB; shorten answers or merge availability intervals' }]);
       }
@@ -180,6 +192,7 @@ export class RoundsService {
     });
 
     if (!result) throw Errors.notFound('This round is not open for responses');
+    if ('incomplete' in result) throw Errors.responsesIncomplete();
     return result;
   }
 
@@ -201,7 +214,8 @@ export class RoundsService {
     if (!round) throw Errors.notFound('Round not found');
     const stored = await this.responses.listByRound(roundId);
     const responses = stored
-      .map((r) => ({ memberId: r.memberId, status: r.status }))
+      .map((r) => ({ memberId: r.memberId, status: r.status,
+        decisionStatus: decisionStatus(r, round.optionRevision, round.activityIds, round.questions) }))
       .sort((a, b) => a.memberId.localeCompare(b.memberId));
     return {
       roundId: round.id,

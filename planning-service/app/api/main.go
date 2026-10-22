@@ -103,6 +103,7 @@ func main() {
 	mux.HandleFunc("GET /v1/plans/{id}", planHandler.GetPlanById)
 	mux.HandleFunc("GET /v1/plans/details/{id}", planHandler.GetByIDWithDetails)
 	mux.HandleFunc("GET /v1/plans/organiser/{id}", planHandler.ListPlansByOrganiser)
+	mux.HandleFunc("GET /v1/plans/member/{id}", planHandler.ListPlansByMember)
 	mux.HandleFunc("PATCH /v1/plans/{id}", flow.DefinitionCommand(planHandler.UpdatePlan))
 	mux.HandleFunc("DELETE /v1/plans/{id}", flow.DefinitionCommand(planHandler.DeletePlan))
 

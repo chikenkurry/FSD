@@ -124,6 +124,8 @@ export class InMemoryResponseRepository extends ResponseRepository {
     return work({
       round,
       listResponses: () => this.listByRound(roundId),
+      rejectedFreeze: async (operationId) => this.rejectedFreezes.get(`${roundId}:${operationId}`) ?? null,
+      rejectFreeze: async (operationId, hash) => { this.rejectedFreezes.set(`${roundId}:${operationId}`, hash); },
       freeze: async (data) => {
         this.rounds.rounds.set(roundId, {
           ...round,
@@ -138,6 +140,7 @@ export class InMemoryResponseRepository extends ResponseRepository {
       },
     });
   }
+  private readonly rejectedFreezes = new Map<string,string>();
 }
 
 function fields(data: DraftData) {

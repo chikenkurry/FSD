@@ -55,6 +55,7 @@ model ResponseRound {
   freezePayloadHash    String?    @map("freeze_payload_hash")
   snapshotId           String?    @unique @map("snapshot_id") @db.Uuid
   snapshot             Json?      @map("snapshot")
+  rejectedFreezes      RejectedFreeze[]
   createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -62,6 +63,17 @@ model ResponseRound {
 
   @@index([planId])
   @@map("response_rounds")
+}
+
+// Rejected close commands are terminal too: a delayed retry cannot freeze a
+// different set of answers after Planning has restored collection.
+model RejectedFreeze {
+  roundId String @map("round_id") @db.Uuid
+  operationId String @map("operation_id") @db.Uuid
+  payloadHash String @map("payload_hash")
+  round ResponseRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  @@id([roundId, operationId])
+  @@map("rejected_freezes")
 }
 
 /// A member's private response for one round. Draft until submitted (R02).

@@ -121,6 +121,9 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 		"currency": settings.Currency, "currency_minor_digits": digits, "cost_scope": settings.CostScope,
 		"timezone": settings.Timezone, "execution_mode": mode, "roster": roster, "options": options, "questions": questions,
 		"execution_context": map[string]any{"candidates": candidates}}
+	if round.SourceRoundID != nil {
+		snapshot["previous_round_id"] = round.SourceRoundID.String()
+	}
 	if settings.Criteria != nil {
 		snapshot["criteria"] = settings.Criteria
 	}

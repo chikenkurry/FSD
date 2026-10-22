@@ -179,6 +179,15 @@ class PrismaFreezeUnitOfWork implements FreezeUnitOfWork {
     }).then(rows => rows.map(toResponseRecord));
   }
 
+  async rejectedFreeze(operationId: string): Promise<string | null> {
+    const row = await this.tx.rejectedFreeze.findUnique({ where: { roundId_operationId: { roundId:this.round.id, operationId } } });
+    return row?.payloadHash ?? null;
+  }
+
+  async rejectFreeze(operationId: string, payloadHash: string): Promise<void> {
+    await this.tx.rejectedFreeze.create({ data: { roundId:this.round.id, operationId, payloadHash } });
+  }
+
   async freeze(data: FreezeWrite): Promise<void> {
     await this.tx.responseRound.update({
       where: { id: this.round.id },

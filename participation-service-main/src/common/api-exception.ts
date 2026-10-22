@@ -11,6 +11,7 @@ export type ApiErrorCode =
   | 'INVALID_INPUT'
   | 'STALE_VERSION'
   | 'ROUND_CLOSED'
+  | 'RESPONSES_INCOMPLETE'
   | 'OPERATION_CONFLICT'
   | 'RATE_LIMITED'
   | 'UPSTREAM_UNAVAILABLE'
@@ -42,6 +43,7 @@ export class ApiException extends HttpException {
 }
 
 export const Errors = {
+  responsesIncomplete: () => new ApiException(409, 'RESPONSES_INCOMPLETE', 'Every member must submit a complete response before collection closes'),
   unauthenticated: (message = 'Authentication required') =>
     new ApiException(401, 'UNAUTHENTICATED', message),
   forbidden: (message = 'You do not have access to this resource') =>

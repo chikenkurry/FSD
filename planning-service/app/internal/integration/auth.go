@@ -51,6 +51,10 @@ func (h *Handler) Guard(next http.Handler) http.Handler {
 		if planID != uuid.Nil && write && !h.allowPlanMutation(w, r, parts, planID) {
 			return
 		}
+		if planID != uuid.Nil && r.Method == "GET" && len(parts) == 4 && parts[1] == "rounds" && parts[3] == "draft" && !h.member(user, planID, true) {
+			fail(w, 403, "FORBIDDEN")
+			return
+		}
 		r = r.WithContext(context.WithValue(r.Context(), planKey{}, planID))
 		next.ServeHTTP(w, r)
 	})

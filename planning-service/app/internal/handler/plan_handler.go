@@ -45,11 +45,12 @@ type PlanResponse struct {
 }
 
 type UpdatePlanRequest struct {
-	Title           *string          `json:"title,omitempty"`
-	Description     *string          `json:"description,omitempty"`
-	State           *model.PlanState `json:"state,omitempty"`
-	TimeWindowStart *time.Time       `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time       `json:"time_window_end,omitempty"`
+	Category        *model.PlanCategory `json:"plan_category,omitempty"`
+	Title           *string             `json:"title,omitempty"`
+	Description     *string             `json:"description,omitempty"`
+	State           *model.PlanState    `json:"state,omitempty"`
+	TimeWindowStart *time.Time          `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time          `json:"time_window_end,omitempty"`
 }
 
 type PlanHandler struct {
@@ -148,24 +149,47 @@ func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, plan)
+	// The persistence model stores JSONB bytes. Use the existing activity DTO so
+	// nested metadata is JSON too, rather than encoding those bytes as base64.
+	activities := make([]ProposedActivityResponse, len(plan.ProposedActivities))
+	for i := range plan.ProposedActivities {
+		activities[i] = toProposedActivityResponse(&plan.ProposedActivities[i])
+	}
+	WriteJSONResponse(w, http.StatusOK, struct {
+		*model.Plan
+		Activities []ProposedActivityResponse `json:"proposed_activities"`
+	}{plan, activities})
 }
 
 // GET /v1/plans/organiser/{id} - List plans for an organiser
 func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Request) {
+	h.listPlans(w, r, false)
+}
+
+func (h *PlanHandler) ListPlansByMember(w http.ResponseWriter, r *http.Request) {
+	h.listPlans(w, r, true)
+}
+
+func (h *PlanHandler) listPlans(w http.ResponseWriter, r *http.Request, joined bool) {
 	organiserID := r.PathValue("id")
 	if organiserID == "" {
 		WriteError(w, http.StatusBadRequest, "Organiser id is required")
 		return
 	}
 
-	plans, err := h.repo.ListByOrganiser(r.Context(), organiserID, 20, 0)
+	var plans []model.Plan
+	var err error
+	if joined {
+		plans, err = h.repo.ListByMember(r.Context(), organiserID, 100, 0)
+	} else {
+		plans, err = h.repo.ListByOrganiser(r.Context(), organiserID, 20, 0)
+	}
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "Failed to list plans")
 		return
 	}
 	responses := make([]PlanResponse, len(plans))
-	for i, p := range plans{
+	for i, p := range plans {
 		responses[i] = PlanResponse{
 			ID:              p.ID,
 			Title:           p.Title,
@@ -201,6 +225,13 @@ func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 
 	// Build dynamic updates map
 	updates := make(map[string]interface{})
+	if req.Category != nil {
+		if !req.Category.IsValidCategory() {
+			WriteError(w, http.StatusBadRequest, "invalid category")
+			return
+		}
+		updates["category"] = *req.Category
+	}
 	if req.Title != nil {
 		updates["title"] = *req.Title
 	}

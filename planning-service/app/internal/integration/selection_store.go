@@ -89,7 +89,8 @@ func (s *roundStore) reopen(ctx context.Context, id uuid.UUID, operationID uuid.
 		if latest.ID != id {
 			return fmt.Errorf("a newer round already exists")
 		}
-		created = model.PlanRound{ID: uuid.New(), PlanID: source.PlanID, RoundNumber: latest.RoundNumber + 1, IsActive: false}
+		created = model.PlanRound{ID: uuid.New(), PlanID: source.PlanID, RoundNumber: latest.RoundNumber + 1, IsActive: false,
+			CreatorState: latest.CreatorState, SourceRoundID: &source.ID}
 		if err := tx.Create(&created).Error; err != nil {
 			return err
 		}
