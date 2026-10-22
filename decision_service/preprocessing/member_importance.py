@@ -87,6 +87,10 @@ def compile_member_weights(handoff: dict, entries: list[dict], issues: list[dict
                 exported.append({**entry, "status": "unresolved"})
                 continue
             references = {entry["attribute_id"]} if entry["kind"] == "multiplier" else {entry["higher_attribute_id"], entry["lower_attribute_id"]}
+            if not references <= active and entry["kind"] == "multiplier" and entry["source_answer_id"].endswith(":importance-scale"):
+                # A per-question "how much it matters" level whose answer did not
+                # become a scored preference has nothing to weigh; it is not an error.
+                continue
             if not references <= active:
                 issues.append(issue("AMBIGUOUS_IMPORTANCE", f"responses.participants.{pid}",
                                     "Importance can reference only this member's active soft criteria"))

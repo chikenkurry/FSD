@@ -146,5 +146,31 @@ class EnrichmentTests(unittest.TestCase):
         self.assertEqual(run['status'],'needs_information')
         self.assertEqual(run['fact_enrichment']['issues'],[{'code':'FACT_COLLECTOR_NOT_CONFIGURED'}])
 
+    def test_advertised_qualifiers_multi_tag_claims_and_estimated_facts_auto_supplement(self):
+        plan = deepcopy(self.plan)
+        plan['questions'][0]['mapping'] = {'value_type': 'tag_set', 'comparison_rule': 'tag_overlap_v1'}
+        plan['questions'][0]['answer_format'] = 'multi_choice'
+        self.responses['participants'][0]['answers'][0]['value'] = ['Italian']
+        plan['options'][0]['facts'].append({
+            'criterion': 'cuisine', 'value': ['Italian'], 'value_type': 'tag_set',
+            'source': 'https://example.com/a', 'status': 'estimated',
+            'context': {'qualifier': 'advertised', 'sources': [{'url': 'https://example.com/a'}]},
+        })
+        def multi_tag_and_advertised(rows):
+            out = []
+            for r in rows:
+                if r['option_id'] == 'a':
+                    continue
+                out.append({**r, 'value': ['Italian'], 'qualifier': 'advertised'})
+                out.append({**r, 'claim_id': r['claim_id'] + ':2', 'value': ['Mediterranean'], 'qualifier': 'exact'})
+            return out
+        self.collector.transform = multi_tag_and_advertised
+        run = execute(plan, self.responses, fact_enricher=FactEnricher(self.collector))
+        self.assertEqual(run['status'], 'ranked', run.get('issues'))
+        self.assertEqual(len(run['fact_enrichment']['applied_facts']), 4)
+        by_option = {row['option_id']: row['fact']['value'] for row in run['fact_enrichment']['applied_facts']}
+        self.assertEqual(by_option['a'], ['Italian'])
+        self.assertEqual(by_option['b'], ['Italian', 'Mediterranean'])
+
 
 if __name__ == '__main__': unittest.main()

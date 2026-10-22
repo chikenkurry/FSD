@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 from datetime import datetime, timezone
+import re
 from uuid import uuid4
 
 from decision_service.algorithm.scoring import group_objective_metrics
@@ -114,14 +115,79 @@ def _numeric_utility(value: object, preference: dict) -> float:
     return float(max(Decimal(0), Decimal(1) - distance / (_decimal(upper) - _decimal(lower))))
 
 
-def _utility(fact: dict, preference: dict) -> float:
+_STOP_TOKENS = frozenset({
+    "a", "an", "the", "and", "or", "of", "in", "on", "with", "for", "to", "by", "at",
+    "that", "from", "style", "themed", "inspired", "incorporate", "incorporates", "influences",
+})
+
+
+def _stem_token(word: str) -> str:
+    if word == "cozy":
+        return "cosy"
+    if len(word) > 5 and word.endswith("ed"):
+        return word[:-2]
+    if len(word) > 4 and word.endswith("es"):
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _content_tokens(text: object) -> set[str]:
+    if not isinstance(text, str):
+        return set()
+    raw = [_stem_token(w) for w in re.findall(r"[a-z0-9]+", text.casefold())]
+    filtered = {w for w in raw if w and w not in _STOP_TOKENS}
+    return filtered or set(raw)
+
+
+def _phrase_similarity(actual: object, preferred: object) -> float:
+    if actual == preferred:
+        return 1.0
+    if not isinstance(actual, str) or not isinstance(preferred, str):
+        return 0.0
+    a_tokens = _content_tokens(actual)
+    p_tokens = _content_tokens(preferred)
+    if not a_tokens or not p_tokens:
+        return 0.0
+    if p_tokens <= a_tokens or a_tokens <= p_tokens:
+        return 1.0
+    overlap = len(a_tokens & p_tokens)
+    return overlap / len(p_tokens) if overlap else 0.0
+
+
+def similarity_table(handoff: dict) -> dict[tuple[str, str, str], float]:
+    """Frozen model judgements of how well a fact value meets a preferred value."""
+    return {(row["attribute_id"], row["preferred"], row["actual"]): float(row["score"])
+            for row in handoff.get("similarity", []) if isinstance(row, dict)}
+
+
+def _similarity(attribute_id: str, actual: object, preferred: object, table: dict | None) -> float:
+    lexical = _phrase_similarity(actual, preferred)
+    if lexical >= 1.0 or not table or not isinstance(actual, str) or not isinstance(preferred, str):
+        return lexical
+    return max(lexical, table.get((attribute_id, preferred, actual), 0.0))
+
+
+def _utility(fact: dict, preference: dict, table: dict | None = None) -> float:
     rule = preference["utility_rule"]
+    aid = preference.get("attribute_id", fact.get("attribute_id", ""))
+    if rule == "option_rating_v1":
+        # The fact is the option's own identity; each member rated options directly.
+        return float(preference.get("preferred_value", {}).get(fact.get("value"), 0.5))
     if rule == "attribute_match_v1":
-        matched = fact.get("value") == preference.get("preferred_value")
-        return float(not matched) if preference.get("polarity") == "avoid" else float(matched)
+        score = _similarity(aid, fact.get("value"), preference.get("preferred_value"), table)
+        return 1.0 - score if preference.get("polarity") == "avoid" else score
     if rule == "tag_overlap_v1":
-        preferred = set(preference.get("preferred_value", []))
-        overlap = len(preferred & set(fact.get("value", []))) / len(preferred) if preferred else 0.0
+        preferred = list(preference.get("preferred_value", []))
+        actual = list(fact.get("value", []))
+        if not preferred:
+            overlap = 0.0
+        else:
+            overlap = sum(
+                max((_similarity(aid, a, p, table) for a in actual), default=0.0)
+                for p in preferred
+            ) / len(preferred)
         return 1.0 - overlap if preference.get("polarity") == "avoid" else overlap
     return _numeric_utility(fact.get("value"), preference)
 
@@ -186,28 +252,25 @@ def _scoring_rows(handoff: dict, required: list[str]) -> dict[str, list[tuple[di
     return rows
 
 
-def _score(candidate: dict, rows_by_member: dict) -> tuple[dict[str, float], tuple[str, ...]]:
+def _score(candidate: dict, rows_by_member: dict, table: dict | None = None) -> tuple[dict[str, float], tuple[str, ...]]:
     facts = _facts(candidate)
     scores = {}
     for participant_id, rows in rows_by_member.items():
         total = 0.0
+        active_weight = 0.0
         for row, answers in rows:
             if not answers:
                 return {}, ("MISSING_SOFT_ANSWER",)
             if all(answer.get("kind") == "indifferent" for answer in answers):
-                total += row["effective_weight"] * 0.5
                 continue
             fact = facts.get(row["attribute_id"])
             if fact is None or fact.get("status") != "confirmed":
                 return {}, ("MISSING_SOFT_OPTION_FACT",)
-            utilities = []
-            for answer in answers:
-                if answer.get("kind") == "indifferent":
-                    utilities.append(0.5)
-                else:
-                    utilities.append(_utility(fact, answer))
+            active_answers = [a for a in answers if a.get("kind") != "indifferent"]
+            utilities = [_utility(fact, answer, table) for answer in active_answers]
             total += row["effective_weight"] * sum(utilities) / len(utilities)
-        scores[participant_id] = round(total, 12)
+            active_weight += row["effective_weight"]
+        scores[participant_id] = round(total / active_weight, 12) if active_weight > 0 else 0.5
     return scores, ()
 
 
@@ -225,6 +288,7 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
         return GenericDecisionResult("blocked", run_id, handoff["context"].get("algorithm_version"), handoff["context"].get("policy_version"), (), (), ("INCOMPLETE_RESPONSE",))
     required_set = set(required)
     scoring_rows = None
+    table = similarity_table(handoff)
     results, scored = [], []
     for candidate in handoff["candidates"]:
         state, codes = _feasibility(candidate, handoff["constraints"], required_set)
@@ -238,7 +302,7 @@ def run_decision(handoff: dict) -> GenericDecisionResult:
         if state == "feasible":
             if scoring_rows is None:
                 scoring_rows = _scoring_rows(handoff, required)
-            scores, score_codes = _score(candidate, scoring_rows)
+            scores, score_codes = _score(candidate, scoring_rows, table)
             if score_codes:
                 result.update(feasibility="unresolved", explanation_codes=list(score_codes))
             else:

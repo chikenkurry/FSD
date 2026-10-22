@@ -6,7 +6,7 @@ import math
 from decimal import Decimal
 
 from .common import InputError, require_object
-from .generic_mapping import HARD_RULES, NUMERIC_SOFT_RULES, SOFT_RULES, typed_value
+from .generic_mapping import HARD_RULES, NUMERIC_SOFT_RULES, OPTION_RATING, SOFT_RULES, typed_value
 from .generic_values import intersect_numeric_requirements, numeric_semantics
 
 def validate_preparation(handoff: dict, issues: list[dict] | None = None) -> None:
@@ -21,7 +21,9 @@ def validate_preparation(handoff: dict, issues: list[dict] | None = None) -> Non
             continue
         if mapping["attribute_id"] not in registry or registry[mapping["attribute_id"]]["unit"] != mapping["unit"]:
             raise InputError("INVALID_PREPARATION", "preparation.questions", "Question mapping has an unknown criterion or unit")
-        if question["role"] == "soft":
+        if question["role"] == "soft" and mapping["attribute_id"] == OPTION_RATING:
+            allowed = {"option_rating_v1"}
+        elif question["role"] == "soft":
             allowed = NUMERIC_SOFT_RULES if mapping["value_type"] in {"number", "decimal"} else {SOFT_RULES.get(mapping["value_type"])}
         else:
             allowed = HARD_RULES[mapping["value_type"]]
@@ -49,6 +51,12 @@ def _validate_comparison(entry: dict, definition: dict) -> None:
     hard = "required_value" in entry
     rule = entry.get("constraint_rule" if hard else "utility_rule")
     if entry["kind"] in {"indifferent", "unlimited"}:
+        return
+    if rule == "option_rating_v1":
+        ratings = entry.get("preferred_value")
+        if hard or entry["attribute_id"] != OPTION_RATING or not isinstance(ratings, dict) or not ratings or any(
+                isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 1 for v in ratings.values()):
+            raise InputError("INVALID_PREPARATION", "preparation.preferences", "Option ratings need scores between 0 and 1")
         return
     if hard:
         allowed = HARD_RULES[kind] | ({"excludes_all_v1"} if kind == "tag_set" else {"not_equals_v1"} if kind in {"boolean", "category"} else set())

@@ -18,9 +18,10 @@ from decision_service.contract import ContractError, group_objective
 
 from .common import InputError, issue as _issue, require_in, require_int, require_list, require_object, require_text
 from .canonicalization import Canonicalizer
-from .generic_mapping import QUESTION_NUMERIC_INTENTS, TYPES, fact_registry, local_question, model_question_role, question_numeric_intent, resolve_mapping
+from .generic_mapping import OPTION_RATING, QUESTION_NUMERIC_INTENTS, TYPES, fact_registry, local_question, model_question_role, question_numeric_intent, resolve_mapping
 from .generic_preparation import MEMBER_ISSUES, compile_preparation
 from .generic_answers import process_answers
+from .similarity import assess_similarity
 from .scenarios import DEFAULT_MAX_SCENARIO_REQUESTS, build_scenario_requests
 from .member_importance import importance_question
 from .semantics import (
@@ -218,6 +219,13 @@ def preprocess_sparse(
         if context["cost_scope"] is not None:
             context["cost_scope"] = require_text(context["cost_scope"], "planning.cost_scope")
         candidates = _options(planning.get("options"))
+        if any(isinstance(q, dict) and q.get("criterion") == OPTION_RATING for q in planning.get("questions", []) or []):
+            # Direct ratings compare each option's own identity, which is always known.
+            for candidate in candidates:
+                if any(f["criterion"] == OPTION_RATING for f in candidate["facts"]):
+                    raise InputError("DUPLICATE_ID", "planning.options.facts", "option_rating is reserved for direct option ratings")
+                candidate["facts"].append({"criterion": OPTION_RATING, "value": candidate["option_id"], "value_type": "category",
+                                           "status": "confirmed", "source": "option_identity"})
         _check_option_cost_facts(candidates, currency, context["cost_scope"])
         registry = fact_registry(candidates)
         for raw in require_list(planning.get("criteria", []), "planning.criteria"):
@@ -252,9 +260,10 @@ def preprocess_sparse(
             suggestions = require_object(semantic_evidence.get("option_suggestions", {}), "semantic_evidence.option_suggestions")
             date_assessments = require_object(semantic_evidence.get("date_assessments", {}), "semantic_evidence.date_assessments")
             canonical_assessments = require_object(semantic_evidence.get("canonical_assessments", {}), "semantic_evidence.canonical_assessments")
+            similarity_assessments = require_object(semantic_evidence.get("similarity_assessments", {}), "semantic_evidence.similarity_assessments")
         else:
             assessments, extracted, suggestions, date_assessments = {}, {}, {}, {}
-            canonical_assessments = {}
+            canonical_assessments, similarity_assessments = {}, {}
 
         canonicalizer = Canonicalizer(planning.get("canonicalization", {}), registry, semantic_provider,
                                       canonical_assessments, replay=semantic_evidence is not None,
@@ -338,7 +347,9 @@ def preprocess_sparse(
             if model_canonical:
                 question["canonicalization_source"] = "semantic_model"
             question["answer_format"] = require_in(item.get("answer_format", "choice" if choices else "text"),
-                                                  {"text", "choice", "multi_choice", "number", "boolean", "date_intervals"}, f"{path}.answer_format")
+                                                  {"text", "choice", "multi_choice", "number", "boolean", "date_intervals", "option_rating"}, f"{path}.answer_format")
+            if (question["answer_format"] == "option_rating") != (question["criterion"] == OPTION_RATING):
+                raise InputError("INVALID_MAPPING", f"{path}.answer_format", "Option ratings use the option_rating format and criterion together")
             definition = registry.get(question["criterion"])
             numeric = question["criterion"] in {"max_cost", "duration_days"} or definition and definition["value_type"] in {"number", "decimal"}
             if "numeric_intent" in item and question["role"] == "unclassified":
@@ -434,18 +445,6 @@ def preprocess_sparse(
             if any(r["cost_evidence_status"] == "estimated" for r in scenario_requests):
                 issues.append(_issue("ESTIMATED_SCENARIO_COST", "planning.scenario_costs", "Estimated costs require confirmation before a hard budget check"))
 
-        frozen = None
-        if assessments or extracted or suggestions or date_assessments or canonical_assessments or semantic_evidence is not None:
-            frozen = semantic_evidence or {"option_snapshot_id": option_snapshot_id, "response_snapshot_id": response_snapshot_id,
-                                           "processing_version": VERSION, "model": getattr(semantic_provider, "model", None),
-                                           "question_assessments": assessments, "answer_assessments": extracted,
-                                           "option_suggestions": suggestions, "date_assessments": date_assessments,
-                                           "canonical_assessments": canonical_assessments,
-                                           "canonicalization_enabled": canonicalizer.model_enabled,
-                                           "canonicalization_declarations": canonicalizer.declarations,
-                                           "interpretation_policy": interpretation_policy,
-                                           "scenario_policy": {"max_requests": scenario_limit}}
-        artifact_id = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
         handoff = {"context": {"schema_version": SCHEMA_VERSION, "round_id": round_id, "option_revision": revision,
                                 "processing_version": VERSION,
                                 "policy_version": require_text(policy.get("policy_version", "generic-question-relevance-v1"), "policy.policy_version"),
@@ -453,15 +452,32 @@ def preprocess_sparse(
                                 "option_snapshot_id": option_snapshot_id, "response_snapshot_id": response_snapshot_id,
                                 "decision_question": decision, "currency": currency, "cost_scope": context["cost_scope"],
                                 "details": context["details"],
-                                "semantic_artifact_id": artifact_id},
+                                "semantic_artifact_id": None},
                    "candidates": candidates, "scenario_requests": scenario_requests,
                    "participants": [{"participant_id": x, "response_status": members.get(x, {}).get("response_status", "incomplete"),
-                                     "is_required_for_decision": True} for x in roster],
+                                     "is_required_for_decision": members.get(x, {}).get("is_required_for_decision", True) is not False} for x in roster],
                    "constraints": constraints, "preferences": preferences, "informational_answers": informational,
                    "unclassified_answers": unclassified_answers, "importance_entries": importance_entries,
                    "canonicalization": canonicalizer.packet(),
                    "scoring_model": {"questions": questions, "missing_fact_policy": "unresolved", "group_objective": objective}}
         handoff = compile_preparation(handoff, registry, issues)
+        similarity = assess_similarity(handoff, similarity_assessments, semantic_provider if semantic_evidence is None else None, context)
+        if similarity:
+            handoff["similarity"] = similarity
+
+        frozen = None
+        if assessments or extracted or suggestions or date_assessments or canonical_assessments or similarity_assessments or semantic_evidence is not None:
+            frozen = semantic_evidence or {"option_snapshot_id": option_snapshot_id, "response_snapshot_id": response_snapshot_id,
+                                           "processing_version": VERSION, "model": getattr(semantic_provider, "model", None),
+                                           "question_assessments": assessments, "answer_assessments": extracted,
+                                           "option_suggestions": suggestions, "date_assessments": date_assessments,
+                                           "canonical_assessments": canonical_assessments,
+                                           "similarity_assessments": similarity_assessments,
+                                           "canonicalization_enabled": canonicalizer.model_enabled,
+                                           "canonicalization_declarations": canonicalizer.declarations,
+                                           "interpretation_policy": interpretation_policy,
+                                           "scenario_policy": {"max_requests": scenario_limit}}
+        handoff["context"]["semantic_artifact_id"] = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
         issues.append(_issue("EXECUTION_ADAPTER_REQUIRED", "preparation", "Sparse meanings need a supported execution adapter before ranking"))
         status = "needs_clarification" if any(i["code"] in MEMBER_ISSUES for i in issues) else "provisional"
         return {"status": status, "issues": issues, "algorithm_input": None, "preparation": handoff, "semantic_evidence": frozen}

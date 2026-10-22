@@ -7,9 +7,17 @@ from decision_service.adapters import (
     adapt_scenarios_to_option_v1,
 )
 from decision_service.algorithm import run_decision as run_activity
+from decision_service.contract import ranking_order
 from decision_service.generic_algorithm import run_decision as run_options
 from decision_service.preprocessing.money import minor_amount
 from decision_service.preprocessing.common import InputError
+
+BLENDED_FAIRNESS_OBJECTIVE = {
+    "mode": "weighted_fairness",
+    "minimum_score_weight": 0.5,
+    "average_score_weight": 0.5,
+    "fairness_weight": 0.15,
+}
 
 
 def adapt_preparation(packet: dict, plan: dict, responses: dict) -> dict:
@@ -24,6 +32,10 @@ def adapt_preparation(packet: dict, plan: dict, responses: dict) -> dict:
     if adapted["status"] != "ready":
         return adapted
     handoff = adapted["algorithm_input"]
+    if mode == "options" and not plan.get("group_objective") and plan.get("interpretation_policy") == "facts-v1":
+        objective = deepcopy(BLENDED_FAIRNESS_OBJECTIVE)
+        handoff["scoring_model"]["group_objective"] = objective
+        handoff["scoring_model"]["ranking_policy"]["sort_order"] = ranking_order(objective)
     handoff["context"]["currency_minor_digits"] = plan.get("currency_minor_digits", 2)
     if mode != "scheduled":
         try:

@@ -13,7 +13,7 @@ export interface Question {
   description: string;
   isRequired?: boolean;
   sortOrder?: number;
-  type: 'Multiple choice' | 'Short answer' | 'Single choice' | 'Duration' | 'Location' | 'Budget' | 'Number' | 'Boolean';
+  type: 'Multiple choice' | 'Short answer' | 'Single choice' | 'Duration' | 'Location' | 'Budget' | 'Number' | 'Boolean' | 'Option rating';
   options: string[]; // options list or JSON metadata string
   metadata?: {
     currency?: string;
@@ -50,6 +50,8 @@ export interface Form {
   wizardStep?: number;
   wizardVisited?: number;
   sourceRoundId?: string;
+  // Optional date the organiser wants responses by (local datetime input value).
+  deadline?: string;
 }
 
 export interface Fact { criterion: string; value: string; valueType: 'category' | 'number' | 'boolean' | 'tag_set' | 'decimal'; unit: string; source: string; status?: 'confirmed' | 'estimated' | 'unknown'; context?: FactContext }
@@ -70,12 +72,13 @@ export interface ResearchedFact { option: string; criterion: string; value: unkn
 export interface ResearchRun<T> { run_id: string; status: string; issues: { code: string }[]; research?: T }
 export interface PublishedFact { criterion: string; value: unknown; value_type?: string; unit?: string | null; status?: string; source?: string; context?: FactContext }
 export interface Session { id: string; username: string; session_token: string }
-export interface PlanRow { id: string; title: string; description?: string; category: string; state: string; created_by_user_id: string; members_count?: number; organiser_name?: string }
-export interface Round { id: string; round_number: number; source_round_id?: string }
+export interface PlanRow { id: string; title: string; description?: string; category: string; state: string; created_by_user_id: string; members_count?: number; organiser_name?: string; time_window_start?: string; time_window_end?: string }
+export interface Round { id: string; round_number: number; source_round_id?: string; deadline_at?: string | null }
 export type Choice = string | { choice_id: string; label: string };
 export interface PublishedQuestion { question_id: string; label: string; role?: string; criterion?: string; answer_format?: string; choices?: Choice[]; mapping?: { value_type?: string; unit?: string }; required?: boolean }
 export interface Snapshot { plan_id: string; round_id: string; previous_round_id?: string; interpretation_policy?: 'facts-v1' | 'choice-labels-v1'; option_revision: number; decision_question: string; currency: string; currency_minor_digits: number; execution_mode: string; questions: PublishedQuestion[]; options: { option_id: string; title: string; description?: string; facts?: PublishedFact[]; identity?: { place_id?: string; kind?: OptionKind; source_url?: string }; brief?: Brief }[] }
-export interface Answer { question_id: string; value: unknown; reviewed_revision?: number; confirmed_requirements?: unknown[] }
+export type Importance = 'low' | 'normal' | 'high';
+export interface Answer { question_id: string; value: unknown; importance?: Importance; reviewed_revision?: number; confirmed_requirements?: unknown[] }
 export interface Draft {
   revision: number; status: string; acknowledgedOptionRevision: number;
   availability: { startAt: string; endAt: string }[]; budget: { kind: string; capMinor?: number | null };
@@ -87,5 +90,6 @@ export interface Review { status: string; response_revision: number; run_id: str
 export interface ReadinessMember { id?: string; user_id?: string; role?: string; name: string; status: string }
 export interface RsvpSummary { going: number; maybe: number; declined: number; total: number }
 export interface Candidate { candidate_id: string; title: string; rank: number; primary_objective_tie_size: number; group_score: number; minimum_member_score: number; average_member_score: number; start_at?: string; end_at?: string; estimated_cost_minor?: number | null; currency?: string; currency_minor_digits?: number; tradeoffs?: string[] }
-export interface Run { run_id: string; status: string; issues: { code: string }[]; fact_requests?: { option_id: string; attribute_id: string }[]; supplemented_facts?: { option_id:string; attribute_id:string; value:unknown; value_type:string; unit?:string|null; source_text:string; sources:{url:string;title?:string}[]; retrieved_at?:string|null }[]; recommendation_view: { recommendation: Candidate | null; alternatives: Candidate[]; pareto_alternatives: Candidate[]; next_action: string | null; unavailable_candidates: { candidate_id: string; title: string; status: string }[] } }
+export interface AttributeBreakdownItem { attribute_id: string; role: 'soft' | 'hard' | 'context'; value: unknown; value_type: string; unit?: string | null; status: string; weight?: number | null; score?: number | null; matched_members?: number; total_members?: number; reason: string; source_text?: string; sources?: { url: string; title?: string }[]; supplemented?: boolean }
+export interface Run { run_id: string; status: string; issues: { code: string }[]; fact_requests?: { option_id: string; attribute_id: string }[]; supplemented_facts?: { option_id:string; attribute_id:string; value:unknown; value_type:string; unit?:string|null; source_text:string; sources:{url:string;title?:string}[]; retrieved_at?:string|null }[]; attribute_breakdown?: Record<string, AttributeBreakdownItem[]>; recommendation_view: { recommendation: Candidate | null; alternatives: Candidate[]; pareto_alternatives: Candidate[]; next_action: string | null; unavailable_candidates: { candidate_id: string; title: string; status: string }[]; not_counted_members?: number } }
 export interface Selection { run_id: string; candidate_id: string; selection_version: number }

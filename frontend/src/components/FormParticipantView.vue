@@ -12,22 +12,45 @@
     </div>
     <Transition :name="direction > 0 ? 'page-forward' : 'page-back'" mode="out-in" @after-enter="focusHeading">
       <!-- Overview: what is being decided and the options with their facts -->
-      <div v-if="page.kind === 'intro'" key="intro" class="flow-page">
-        <p class="eyebrow">{{ title }}</p>
-        <h1 id="flow-heading" ref="heading" tabindex="-1">{{ question }}</h1>
-        <p v-if="description" class="lede">{{ description }}</p>
+      <div v-if="page.kind === 'intro'" key="intro" class="flow-page intro">
+        <div class="intro-head">
+          <div>
+            <h1 id="flow-heading" ref="heading" tabindex="-1">{{ question }}</h1>
+            <p v-if="question !== title" class="plan-context">Part of <strong>{{ title }}</strong></p>
+            <p v-if="description" class="lede">{{ description }}</p>
+          </div>
+          <div class="intro-start">
+            <button class="btn-primary btn-large" @click="go(1)">{{ answeredCount ? 'Continue your response' : 'Start' }}<UiIcon name="arrow" /></button>
+            <span class="helper-text">{{ total }} {{ total === 1 ? 'question' : 'questions' }} · about {{ Math.max(1, Math.round(total * 0.4)) }} min</span>
+            <span v-if="dueText" :class="['due', { overdue: overdue }]">{{ dueText }}</span>
+          </div>
+        </div>
         <h2 class="section-label">The options <span class="muted">{{ snapshot.options.length }}</span></h2>
         <OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" />
         <p class="privacy-note"><UiIcon name="lock" />Your answers are private. The group only sees the combined result.</p>
-        <div class="flow-actions"><button class="btn-primary btn-large" @click="go(1)">{{ answeredCount ? 'Continue your response' : 'Start' }}<UiIcon name="arrow" /></button>
-          <span class="helper-text">{{ total }} {{ total === 1 ? 'question' : 'questions' }} · about {{ Math.max(1, Math.round(total * 0.4)) }} min</span></div>
       </div>
 
       <!-- One question per page -->
       <form v-else-if="page.kind === 'question'" :key="page.q.question_id" class="flow-page" @submit.prevent="next" novalidate>
         <fieldset :disabled="busy || closed">
-          <p :class="['role-tag', page.q.role || 'soft']">{{ roleHint(page.q.role) }}</p>
-          <template v-if="['choice','multi_choice','boolean','date_intervals'].includes(page.q.answer_format || '')">
+          <p :class="['role-tag', page.q.role || 'soft']">{{ page.q.answer_format === 'option_rating' ? 'Your ratings · options you love rank higher' : roleHint(page.q.role) }}</p>
+          <template v-if="page.q.answer_format === 'option_rating'">
+            <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
+              <legend><h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">{{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span></h2></legend>
+              <ul class="rating-list">
+                <li v-for="(option, oi) in snapshot.options" :key="option.option_id" class="rating-row" :style="{ '--i': oi }">
+                  <span class="rating-option" :id="`rate-label-${option.option_id}`">{{ option.title }}</span>
+                  <div class="rating-scale" role="radiogroup" :aria-labelledby="`rate-label-${option.option_id}`">
+                    <label v-for="level in ratingLevels" :key="level.value" :class="['rating-step', { on: ratingOf(page.q.question_id, option.option_id) === level.value }]">
+                      <input type="radio" :name="`rate-${page.q.question_id}-${option.option_id}`" :value="level.value" :checked="ratingOf(page.q.question_id, option.option_id) === level.value" @change="rate(page.q.question_id, option.option_id, level.value)" />
+                      <span>{{ level.label }}</span>
+                    </label>
+                  </div>
+                </li>
+              </ul>
+            </fieldset>
+          </template>
+          <template v-else-if="['choice','multi_choice','boolean','date_intervals'].includes(page.q.answer_format || '')">
             <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
               <legend><h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">{{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span></h2></legend>
               <p v-if="page.q.answer_format === 'multi_choice'" class="helper-text choose-any">Choose all that apply.</p>
@@ -52,6 +75,15 @@
               <span v-if="page.q.mapping?.unit" class="unit">{{ page.q.mapping.unit }}</span>
             </div>
           </template>
+          <fieldset v-if="weighable(page.q)" class="importance">
+            <legend>How much does this matter to you?</legend>
+            <div class="importance-scale">
+              <label v-for="level in importanceLevels" :key="level.value" :class="['importance-step', { on: (importances[page.q.question_id] || 'normal') === level.value }]">
+                <input type="radio" :name="`importance-${page.q.question_id}`" :value="level.value" :checked="(importances[page.q.question_id] || 'normal') === level.value" @change="importances[page.q.question_id] = level.value" />
+                <span>{{ level.label }}</span>
+              </label>
+            </div>
+          </fieldset>
           <Transition name="reveal"><p v-if="error" id="flow-error" role="alert" class="error">{{ error }}</p></Transition>
           <div class="flow-actions split">
             <button type="button" class="btn-quiet" @click="back"><UiIcon name="back" />Back</button>
@@ -113,7 +145,7 @@
       <div v-else key="done" class="flow-page done">
         <span class="seal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg></span>
         <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">Your response is in</h2>
-        <p class="lede">Thanks{{ name ? `, ${name}` : '' }}. Once the organiser closes collection, the recommendation will appear here.</p>
+        <p class="lede">Thanks{{ name ? `, ${name}` : '' }}. Once the organiser closes collection, the recommendation will appear here.<template v-if="dueText && !overdue"> You can change your answers until then ({{ dueText.toLowerCase() }}).</template></p>
         <div class="flow-actions centred">
           <button v-if="guided" class="btn-primary" @click="emit('refresh')"><UiIcon name="refresh" />Check for results</button>
           <button @click="go(pages.length - 1)">Edit my response</button>
@@ -132,17 +164,27 @@ import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import { apiService } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
-import type { Snapshot, Draft, Answer, Choice, PublishedQuestion } from '@/types/form';
-const props = withDefaults(defineProps<{ roundId: string; snapshot: Snapshot; title?: string; description?: string; guided?: boolean }>(), { title: '', description: '', guided: false });
+import type { Snapshot, Draft, Answer, Choice, Importance, PublishedQuestion } from '@/types/form';
+const props = withDefaults(defineProps<{ roundId: string; snapshot: Snapshot; title?: string; description?: string; guided?: boolean; deadline?: string | null }>(), { title: '', description: '', guided: false, deadline: null });
+const overdue = computed(() => !!props.deadline && Date.parse(props.deadline) <= Date.now());
+const dueText = computed(() => props.deadline ? (overdue.value ? 'The deadline has passed, but you can still answer until collection closes.'
+  : `Answers due ${new Date(props.deadline).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}`) : '');
 const emit = defineEmits<{ (e: 'saved'): void; (e: 'refresh'): void }>();
 const auth = useAuthStore();
 const name = auth.username;
 // Older rounds stored the plan title as the question; show nothing twice.
 const question = computed(() => props.snapshot.decision_question && props.snapshot.decision_question !== props.title ? props.snapshot.decision_question : props.title);
-type AnswerValue = string | number | boolean | string[];
+type AnswerValue = string | number | boolean | string[] | Record<string, number>;
 type Page = { kind: 'intro' } | { kind: 'question'; q: PublishedQuestion; index: number } | { kind: 'extras' } | { kind: 'review' } | { kind: 'done' };
 const draft = ref<Draft>(); const values = reactive<Record<string, AnswerValue>>({});
 const dates = reactive<Record<string, { start: string; end: string }>>({}); const flags = reactive<Record<string,string>>({});
+const importances = reactive<Record<string, Importance>>({});
+const ratingLevels = [{ value: 0, label: 'Not for me' }, { value: 1, label: 'Meh' }, { value: 2, label: 'Fine' }, { value: 3, label: 'Good' }, { value: 4, label: 'Love it' }];
+const importanceLevels: { value: Importance; label: string }[] = [{ value: 'low', label: 'A little' }, { value: 'normal', label: 'Somewhat' }, { value: 'high', label: 'A lot' }];
+// Importance tilts a member's own weights; it applies to scored preferences on one detail.
+function weighable(q: PublishedQuestion) { return (q.role || 'soft') === 'soft' && !!q.criterion && !['preferences', 'context'].includes(q.criterion); }
+function ratingOf(qid: string, optionId: string) { const v = values[qid]; return v && typeof v === 'object' && !Array.isArray(v) ? v[optionId] : undefined; }
+function rate(qid: string, optionId: string, rating: number) { const v = values[qid]; values[qid] = { ...(v && typeof v === 'object' && !Array.isArray(v) ? v : {}), [optionId]: rating }; }
 const availableStart = ref(''); const availableEnd = ref(''); const privateNote = ref('');
 const busy = ref(false); const busyAction = ref(''); const error = ref(''); const unsupportedEditor = ref(false);
 const heading = ref<HTMLElement>();
@@ -153,15 +195,15 @@ const definition = JSON.stringify([props.snapshot.option_revision, props.snapsho
 interface ResponseRecovery {
   revision: number; definition: string; at: number; dirty: boolean;
   values: Record<string, AnswerValue>; dates: Record<string, { start: string; end: string }>;
-  flags: Record<string, string>; note: string; start: string; end: string;
+  flags: Record<string, string>; note: string; start: string; end: string; importances?: Record<string, Importance>;
 }
 const recovered = readCheckpoint<ResponseRecovery>(recoveryKey);
 const recoveryNotice = ref('');
-watch([values, dates, flags, privateNote, availableStart, availableEnd, at, draft, submitted], () => {
+watch([values, dates, flags, importances, privateNote, availableStart, availableEnd, at, draft, submitted], () => {
   if (!loaded || !draft.value || closed.value) return;
   if (submitted.value) { removeCheckpoint(recoveryKey); return; }
   if (!writeCheckpoint(recoveryKey, { revision: draft.value.revision, definition, at: at.value, dirty: state() !== savedState,
-    values, dates, flags, note: privateNote.value, start: availableStart.value, end: availableEnd.value })) {
+    values, dates, flags, importances, note: privateNote.value, start: availableStart.value, end: availableEnd.value })) {
     recoveryNotice.value = 'Browser storage is unavailable. Use Next to save each answer before refreshing.';
   }
 }, { deep: true, flush: 'sync' });
@@ -189,12 +231,15 @@ function valueOf(q: PublishedQuestion) {
   const date = dates[q.question_id];
   return q.answer_format === 'date_intervals' ? date?.start && date?.end ? [{ start_date: date.start, end_date: date.end }] : [] : values[q.question_id];
 }
-function answered(q: PublishedQuestion) { const v = valueOf(q); return !(v === '' || v === undefined || (Array.isArray(v) && !v.length)); }
-function answers() { return props.snapshot.questions.flatMap(q => answered(q) ? [{ question_id: q.question_id, value: valueOf(q) }] : []); }
+function answered(q: PublishedQuestion) { const v = valueOf(q); return !(v === '' || v === undefined || (Array.isArray(v) && !v.length) || (v !== null && typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)); }
+function answers(): Answer[] { return props.snapshot.questions.flatMap(q => answered(q) ? [{ question_id: q.question_id, value: valueOf(q),
+  ...(weighable(q) && importances[q.question_id] && importances[q.question_id] !== 'normal' ? { importance: importances[q.question_id] } : {}) }] : []); }
 function answerText(q: PublishedQuestion) {
   if (!answered(q)) return 'Not answered';
   const v = values[q.question_id];
   if (q.answer_format === 'date_intervals') { const d = dates[q.question_id]!; return `${d.start} to ${d.end}`; }
+  if (q.answer_format === 'option_rating') return props.snapshot.options.filter(o => ratingOf(q.question_id, o.option_id) !== undefined)
+    .map(o => `${o.title}: ${ratingLevels[ratingOf(q.question_id, o.option_id)!]?.label}`).join(' · ');
   const label = (id: unknown) => { const c = q.choices?.find(c => choiceId(c) === id); return c ? choiceLabel(c) : String(id); };
   if (Array.isArray(v)) return v.map(label).join(', ');
   if (typeof v === 'boolean') return v ? 'Yes' : 'No';
@@ -230,6 +275,7 @@ function problem() {
   if (p.q.answer_format === 'date_intervals' && d && (!!d.start !== !!d.end)) return 'Add both dates, or leave both empty.';
   if (p.q.answer_format === 'date_intervals' && d?.start && d.end && d.end < d.start) return 'The second date must be on or after the first.';
   if (p.q.answer_format === 'number' && values[p.q.question_id] !== '' && !Number.isFinite(Number(values[p.q.question_id]))) return 'Enter a number.';
+  if (p.q.answer_format === 'option_rating' && p.q.required && props.snapshot.options.some(o => ratingOf(p.q.question_id, o.option_id) === undefined)) return 'Rate every option to continue.';
   if (p.q.required && !answered(p.q)) return 'Answer this question to continue.';
   return '';
 }
@@ -261,12 +307,13 @@ async function load() { await action('load', async () => {
     unsupportedEditor.value = true;
     throw new Error('This response has multiple availability windows. The form is read-only here to preserve them.');
   }
-  for (const q of props.snapshot.questions) { values[q.question_id] = q.answer_format === 'multi_choice' ? [] : ''; dates[q.question_id] = { start: '', end: '' }; }
+  for (const q of props.snapshot.questions) { values[q.question_id] = q.answer_format === 'multi_choice' ? [] : q.answer_format === 'option_rating' ? {} : ''; dates[q.question_id] = { start: '', end: '' }; delete importances[q.question_id]; }
   for (const answer of own.answers) {
     if (props.snapshot.questions.find(q => q.question_id === answer.question_id)?.answer_format === 'date_intervals') {
       const ranges = answer.value as { start_date: string; end_date: string }[];
       dates[answer.question_id] = { start: ranges[0]?.start_date || '', end: ranges[0]?.end_date || '' };
     } else values[answer.question_id] = answer.value as AnswerValue;
+    if (answer.importance) importances[answer.question_id] = answer.importance;
   }
   for (const option of props.snapshot.options) flags[option.option_id] = own.activityAnswers.find(row => row.activityId === option.option_id)?.kind || '';
   function local(instant?: string) { if (!instant) return ''; const d = new Date(instant); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); }
@@ -277,7 +324,7 @@ async function load() { await action('load', async () => {
     if (own.status === 'SUBMITTED') submitted.value = true;
     if (recovered && recovered.definition === definition && recovered.revision === own.revision) {
       if (recovered.dirty) {
-        Object.assign(values, recovered.values); Object.assign(dates, recovered.dates); Object.assign(flags, recovered.flags);
+        Object.assign(values, recovered.values); Object.assign(dates, recovered.dates); Object.assign(flags, recovered.flags); Object.assign(importances, recovered.importances || {});
         privateNote.value = recovered.note; availableStart.value = recovered.start; availableEnd.value = recovered.end;
         submitted.value = false;
       }
@@ -293,35 +340,48 @@ async function load() { await action('load', async () => {
 onMounted(() => { void load(); });
 </script>
 <style scoped>
-.response-flow { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px; margin: 24px 0; overflow: hidden; scroll-margin-top: 24px; }
-.response-flow.guided { max-width: 760px; margin: 0 auto; padding: 40px 44px 36px; }
+.response-flow { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: clamp(22px, 3vw, 36px); margin: 24px 0; overflow: hidden; scroll-margin-top: 24px; box-shadow: var(--shadow-sm); }
+.response-flow.guided { margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; overflow: visible; }
 .response-flow .tall { height: 140px; }
-.flow-progress { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
-.flow-progress .meter { flex: 1; }
-.progress-text { color: var(--muted); font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guided .flow-page:not(.intro), .guided .flow-progress, .guided > .callout, .guided > .helper-text { max-width: 820px; margin-left: auto; margin-right: auto; }
+.guided form.flow-page, .guided .flow-page.done { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: clamp(24px, 4vw, 48px); box-shadow: var(--shadow-sm); }
+.flow-progress { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.flow-progress .meter { flex: 1; height: 4px; }
+.progress-text { color: var(--muted); font-size: .875rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .flow-page { min-width: 0; }
 .flow-page > fieldset { min-width: 0; }
-.flow-page h1 { font-size: 2rem; margin-bottom: 10px; overflow-wrap: anywhere; }
+.intro-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding-bottom: 28px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.intro-head > div:first-child { min-width: 0; }
+.flow-page h1 { font-size: clamp(2.125rem, 1.4rem + 2.2vw, 3.5rem); color: var(--night); margin-bottom: 12px; overflow-wrap: anywhere; }
 .flow-page h1:focus, .flow-page h2:focus { outline: none; }
-.eyebrow { font-size: .8125rem; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
-.lede { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-.section-label { font-size: .875rem; margin: 28px 0 12px; display: flex; gap: 8px; align-items: baseline; }
-.section-label .muted { font-weight: 500; }
-.privacy-note { display: flex; gap: 8px; color: var(--muted); font-size: .8125rem; margin: 24px 0 0; }
-.privacy-note .ui-icon { width: 16px; height: 16px; margin-top: 3px; }
-.role-tag { font-size: .75rem; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
-.role-tag.hard { color: #805114; }
-.question-title { font-size: 1.5rem; line-height: 1.3; letter-spacing: -.02em; margin-bottom: 20px; overflow-wrap: anywhere; }
+.plan-context { font-size: 1.0625rem; color: var(--muted); margin-bottom: 8px; }
+.plan-context strong { color: var(--ink); font-weight: 600; }
+.intro-start { display: grid; justify-items: end; gap: 8px; flex-shrink: 0; }
+.intro-start .helper-text { margin: 0; }
+.due { font-size: .875rem; font-weight: 600; color: var(--blue-ink); text-align: right; max-width: 30ch; }
+.due.overdue { color: var(--warn); }
+.lede { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1.0625rem; }
+.section-label { font-size: 1.125rem; margin: 28px 0 14px; display: flex; gap: 10px; align-items: baseline; }
+.section-label .muted { font-weight: 400; color: var(--faint); }
+.privacy-note { display: flex; gap: 8px; color: var(--ink-2); font-size: .9375rem; margin: 24px 0 0; }
+.privacy-note .ui-icon { width: 18px; height: 18px; margin-top: 2px; color: var(--blue); }
+.role-tag { display: flex; align-items: center; gap: 8px; font-size: .875rem; font-weight: 600; color: var(--blue-ink); margin-bottom: 12px; }
+.role-tag::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--blue); }
+.role-tag.hard { color: var(--warn); } .role-tag.hard::before { background: #d98a00; }
+.role-tag.informational { color: var(--muted); } .role-tag.informational::before { background: var(--faint); }
+.question-title { font-size: clamp(1.5rem, 1.2rem + 1vw, 2.125rem); font-weight: 300; line-height: 1.2; letter-spacing: -.02em; color: var(--night); margin-bottom: 24px; overflow-wrap: anywhere; }
 .question-title label { margin: 0; font-size: inherit; font-weight: inherit; }
 .answer-group > legend { width: 100%; }
-.answer-group > legend .question-title { margin-bottom: 20px; }
-.choose-any { margin: -12px 0 14px; }
+.answer-group > legend .question-title { margin-bottom: 24px; }
+.choose-any { margin: -14px 0 16px; }
 .choice-list.stacked { grid-template-columns: minmax(0, 1fr); }
-.choice-list.stacked .choice-option, .choice-list.binary .choice-option { min-height: 56px; font-size: 1rem; }
-.choice-list.binary { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 420px; }
-.choice-option input[type='radio'], .choice-option input[type='checkbox'] { margin-right: 12px; }
-.single-input { display: flex; align-items: center; gap: 12px; max-width: 460px; }
-.single-input input { font-size: 1.125rem; min-height: 54px; }
+.choice-list.stacked .choice-option, .choice-list.binary .choice-option { min-height: 58px; font-size: 1.0625rem; }
+.choice-list .choice-option { animation: rise 420ms var(--ease-out) both; }
+.choice-list .choice-option:nth-child(2) { animation-delay: 40ms; } .choice-list .choice-option:nth-child(3) { animation-delay: 80ms; } .choice-list .choice-option:nth-child(n+4) { animation-delay: 120ms; }
+.choice-list.binary { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 460px; }
+.choice-option input[type='radio'], .choice-option input[type='checkbox'] { margin-right: 14px; }
+.single-input { display: flex; align-items: center; gap: 12px; max-width: 480px; }
+.single-input input { font-size: 1.1875rem; min-height: 56px; }
 .unit { color: var(--muted); font-weight: 600; }
 .date-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); gap: 0 16px; }
 .date-pair label { margin: 0; }
@@ -330,37 +390,52 @@ onMounted(() => { void load(); });
 .flow-actions.split { justify-content: space-between; padding-top: 24px; border-top: 1px solid var(--line); }
 .flow-actions.centred { justify-content: center; }
 .flow-actions .helper-text { margin: 0; }
-.btn-large { min-height: 50px; padding: 12px 24px; font-size: 1rem; min-width: 150px; }
+.btn-large { min-height: 52px; padding: 12px 28px; font-size: 1.0625rem; min-width: 160px; }
+.rating-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rating-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 20px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; animation: rise 420ms var(--ease-out) both; animation-delay: calc(min(var(--i), 8) * 50ms); }
+.rating-option { font-weight: 600; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.rating-scale, .importance-scale { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; border-radius: 999px; background: var(--sky-50); border: 1px solid var(--line); }
+.rating-step, .importance-step { position: relative; margin: 0; cursor: pointer; }
+.rating-step input, .importance-step input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.rating-step span, .importance-step span { display: block; padding: 8px 14px; border-radius: 999px; font-size: .875rem; font-weight: 600; color: var(--ink-2); text-align: center; white-space: nowrap; transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out), box-shadow 200ms var(--ease-out); }
+.rating-step:hover span, .importance-step:hover span { color: var(--blue-ink); }
+.rating-step.on span, .importance-step.on span { background: var(--blue); color: #fff; box-shadow: var(--shadow-sm); }
+.rating-step:has(:focus-visible) span, .importance-step:has(:focus-visible) span { outline: 2px solid var(--blue); outline-offset: 2px; }
+.importance { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.importance > legend { font-size: .9375rem; margin-bottom: 10px; }
 .restrictions { margin-top: 8px; }
 .restrictions > legend { margin-bottom: 4px; }
 .restriction-hint { margin: 0 0 12px; }
-.restriction-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 240px); gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: .9375rem; overflow-wrap: anywhere; }
-.note-field { position: relative; margin-top: 24px; }
-.char-count { position: absolute; right: 0; top: 0; font-size: .75rem; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
-.answer-summary { margin: 8px 0 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.answer-summary > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; padding: 12px 16px; font-size: .875rem; }
+.restriction-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 1rem; overflow-wrap: anywhere; }
+.note-field { position: relative; margin-top: 28px; }
+.char-count { position: absolute; right: 0; top: 0; font-size: .8125rem; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.answer-summary { margin: 8px 0 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.answer-summary > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; padding: 14px 18px; font-size: .9375rem; }
 .answer-summary > div + div { border-top: 1px solid var(--line); }
 .answer-summary dt { color: var(--muted); overflow-wrap: anywhere; }
 .answer-summary dd { margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; overflow-wrap: anywhere; }
 .answer-summary dd .muted { font-weight: 400; }
-.answer-summary dd button { flex-shrink: 0; color: var(--accent); }
-.done { text-align: center; padding: 24px 0 8px; }
+.answer-summary dd button { flex-shrink: 0; }
+.done { text-align: center; padding-top: 40px !important; }
 .done .lede { margin-left: auto; margin-right: auto; }
-.seal { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 50%; background: var(--accent); animation: pop-in 420ms var(--ease-out) both; }
-.seal svg { width: 32px; height: 32px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; animation: draw 520ms 220ms var(--ease-out) both; }
+.seal { display: grid; place-items: center; width: 72px; height: 72px; margin: 0 auto 24px; border-radius: 50%; background: var(--blue); animation: pop-in 520ms var(--ease-out) both; }
+.seal svg { width: 34px; height: 34px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; animation: draw 600ms 260ms var(--ease-out) both; }
 @keyframes draw { from { stroke-dashoffset: 20; } }
-@keyframes pop-in { from { opacity: 0; transform: scale(.7); } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.6); } }
 .done-options { margin-top: 32px; text-align: left; }
 .done-options[open] summary { margin-bottom: 12px; }
-@media(max-width:700px) {
-  .response-flow, .response-flow.guided { padding: 22px 20px; margin: 16px 0; }
-  .flow-page h1 { font-size: 1.625rem; }
-  .question-title { font-size: 1.25rem; }
+@media(max-width:760px) {
+  .response-flow { padding: 20px 18px; margin: 16px 0; }
+  .guided form.flow-page, .guided .flow-page.done { padding: 22px 18px; border-radius: 16px; }
+  .intro-head { flex-direction: column; align-items: stretch; gap: 20px; }
+  .intro-start { justify-items: stretch; }
   .flow-actions.split { flex-direction: column-reverse; align-items: stretch; }
   .flow-actions.split button, .flow-actions .btn-large { width: 100%; }
   .flow-actions.centred { flex-direction: column; align-items: stretch; }
   .date-pair { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .restriction-row, .answer-summary > div, .interpretation > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .submit-hint { text-align: left; }
+  .rating-row { grid-template-columns: minmax(0, 1fr); }
+  .rating-scale, .importance-scale { display: grid; width: 100%; }
+  .rating-step span, .importance-step span { padding: 8px 4px; font-size: .8125rem; white-space: normal; line-height: 1.2; }
+  .restriction-row, .answer-summary > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
 </style>

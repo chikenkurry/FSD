@@ -90,6 +90,7 @@ def adapt_generic_to_option_v1(preparation: dict[str, Any]) -> dict:
         "participants": deepcopy(preparation.get("participants", [])),
         "constraints": deepcopy(preparation.get("constraints", [])),
         "preferences": deepcopy(preparation.get("preferences", [])),
+        "similarity": deepcopy(preparation.get("similarity", [])),
         "scoring_model": {
             "questions": [deepcopy(question) for question in questions.values() if question.get("role") in {"hard", "soft"}],
             "member_weights": deepcopy(preparation.get("scoring_model", {}).get("member_weights", [])),

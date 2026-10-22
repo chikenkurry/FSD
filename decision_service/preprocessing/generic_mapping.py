@@ -14,6 +14,7 @@ from .money import decimal_string as decimal_value
 
 
 TYPES = {"number", "decimal", "category", "boolean", "tag_set", "date_intervals"}
+OPTION_RATING = "option_rating"
 SOFT_RULES = {
     "number": "numeric_target_v1", "decimal": "numeric_target_v1",
     "category": "attribute_match_v1", "boolean": "attribute_match_v1", "tag_set": "tag_overlap_v1",
@@ -146,6 +147,12 @@ def resolve_mapping(question: dict, registry: dict, candidates: list[dict], cont
     aid, role = question["criterion"], question["role"]
     if role in {"informational", "importance", "unclassified"}:
         return {"status": "unresolved" if role == "unclassified" else "not_applicable"}
+    if aid == OPTION_RATING:
+        # Members rate each option directly; the option's identity is the fact compared.
+        if role != "soft":
+            raise InputError("INVALID_MAPPING", "question.mapping", "Option ratings are preferences, not requirements")
+        definition = registry.setdefault(aid, {"attribute_id": aid, "value_type": "category", "unit": None})
+        return {"status": "resolved", **definition, "comparison_rule": "option_rating_v1", "parameters": {}}
     canonical = {
         "availability": {"attribute_id": aid, "value_type": "date_intervals", "unit": "date"},
         "max_cost": {"attribute_id": aid, "value_type": "decimal", "unit": context["currency"]},

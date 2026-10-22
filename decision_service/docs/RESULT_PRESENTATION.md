@@ -121,6 +121,11 @@ availability or participation preference.
 The existing top-level `fact_requests`, `scenario_requests`, and `issues` remain
 available to authorised API consumers. They are not replacements for the shared
 view and should not be rendered as personal-member explanations.
+In addition, `public_result` includes a top-level `attribute_breakdown` map
+keyed by candidate ID. Each entry lists the candidate's evaluated criteria with
+aggregate fit score (`0..1`), question weight, confirmed value/tags, aggregate
+member alignment counts (`matched_members` / `total_members`), privacy-safe
+reasoning text, and sourced citations when supplemented.
 
 ## Privacy boundary
 

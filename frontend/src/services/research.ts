@@ -141,13 +141,17 @@ export function useResearch(form: Form, saveDraft: () => Promise<void>) {
         if (signatures.get(key(option,definition)) !== factSignature(form,option,definition) || before.get(key(option,definition)) !== JSON.stringify(current)) continue;
         const claims = result.facts.filter(f => f.option === optionKey(option) && f.criterion === definition.criterion && f.value_type === definition.valueType && (f.unit || '') === definition.unit);
         const unique = [...new Map(claims.map(c => [JSON.stringify([c.value,c.context.qualifier]),c])).values()];
-        const row: Fact = unique.length === 1 ? researchedFact(unique[0]!, signatures.get(key(option,definition))!) : {
+        const merged = definition.valueType === 'tag_set' && unique.length > 1 && unique.every(c => c.context.qualifier !== 'conditions')
+          ? [{ ...unique[0]!, value: [...new Set(unique.flatMap(c => Array.isArray(c.value) ? c.value : [String(c.value)]))],
+               sources: [...new Map(unique.flatMap(c => c.sources).map(s => [s.url, s])).values()] }]
+          : unique;
+        const row: Fact = merged.length === 1 ? researchedFact(merged[0]!, signatures.get(key(option,definition))!) : {
           ...(current || { criterion: definition.criterion, value: '', valueType: definition.valueType, unit: definition.unit, source: '' }), status: 'estimated',
           context: { ...current?.context, reviewed: false, alternatives: unique,
             reason: unique.length ? 'Sources disagree. Choose a supported finding or correct this fact.' : 'No cited evidence was found. Your existing value was kept.',
             input_signature: signatures.get(key(option,definition)) }
         };
-        if (unique.length === 1 && validFact(row,definition)) {
+        if (merged.length === 1 && validFact(row,definition)) {
           row.status='confirmed'; row.context={...row.context,verification:'grounded_search'};
         }
         option.facts = [...option.facts.filter(f => f.criterion !== definition.criterion), row];

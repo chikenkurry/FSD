@@ -7,7 +7,7 @@ import re
 from datetime import date
 
 from .common import InputError, issue as _issue, require_in, require_list, require_object, require_text
-from .generic_mapping import interpretation_mapping, normalize_answer, token
+from .generic_mapping import OPTION_RATING, interpretation_mapping, normalize_answer, token
 from .generic_evidence import answer_provenance, scoped_interpretation
 from .generic_interpretations import prepare_meaning
 from .member_importance import extract_importance, validate_model_importance
@@ -66,6 +66,20 @@ def _dates(value: object, path: str) -> list[dict] | None:
 
 
 
+def _option_ratings(value: object, candidates: list[dict], path: str) -> dict[str, float]:
+    """Direct 0-4 ratings keyed by option ID, scaled to 0..1; unrated options stay neutral."""
+    ratings = require_object(value, path)
+    known = {candidate["option_id"] for candidate in candidates}
+    if not ratings or set(ratings) - known:
+        raise InputError("INVALID_ANSWER", path, "Rate one or more of this round's options")
+    scaled = {}
+    for option_id, rating in ratings.items():
+        if type(rating) is not int or not 0 <= rating <= 4:
+            raise InputError("INVALID_ANSWER", f"{path}.{option_id}", "Ratings are whole numbers from 0 to 4")
+        scaled[token(option_id)] = rating / 4
+    return scaled
+
+
 def _budget(text: str, currency: str | None) -> dict | None:
     try:
         return parse_budget(text, currency, "answer")
@@ -105,10 +119,16 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
     answer_ids = set()
     for member_id in roster:
         member = members.get(member_id)
-        if member is None:
+        if member is None or member.get("is_required_for_decision") is False:
+            # Members left out when collection closed early are not counted.
             continue
         if member.get("response_status") != "complete":
             issues.append(_issue("INCOMPLETE_RESPONSE", f"responses.participants.{member_id}", "Response is not complete"))
+        if "importance_scale" in member:
+            # Per-question "how much does this matter" levels from the response form.
+            importance.extend(extract_importance(require_object(member["importance_scale"], f"responses.participants.{member_id}.importance_scale"),
+                {"question_id": None, "answer_id": f"{response_snapshot_id}:{member_id}:importance-scale"},
+                member_id, response_snapshot_id, registry, f"responses.participants.{member_id}.importance_scale"))
         if "importance" in member:
             importance.extend(extract_importance(require_object(member["importance"], f"responses.participants.{member_id}.importance"),
                 {"question_id": None, "answer_id": f"{response_snapshot_id}:{member_id}:importance"},
@@ -161,6 +181,13 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                     if meaning["is_hard"]:
                         compiled = {**compiled, "mapping": interpretation_mapping(q, meaning["criterion"], registry, candidates, context, meaning["intent"], False)}
                     preferences.append(compiled)
+
+            if q["criterion"] == OPTION_RATING and q["role"] == "soft":
+                try:
+                    preferences.append(entry({"ratings": _option_ratings(value, candidates, path)}))
+                except InputError as exc:
+                    issues.append(exc.as_issue())
+                continue
 
             local_importance = extract_importance(value, answer, member_id, response_snapshot_id, registry, path,
                                                   q["criterion"] if q["role"] == "importance" else None,

@@ -82,13 +82,13 @@ class FactEnricher:
                 result = self.store.cache_put(key, self.collector.collect(inputs))
             return deepcopy(result)
 
-    def enrich(self, planning, responses):
+    def enrich(self, planning, responses, *, extra_requests=None):
         enriched = deepcopy(planning)
         audit = {"policy": POLICY, "applied_facts": [], "invalidated_facts": [], "collections": [], "issues": []}
         # Legacy rounds and date-scoped scenario costs retain their own policy.
         if planning.get("interpretation_policy") != "facts-v1" or planning.get("execution_mode", "options") != "options":
             return enriched, audit
-        requests = requested_facts(planning, responses)
+        requests = list(extra_requests) if extra_requests is not None else requested_facts(planning, responses)
         # If a previously confirmed fact expired or its option identity changed,
         # an unsuccessful refresh must leave an unknown, never a usable old value.
         for option in enriched["options"]:
@@ -111,24 +111,51 @@ class FactEnricher:
                 audit["issues"].append({"code": "FACT_IDENTITY_OR_TYPE_REQUIRED", "option_id": request["option_id"],
                                         "attribute_id": request["attribute_id"]})
         if not eligible:
+            promote_estimated_facts(enriched, requests, audit)
             return enriched, audit
         if len(eligible) > 64:
             audit["issues"].append({"code": "FACT_ENRICHMENT_LIMIT"})
+            promote_estimated_facts(enriched, requests, audit)
             return enriched, audit
         inputs = public_collection_input(planning, eligible)
         try:
             collection = self.collection(inputs)
         except CollectionUnavailable as error:
             audit["issues"].append({"code": error.code})
+            promote_estimated_facts(enriched, requests, audit)
             return enriched, audit
         audit["collections"].append(collection)
         audit["issues"].extend(collection.get("issues", []))
         apply_collection(enriched, eligible, collection, audit)
+        promote_estimated_facts(enriched, requests, audit)
         return enriched, audit
 
 
+def promote_estimated_facts(planning, requests, audit):
+    """Promote existing non-stale, non-conditional estimated facts when no replacement was applied."""
+    options = {o["option_id"]: o for o in planning["options"]}
+    applied = {(row["option_id"], row["fact"]["criterion"]) for row in audit.get("applied_facts", [])}
+    for request in requests:
+        if (request["option_id"], request["attribute_id"]) in applied:
+            continue
+        option = options.get(request["option_id"])
+        if not option:
+            continue
+        for fact in option.get("facts", []):
+            if fact.get("criterion") != request["attribute_id"] or fact.get("status") != "estimated":
+                continue
+            context = fact.get("context") or {}
+            if (context.get("stale") or not unexpired(context.get("valid_until"))
+                    or context.get("qualifier") == "conditions" or context.get("alternatives")
+                    or not valid_value(fact.get("value"), request["value_type"])):
+                continue
+            fact["status"] = "confirmed"
+            audit["applied_facts"].append({"option_id": option["option_id"], "fact": deepcopy(fact)})
+            applied.add((request["option_id"], request["attribute_id"]))
+
+
 def apply_collection(planning, requests, collection, audit):
-    """Only a unique, exact, current, cited finding is eligible for comparison."""
+    """Only a unique, non-conditional, current, cited finding is eligible for comparison."""
     options = {o["option_id"]: o for o in planning["options"]}
     for request in requests:
         matches = [c for c in collection.get("claims", []) if
@@ -136,17 +163,24 @@ def apply_collection(planning, requests, collection, audit):
                    (request["option_id"], request["attribute_id"], request["value_type"], request["unit"])]
         # Include conditional/expired findings in conflict detection; never pick
         # a favourable claim merely because the others are ineligible.
-        values = {canonical(c.get("value")) for c in matches}
-        exact = [c for c in matches if c.get("qualifier") == "exact" and c.get("sources")
-                 and c.get("source_text") and unexpired(c.get("valid_until"))
-                 and valid_value(c.get("value"), request["value_type"])]
-        if len(values) != 1 or not exact:
-            continue
-        claim = exact[0]
+        eligible = [c for c in matches if c.get("qualifier") and c.get("qualifier") != "conditions"
+                    and c.get("sources") and c.get("source_text") and unexpired(c.get("valid_until"))
+                    and valid_value(c.get("value"), request["value_type"])]
+        if request["value_type"] == "tag_set":
+            if not eligible or len(eligible) != len(matches):
+                continue
+            claim = deepcopy(eligible[0])
+            claim["value"] = list(dict.fromkeys(tag for c in eligible for tag in c["value"]))
+            claim["sources"] = list({s["url"]: s for c in eligible for s in c["sources"]}.values())
+        else:
+            values = {canonical(c.get("value")) for c in matches}
+            if len(values) != 1 or not eligible:
+                continue
+            claim = eligible[0]
         option = options[request["option_id"]]
         context = {"verification": "grounded_search", "reviewed": False, "claim_id": claim.get("claim_id"),
                    "source_text": claim["source_text"], "sources": claim["sources"],
-                   "qualifier": "exact", "retrieved_at": collection.get("retrieved_at"),
+                   "qualifier": claim.get("qualifier") or "exact", "retrieved_at": collection.get("retrieved_at"),
                    "valid_until": claim.get("valid_until"), "enrichment_policy": POLICY}
         if request["attribute_id"] == "max_cost":
             context["scope"] = planning["cost_scope"]

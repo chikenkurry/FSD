@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"planning-service/app/internal/model"
 
@@ -14,6 +15,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var errNotCollecting = errors.New("round not collecting")
 
 // Transactions serialize round transitions; upstream calls remain outside locks.
 type roundStore struct{ db *gorm.DB }
@@ -115,7 +118,7 @@ func (s *roundStore) finalizePublication(ctx context.Context, id uuid.UUID) (Rou
 	return round, err
 }
 
-func (s *roundStore) beginFreeze(ctx context.Context, id uuid.UUID) (Round, error) {
+func (s *roundStore) beginFreeze(ctx context.Context, id uuid.UUID, countRespondedOnly bool) (Round, error) {
 	var round Round
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := lockPublishedRound(tx, id, &round); err != nil {
@@ -156,9 +159,24 @@ func (s *roundStore) beginFreeze(ctx context.Context, id uuid.UUID) (Round, erro
 				return err
 			}
 		}
-		return tx.Model(&round).Update("state", roundLocking).Error
+		round.FreezeCountsRespondedOnly = countRespondedOnly
+		return tx.Model(&round).Updates(map[string]any{"state": roundLocking, "freeze_counts_responded_only": countRespondedOnly}).Error
 	})
 	return round, err
+}
+
+// setDeadline records the organiser's target date for responses on a collecting round.
+func (s *roundStore) setDeadline(ctx context.Context, id uuid.UUID, deadline *time.Time) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var round Round
+		if err := lockPublishedRound(tx, id, &round); err != nil {
+			return err
+		}
+		if round.State != roundCollecting {
+			return errNotCollecting
+		}
+		return tx.Model(&model.PlanRound{}).Where("id = ?", id).Update("deadline_at", deadline).Error
+	})
 }
 
 func (s *roundStore) finalizeFreeze(ctx context.Context, id uuid.UUID, snapshotID string) (Round, error) {
@@ -200,7 +218,7 @@ func (s *roundStore) cancelFreeze(ctx context.Context, attempted Round) error {
 			return err
 		}
 		return tx.Model(&current).Updates(map[string]any{"state": roundCollecting, "evaluation_definition": nil,
-			"option_snapshot_id": form.OptionSnapshotID, "freeze_operation_id": uuid.New()}).Error
+			"option_snapshot_id": form.OptionSnapshotID, "freeze_operation_id": uuid.New(), "freeze_counts_responded_only": false}).Error
 	})
 }
 

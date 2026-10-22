@@ -345,6 +345,48 @@ class GenericOptionV1Tests(unittest.TestCase):
         self.assertEqual(handoff["candidates"][0]["scenario"]["duration_days"], 3)
         self.assertEqual(run_decision(handoff).ranked_candidates[0]["option_id"].split("@")[0], "a")
 
+    def test_phrase_similarity_and_partial_indifference_renormalization(self):
+        source = preparation()
+        source["criteria"] = [
+            {"attribute_id": "cocktails", "value_type": "category", "unit": None},
+            {"attribute_id": "vibe", "value_type": "tag_set", "unit": None},
+        ]
+        source["candidates"] = [
+            {"option_id": "a", "facts": [
+                {"attribute_id": "cocktails", "value_type": "category", "value": "singapore style artisanal craft cocktails", "status": "confirmed"},
+                {"attribute_id": "vibe", "value_type": "tag_set", "value": ["cosy contemporary", "intimate"], "status": "confirmed"},
+            ]},
+            {"option_id": "b", "facts": [
+                {"attribute_id": "cocktails", "value_type": "category", "value": "classic wine list", "status": "confirmed"},
+                {"attribute_id": "vibe", "value_type": "tag_set", "value": ["loud", "crowded"], "status": "confirmed"},
+            ]},
+        ]
+        source["constraints"] = []
+        source["preferences"] = [
+            {"participant_id": "p1", "source_question_id": "q_cocktails", "attribute_id": "cocktails",
+             "kind": "attribute_preference", "preferred_value": "craft cocktails", "utility_rule": "attribute_match_v1", "polarity": "prefer"},
+            {"participant_id": "p1", "source_question_id": "q_vibe", "attribute_id": "vibe",
+             "kind": "indifferent", "utility_rule": "neutral_v1"},
+            {"participant_id": "p2", "source_question_id": "q_cocktails", "attribute_id": "cocktails",
+             "kind": "indifferent", "utility_rule": "neutral_v1"},
+            {"participant_id": "p2", "source_question_id": "q_vibe", "attribute_id": "vibe",
+             "kind": "attribute_preference", "preferred_value": ["cozy"], "utility_rule": "tag_overlap_v1", "polarity": "prefer"},
+        ]
+        source["scoring_model"]["questions"] = [
+            {"question_id": "q_cocktails", "role": "soft", "weight": 0.5},
+            {"question_id": "q_vibe", "role": "soft", "weight": 0.5},
+        ]
+        source["scoring_model"]["member_weights"] = [
+            {"participant_id": pid, "source_question_id": qid, "attribute_id": aid, "effective_weight": 0.5, "status": "resolved"}
+            for pid in ("p1", "p2")
+            for qid, aid in (("q_cocktails", "cocktails"), ("q_vibe", "vibe"))
+        ]
+        result = run_decision(self.handoff(source))
+        self.assertEqual(result.status, "ranked")
+        self.assertEqual(result.ranked_candidates[0]["option_id"], "a")
+        self.assertEqual(result.ranked_candidates[0]["min_member_score"], 1.0)
+        self.assertEqual(result.ranked_candidates[0]["average_member_score"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

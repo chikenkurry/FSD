@@ -54,8 +54,10 @@ function safeUrl(value:string){try{return ['https:','http:'].includes(new URL(va
 <style scoped>
 .fact-review { margin-top:24px; border-top:1px solid var(--line); padding-top:24px; }
 .fact-option { margin-top:20px; min-width:0; }
-.fact-option h4 { margin:0 0 12px; font-size:1rem; }
-.fact-row { border:1px solid var(--line); border-radius:10px; padding:20px; margin:12px 0; overflow-wrap:anywhere; }
+.fact-option h4 { margin:0 0 12px; font-size:1.0625rem; }
+.alternatives { margin-top:12px; padding:14px 16px; border-radius:12px; background:var(--warn-soft); }
+.alternatives > div { padding:8px 0; border-top:1px solid #f0dcb4; }
+.fact-row { border:1px solid var(--line); border-radius:14px; padding:20px; margin:12px 0; overflow-wrap:anywhere; background:var(--surface); }
 .fact-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .fact-heading strong { flex:1; min-width:150px; }
 .fact-row .choice-option { margin-top:16px; align-items:flex-start; }

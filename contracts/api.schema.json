@@ -667,6 +667,10 @@
             "DECISION_SETUP_REVIEW_REQUIRED",
             "RECOMMENDATION_RETRY_REQUIRED"
           ]
+        },
+        "not_counted_members": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }

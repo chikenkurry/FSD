@@ -6,24 +6,21 @@
         <button class="btn-secondary" @click="leave"><UiIcon name="back" />Back to forms</button>
       </div>
 
-      <p class="helper-text" :role="storageFailed ? 'alert' : undefined">{{ storageFailed ? 'Browser storage is unavailable. Keep this page open; unsaved edits cannot survive refresh.' : recoveryMessage }}</p>
       <p v-if="draftLoadError" role="alert">{{ draftLoadError }} <button @click="loadServerDraft">Retry loading draft</button></p>
       <p v-if="serverSaveError" role="alert">{{ serverSaveError }} <button @click="saveServerDraft">Retry saving draft</button></p>
+      <nav class="step-indicator-bar" aria-label="Form setup steps">
+        <div class="step-list" :style="{ '--steps': steps.length }">
+        <div class="step-track" aria-hidden="true"><span :style="{ '--value': (currentStep - 1) / (steps.length - 1) }"></span></div>
+        <button type="button" v-for="(label, i) in steps" :key="label" :disabled="isSaving"
+          :aria-current="currentStep === i + 1 ? 'step' : undefined"
+          :class="['step-pill', { active: currentStep === i + 1, completed: currentStep !== i + 1 && reachable(i + 2) && visited >= i + 1, locked: !reachable(i + 1) }]"
+          @click="goToStep(i + 1)">
+          <span class="step-number"><Transition name="swap" mode="out-in"><UiIcon v-if="currentStep !== i + 1 && reachable(i + 2) && visited >= i + 1" name="check" /><span v-else>{{ i + 1 }}</span></Transition></span>
+          <span class="step-label">{{ label }}</span>
+        </button>
+        </div>
+      </nav>
       <div class="builder-layout">
-        <nav class="step-indicator-bar" aria-label="Form setup steps">
-          <div class="step-list">
-          <div class="step-track" aria-hidden="true"><span :style="{ '--value': (currentStep - 1) / (steps.length - 1) }"></span></div>
-          <button type="button" v-for="(label, i) in steps" :key="label" :disabled="isSaving"
-            :aria-current="currentStep === i + 1 ? 'step' : undefined"
-            :class="['step-pill', { active: currentStep === i + 1, completed: currentStep !== i + 1 && reachable(i + 2) && visited >= i + 1, locked: !reachable(i + 1) }]"
-            @click="goToStep(i + 1)">
-            <span class="step-number"><Transition name="swap" mode="out-in"><UiIcon v-if="currentStep !== i + 1 && reachable(i + 2) && visited >= i + 1" name="check" /><span v-else>{{ i + 1 }}</span></Transition></span>
-            <span class="step-label">{{ label }}</span>
-          </button>
-          </div>
-          <p class="step-hint">Nothing is shared until you publish on the last step.</p>
-        </nav>
-
         <form @submit.prevent="submitForm" class="form-builder" novalidate>
           <div ref="stepTop" class="step-top"></div>
           <Transition name="reveal"><p v-if="saveError" role="alert">{{ saveError }}</p></Transition>
@@ -31,7 +28,6 @@
             <Transition :name="direction > 0 ? 'step-forward' : 'step-back'" mode="out-in">
               <!-- 1: Basics -->
               <div v-if="currentStep === 1" key="1" class="step-card">
-                <p class="step-eyebrow">Step 1 of 5</p>
                 <h2 ref="stepHeading" tabindex="-1" class="step-title">What are you deciding?</h2>
                 <label for="form-title">Plan name<span class="required-mark" aria-hidden="true">*</span></label>
                 <input id="form-title" type="text" v-model="form.title" placeholder="e.g. Team offsite, Saturday dinner" maxlength="255" required :aria-invalid="flag(1, !form.title.trim())" aria-describedby="title-help" />
@@ -61,7 +57,6 @@
 
               <!-- 2: Decision and options -->
               <div v-else-if="currentStep === 2" key="2" class="step-card">
-                <p class="step-eyebrow">Step 2 of 5</p>
                 <h2 ref="stepHeading" tabindex="-1" class="step-title">What are you choosing between?</h2>
                 <label for="form-question">The question your group is answering</label>
                 <input id="form-question" type="text" v-model="form.decisionQuestion" :placeholder="questionPlaceholder" maxlength="300" />
@@ -85,7 +80,6 @@
 
               <!-- 3: Overview -->
               <div v-else-if="currentStep === 3" key="3" class="step-card">
-                <p class="step-eyebrow">Step 3 of 5</p>
                 <h2 ref="stepHeading" tabindex="-1" class="step-title">Your options at a glance</h2>
                 <p class="step-lede">Review your options here once. Check their identity and overview, and correct anything inaccurate. This is what your group will see.</p>
                 <details><summary>What does research do?</summary><p class="helper-text">Web research looks up option details and supporting sources{{ placesHint }}. It can help draft questions. Decision interprets members’ answers, and the algorithm calculates the ranking.</p></details>
@@ -112,7 +106,6 @@
 
               <!-- 4: Questions -->
               <div v-else-if="currentStep === 4" key="4" class="step-card">
-                <p class="step-eyebrow">Step 4 of 5</p>
                 <h2 ref="stepHeading" tabindex="-1" class="step-title">Questions for your group</h2>
                 <p class="step-lede">AI drafted these from your options. Edit, remove or add questions for your group.</p>
                 <div v-if="research.state.questions === 'loading'" class="drafting" role="status"><span class="pulse" aria-hidden="true"></span>Drafting questions from your options…</div>
@@ -128,6 +121,7 @@
                       <label class="question-type-field">Answer type<select v-model="question.type" @change="typeChanged(question)">
                         <option>Single choice</option><option>Multiple choice</option><option value="Boolean">Yes or no</option><option>Number</option>
                         <option>Short answer</option><option>Duration</option>
+                        <option value="Option rating" :disabled="question.type !== 'Option rating' && hasRating">Rate each option</option>
                       </select></label>
                     </div>
                     <label>Help text <span class="optional">(optional)</span><input type="text" v-model="question.description" placeholder="Anything that helps people answer" /></label>
@@ -143,6 +137,7 @@
                       </TransitionGroup>
                       <button type="button" class="btn-add-option" @click="addOption(qIndex)"><UiIcon name="plus" />Add choice</button>
                     </div>
+                    <p v-else-if="question.type === 'Option rating'" class="callout">Members rate every option from “Not for me” to “Love it”. Their ratings count as a preference alongside your other questions, and options they love rank higher.</p>
                     <p v-else-if="question.type === 'Duration'" class="callout">Members enter a start and end date. Dates are collected as context only and don’t generate scheduled options.</p>
                     <p v-else-if="question.type === 'Boolean'" class="callout">Members answer yes or no.</p>
                     <p v-else-if="question.type === 'Short answer'" class="callout">Members describe their preferences or requirements in their own words. They review the interpretation and confirm requirements before submitting.</p>
@@ -151,7 +146,7 @@
                       <label v-if="question.role !== 'hard'">Tolerance around the preferred value<input v-model.number="question.scale" type="number" min="0.000001" step="any" :aria-invalid="flag(4, question.role === 'soft' && !(Number(question.scale) > 0))" /></label>
                     </div>
 
-                    <details v-if="question.role !== 'informational'" class="comparison-settings"><summary>What this question compares</summary>
+                    <details v-if="question.role !== 'informational' && question.type !== 'Option rating'" class="comparison-settings"><summary>What this question compares</summary>
                       <label>Option detail to compare<input :value="question.criterion === 'preferences' ? 'All researched attributes' : factLabel(question.criterion || '')" placeholder="e.g. cuisine, atmosphere" @change="detailChanged(question,($event.target as HTMLInputElement).value)" /></label>
                       <p class="helper-text">Reuse a detail across questions. For a broad written answer, enter “All researched attributes”.</p>
                       <template v-if="question.criterion !== 'preferences'">
@@ -159,7 +154,7 @@
                         <label v-if="['number','decimal'].includes(factType(question)) && question.type !== 'Number'">Unit<input v-model="question.unit" placeholder="e.g. km, hours, SGD" /></label>
                       </template>
                     </details>
-                    <fieldset class="role-field">
+                    <fieldset v-if="question.type !== 'Option rating'" class="role-field">
                       <legend>How this answer is used</legend>
                       <div class="role-options">
                         <label v-for="r in roles" :key="r.value" class="choice-option role-option" :class="{ unavailable: lockedToContext(question) && r.value !== 'informational' }">
@@ -173,6 +168,7 @@
                 </TransitionGroup>
                 <div class="question-actions">
                   <button type="button" class="add-question" @click="addQuestion"><UiIcon name="plus" />Add question</button>
+                  <button v-if="!hasRating" type="button" class="btn-quiet" @click="addRatingQuestion">Ask them to rate each option</button>
                   <button v-if="!form.questions.some(q => q.criterion === 'max_cost')" type="button" class="btn-quiet" @click="addBudgetQuestion">Add spending limit</button>
                   <button v-if="!form.questions.some(q => q.criterion === 'preferences')" type="button" class="btn-quiet" @click="addWrittenPreferences">Add general written preferences</button>
                 </div>
@@ -180,7 +176,6 @@
 
               <!-- 5: Review -->
               <div v-else key="5" class="step-card">
-                <p class="step-eyebrow">Step 5 of 5</p>
                 <h2 ref="stepHeading" tabindex="-1" class="step-title">Review and publish</h2>
                 <p class="step-lede">Check the plan, then publish it. You’ll get an invitation link to share on the next screen.</p>
                 <section class="review-block">
@@ -203,8 +198,13 @@
                 <section class="review-block">
                   <div class="review-heading"><h3>Questions <span class="muted">{{ form.questions.length }}</span></h3><button type="button" class="btn-quiet btn-small" @click="goToStep(4)">Edit<span class="sr-only"> questions</span></button></div>
                   <ol class="review-list">
-                    <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role) }}</span></li>
+                    <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role, question.type) }}</span></li>
                   </ol>
+                </section>
+                <section class="review-block deadline-block">
+                  <div class="review-heading"><h3>Response deadline <span class="optional">(optional)</span></h3></div>
+                  <label class="deadline-field">Collect answers until<input type="datetime-local" v-model="form.deadline" :min="nowLocal" /></label>
+                  <p class="helper-text">Members see it as a countdown. You can change it, remind people or close early with the answers you have.</p>
                 </section>
                 <p class="helper-text">Option details were reviewed in Overview. You can publish while background research is still running; Decision supplements missing facts during processing.</p>
                 <div v-if="warnings.length" class="callout warning">
@@ -221,6 +221,20 @@
             </div>
           </fieldset>
         </form>
+        <aside class="plan-summary" aria-label="Plan so far">
+          <h2 class="summary-title">Plan so far</h2>
+          <dl>
+            <div><dt>Name</dt><dd :class="{ empty: !form.title?.trim() }">{{ form.title?.trim() || 'Not named yet' }}</dd></div>
+            <div><dt>Category</dt><dd :class="{ empty: !form.category }">{{ form.category || 'Not chosen' }}</dd></div>
+            <div><dt>Dates</dt><dd :class="{ empty: !form.startDateRange }">{{ form.startDateRange ? `${formatDate(form.startDateRange)}${form.endDateRange && form.endDateRange !== form.startDateRange ? ` – ${formatDate(form.endDateRange)}` : ''}` : 'Not set' }}</dd></div>
+            <div><dt>Where</dt><dd :class="{ empty: !form.location?.trim() }">{{ form.location?.trim() || 'Not set' }}</dd></div>
+            <div><dt>Options</dt><dd>{{ namedOptions }}</dd></div>
+            <div><dt>Questions</dt><dd>{{ form.questions?.length || 0 }}</dd></div>
+            <div v-if="form.deadline"><dt>Answers by</dt><dd>{{ formatDeadline(form.deadline) }}</dd></div>
+          </dl>
+          <p class="summary-note"><UiIcon name="lock" />Nothing is shared until you publish on the last step.</p>
+          <p class="helper-text save-state" :role="storageFailed ? 'alert' : undefined">{{ storageFailed ? 'Browser storage is unavailable. Keep this page open; unsaved edits cannot survive refresh.' : recoveryMessage }}</p>
+        </aside>
       </div>
     </main>
   </div>
@@ -230,7 +244,7 @@
 import { computed, nextTick, reactive, ref, watch, onMounted, onScopeDispose } from 'vue';
 import OverviewCard from './OverviewCard.vue';
 import FactReview from './FactReview.vue';
-import { factDefinitions, factSignature, factType, overviewSignature } from '@/services/optionFacts';
+import { OPTION_RATING, factDefinitions, factSignature, factType, overviewSignature } from '@/services/optionFacts';
 import { useAuthStore } from '@/stores/auth';
 import type { DecisionOption, Form, OptionKind, Question } from '@/types/form';
 import UiIcon from './UiIcon.vue';
@@ -369,6 +383,7 @@ onMounted(async () => {
   if (pending.length) void research.facts(pending);
 });
 
+const namedOptions = computed(() => (form.decisionOptions || []).filter(o => o.title.trim()).length);
 const placesHint = computed(() => (form.decisionOptions || []).some(o => o.overview?.source === 'google_places') ? ' with Google Maps and the web' : ' on the web');
 function kindName(kind?: OptionKind) { return ({ place: 'Place', destination: 'Destination', event: 'Event', activity: 'Activity' } as Record<string, string>)[kind || ''] || 'Option'; }
 async function changeKind(option: DecisionOption, kind: OptionKind) {
@@ -387,9 +402,15 @@ function ensureCriterion(q: Question, index: number) {
   q.criterion = name;
 }
 
+const hasRating = computed(() => form.questions.some(q => q.type === 'Option rating'));
+const nowLocal = computed(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); });
+function formatDeadline(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+function addRatingQuestion() { form.questions.push({ title: 'How do you feel about each option?', description: 'Go with your gut. Rate every option.', role: 'soft', type: 'Option rating', criterion: OPTION_RATING, options: [] }); }
 function hasChoices(q: Question) { return ['Single choice', 'Multiple choice', 'Location', 'Budget'].includes(q.type); }
 function lockedToContext(q: Question) { return q.type === 'Duration'; }
 function typeChanged(q: Question) {
+  if (q.type === 'Option rating') { q.role = 'soft'; q.criterion = OPTION_RATING; q.options = []; q.valueType = undefined; return; }
+  if (q.criterion === OPTION_RATING) q.criterion = '';
   if (lockedToContext(q)) q.role = 'informational';
   if (hasChoices(q) && !q.options.length) q.options.push('', '');
   // Answer format and fact type are separate. Existing facts survive changes
@@ -402,7 +423,7 @@ function typeChanged(q: Question) {
   if (q.criterion === 'max_cost') q.unit = form.currency || 'SGD';
 }
 function choicePlaceholder(i: number) { return `Choice ${i + 1}`; }
-function roleLabel(role?: string) { return roles.find(r => r.value === (role || 'soft'))?.label; }
+function roleLabel(role?: string, type?: string) { if (type === 'Option rating') return 'Rating'; return roles.find(r => r.value === (role || 'soft'))?.label; }
 function formatDate(value: string) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
 
 // Category-specific wording when the organiser leaves the question blank.
@@ -559,134 +580,153 @@ const submitForm = async (): Promise<void> => {
 </script>
 
 <style scoped>
-.creator-wrapper { max-width: 1200px; margin: auto; padding: 48px 32px 80px; }
-.builder-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; }
+.creator-wrapper { padding: clamp(28px, 5vh, 56px) var(--gutter) 40px; }
+.creator-header { margin-bottom: 28px; }
 
-.step-indicator-bar { align-self: start; position: sticky; top: 24px; }
-.step-list { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-.step-track { position: absolute; left: 24.5px; top: 24px; bottom: 24px; width: 1px; background: #cdd8cf; }
-.step-track > span { display: block; width: 100%; height: 100%; background: var(--accent); transform-origin: top; transform: scaleY(var(--value)); transition: transform var(--slow) var(--ease-out); }
-.step-pill { position: relative; border: 0; background: transparent; justify-content: flex-start; text-align: left; padding: 9px 12px; font-size: .8125rem; color: var(--muted); }
-.step-pill:hover:not(:disabled) { background: #e9eee8; color: var(--ink); }
-.step-pill.active, .step-pill.active:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
+/* Stepper: a horizontal route across the full width. */
+.step-indicator-bar { margin-bottom: 28px; }
+.step-list { position: relative; display: grid; grid-template-columns: repeat(var(--steps), minmax(0, 1fr)); gap: 8px; }
+.step-track { position: absolute; left: calc(100% / var(--steps) / 2); right: calc(100% / var(--steps) / 2); top: 25px; height: 3px; border-radius: 3px; background: var(--sky-100); }
+.step-track > span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transform-origin: left; transform: scaleX(var(--value)); transition: transform 600ms var(--ease-out); }
+.step-pill { position: relative; flex-direction: column; gap: 8px; border: 0; border-radius: 12px; background: transparent; padding: 6px 4px 8px; min-width: 0; color: var(--muted); font-size: .9375rem; }
+.step-pill:hover:not(:disabled) { background: transparent; color: var(--ink); }
+.step-pill:active:not(:disabled) { transform: none; }
+.step-pill.active, .step-pill.active:hover:not(:disabled) { color: var(--blue-ink); }
 .step-pill.completed { color: var(--ink); }
-.step-pill.locked { color: #7d8a84; }
+.step-pill.locked { color: var(--faint); }
 .step-pill:disabled { background: transparent; }
-.step-number { width: 26px; min-width: 26px; flex: 0 0 26px; height: 26px; border: 1px solid #a6b8aa; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; background: var(--ground); transition: background-color var(--base) ease-out, border-color var(--base) ease-out, color var(--base) ease-out; }
-.step-number .ui-icon { width: 14px; height: 14px; }
-.step-pill.active .step-number { background: var(--accent); border-color: var(--accent); color: #fff; }
-.step-pill.completed .step-number { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
-.step-hint { font-size: .75rem; color: var(--muted); padding: 20px 12px; }
+.step-number { width: 40px; height: 40px; border: 2px solid var(--sky-200); border-radius: 50%; display: grid; place-items: center; font-size: .9375rem; font-weight: 600; background: var(--ground); transition: background-color var(--base) ease-out, border-color var(--base) ease-out, color var(--base) ease-out, transform 400ms var(--ease-out); }
+.step-number .ui-icon { width: 18px; height: 18px; }
+.step-pill:hover:not(:disabled) .step-number { border-color: var(--blue); }
+.step-pill.active .step-number { background: var(--blue); border-color: var(--blue); color: #fff; transform: scale(1.08); }
+.step-pill.completed .step-number { background: var(--surface); border-color: var(--blue); color: var(--blue); }
+.step-label { overflow-wrap: anywhere; font-weight: 600; }
 
+.builder-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: clamp(24px, 3vw, 48px); align-items: start; }
 .form-builder { min-width: 0; }
 .step-top { scroll-margin-top: 24px; }
 .form-builder > [role='alert'] { margin-bottom: 16px; }
-.step-card { background: #fff; padding: 32px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 24px; }
-.step-eyebrow { font-size: .75rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
-.step-title { font-size: 1.375rem; margin-bottom: 8px; }
-.step-lede { color: var(--muted); font-size: .875rem; margin-bottom: 8px; }
-.step-card > label:first-of-type { margin-top: 24px; }
-.step-card > label { margin-bottom: 7px; }
+.step-card { background: var(--surface); padding: clamp(24px, 3vw, 40px); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow-sm); }
+.step-title { font-size: clamp(1.625rem, 1.3rem + .8vw, 2.125rem); font-weight: 300; letter-spacing: -.02em; color: var(--night); margin-bottom: 8px; }
+.step-title:focus { outline: none; }
+.step-lede { color: var(--muted); font-size: 1rem; margin-bottom: 8px; }
+.step-card > label:first-of-type { margin-top: 28px; }
+.step-card > label { margin-bottom: 8px; }
+.step-card > input, .step-card > textarea { max-width: 760px; }
 .step-card > input + .helper-text { margin-bottom: 4px; }
 .field-error { color: var(--danger); }
-.field-warning { color: #805114; }
-.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.field-warning { color: var(--warn); }
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; max-width: 760px; }
 .input-row label { margin-bottom: 8px; }
-.category-field { margin-top: 24px; }
+.category-field { margin-top: 28px; }
+.category-field .choice-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
 .category-option { align-items: flex-start; }
 .category-option input, .role-option input { margin-top: 2px; }
 .category-option > span, .role-option > span { display: flex; flex-direction: column; gap: 2px; margin-left: 4px; }
-.category-option small, .role-option small { color: var(--muted); font-weight: 400; font-size: .8125rem; line-height: 1.4; }
-.category-field[aria-invalid='true'] .choice-option:not(:has(:checked)) { border-color: #d9a8a2; }
+.category-option small, .role-option small { color: var(--muted); font-weight: 400; font-size: .875rem; line-height: 1.4; }
+.category-field[aria-invalid='true'] .choice-option:not(:has(:checked)) { border-color: #e2a3ab; }
+.step-card > label:has(#meeting-location) { max-width: 760px; }
 
-.sub-heading { font-size: 1rem; margin: 32px 0 4px; padding-top: 24px; border-top: 1px solid var(--line); }
+.sub-heading { font-size: 1.125rem; margin: 36px 0 4px; padding-top: 28px; border-top: 1px solid var(--line); }
 .options-field { margin-top: 28px; }
-.options-field legend .optional { font-variant-numeric: tabular-nums; }
-.option-inputs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.option-input { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfa; }
-.option-index { display: grid; place-items: center; width: 28px; height: 28px; margin-top: 9px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .75rem; font-weight: 650; flex-shrink: 0; }
+.options-field legend .optional { font-variant-numeric: tabular-nums; margin-left: 6px; }
+.option-inputs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 12px; }
+.option-input { display: flex; align-items: flex-start; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); transition: border-color var(--fast) ease-out; }
+.option-input:focus-within { border-color: var(--sky-300); }
+.option-index { display: grid; place-items: center; width: 32px; height: 32px; margin-top: 8px; border-radius: 50%; background: var(--night); color: #fff; font-size: .875rem; font-weight: 600; flex-shrink: 0; }
 .option-fields { flex: 1; min-width: 0; display: grid; gap: 8px; }
 .option-fields input:first-child { font-weight: 600; }
-.link-input { font-size: .875rem; min-height: 40px; }
-.option-input > button { margin-top: 1px; }
-.currency-field { max-width: 220px; margin-top: 24px; }
-.overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; margin-top: 20px; }
+.link-input { font-size: .9375rem; min-height: 42px; }
+.option-input > button { margin-top: 2px; }
+.currency-field { max-width: 240px; margin-top: 28px; }
+.overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; margin-top: 24px; }
 .card-tools { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 14px; }
-.kind-field { margin: 0; font-size: .75rem; }
-.kind-field select { min-height: 36px; padding: 4px 34px 4px 10px; font-size: .8125rem; margin-top: 4px; }
+.kind-field { margin: 0; font-size: .8125rem; }
+.kind-field select { min-height: 38px; padding: 4px 36px 4px 12px; font-size: .875rem; margin-top: 4px; }
 .overview-note { margin-top: 18px; }
-.drafting { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding: 14px 16px; border-radius: 8px; background: #f3f6f2; color: var(--muted); font-size: .875rem; }
-.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+.drafting { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding: 14px 18px; border-radius: 12px; background: var(--sky-50); color: var(--ink-2); font-size: .9375rem; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--blue); animation: pulse 1.2s ease-in-out infinite; }
 .question-list { display: grid; gap: 16px; margin-top: 24px; }
-.question-card { border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px 24px; background: #fbfcfa; }
+.question-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px 24px 24px; background: var(--surface-2); transition: border-color var(--fast) ease-out; }
+.question-card:focus-within { border-color: var(--sky-300); }
 .question-top { display: flex; align-items: center; justify-content: space-between; min-height: 36px; margin-bottom: 4px; }
 .question-top h3 { margin: 0; font-size: .875rem; color: var(--muted); font-weight: 600; }
-.question-header { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 0 16px; }
+.question-header { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 0 16px; }
 .question-header label, .question-card > label { margin: 10px 0; }
 .question-title-field input { font-weight: 600; }
 .choices { margin: 18px 0 8px; }
-.choices-label { font-size: .875rem; font-weight: 600; margin-bottom: 10px; }
-.option-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.choice-marker { width: 17px; height: 17px; border: 1.5px solid #9bad9f; border-radius: 50%; flex-shrink: 0; }
+.choices-label { font-size: .9375rem; font-weight: 600; margin-bottom: 10px; }
+.option-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; max-width: 640px; }
+.choice-marker { width: 18px; height: 18px; border: 2px solid var(--sky-300); border-radius: 50%; flex-shrink: 0; }
 .choice-marker.square { border-radius: 4px; }
-.btn-add-option { background: transparent; border-color: transparent; color: var(--accent); padding-left: 0; }
-.btn-add-option:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--accent-hover); }
+.btn-add-option { background: transparent; border-color: transparent; color: var(--blue-ink); padding-left: 4px; }
+.btn-add-option:hover:not(:disabled) { background: var(--sky-50); border-color: transparent; padding-left: 14px; }
 .question-card .callout { margin: 16px 0 4px; }
 .role-field { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .role-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .role-option { align-items: flex-start; }
 .role-option.unavailable { opacity: .55; }
-.criterion-field label { margin: 18px 0 0; max-width: 420px; }
-.criterion-field .helper-text { max-width: 60ch; }
 .question-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
 .add-question { margin: 0; }
 
-.review-block { padding: 20px 0; border-top: 1px solid var(--line); }
+.review-block { padding: 22px 0; border-top: 1px solid var(--line); }
 .review-block:first-of-type { margin-top: 20px; }
 .review-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.review-heading h3 { margin: 0; font-size: 1rem; display: flex; gap: 8px; align-items: baseline; }
-.review-heading h3 .muted { font-size: .8125rem; font-weight: 500; font-variant-numeric: tabular-nums; }
-.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; font-size: .875rem; margin: 0; }
+.review-heading h3 { margin: 0; font-size: 1.125rem; display: flex; gap: 8px; align-items: baseline; }
+.review-heading h3 .muted { font-size: .875rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 16px 28px; font-size: 1rem; margin: 0; }
 .summary-grid div { min-width: 0; overflow-wrap: anywhere; }
-.summary-grid dt { color: var(--muted); font-size: .75rem; margin-bottom: 2px; }
+.summary-grid dt { color: var(--muted); font-size: .8125rem; margin-bottom: 2px; }
 .summary-grid dd { margin: 0; }
 .full-width { grid-column: 1 / -1; }
 .multiline-summary { white-space: pre-wrap; }
 .review-list { list-style: none; margin: 0; padding: 0; counter-reset: item; }
-.review-list li { counter-increment: item; display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; font-size: .875rem; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
+.review-list li { counter-increment: item; display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; font-size: .9375rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .review-list li:last-child { border-bottom: 0; }
-.review-list li > span:first-child::before { content: counter(item) '.'; color: var(--muted); margin-right: 10px; font-variant-numeric: tabular-nums; }
-.review-list .muted { flex-shrink: 0; font-size: .8125rem; }
+.review-list li > span:first-child::before { content: counter(item); display: inline-block; min-width: 1.6em; color: var(--faint); font-variant-numeric: tabular-nums; }
+.review-list .muted { flex-shrink: 0; font-size: .875rem; }
 .callout.warning ul { margin: 0; padding-left: 20px; }
+.deadline-field { max-width: 320px; margin: 8px 0 0; }
 .callout.warning li + li { margin-top: 4px; }
 
-.wizard-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 8px 0; }
-.btn-publish { min-width: 160px; }
+/* Actions stay in reach while long steps scroll. */
+.wizard-actions { position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; padding: 14px 0 18px; background: var(--ground); }
+.wizard-actions button { min-height: 48px; padding-inline: 24px; }
+.btn-publish { min-width: 180px; }
+
+.plan-summary { position: sticky; top: 24px; padding: 24px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.summary-title { font-size: 1rem; margin-bottom: 14px; }
+.plan-summary dl { margin: 0; display: grid; gap: 0; }
+.plan-summary dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); font-size: .9375rem; }
+.plan-summary dt { color: var(--muted); flex-shrink: 0; }
+.plan-summary dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+.plan-summary dd.empty { color: var(--faint); font-weight: 400; }
+.summary-note { display: flex; gap: 8px; font-size: .875rem; color: var(--ink-2); margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--sky-50); }
+.summary-note .ui-icon { width: 17px; height: 17px; margin-top: 2px; color: var(--blue); }
+.save-state { margin-top: 12px; }
 
 /* Step changes slide in the direction of travel. */
-.step-forward-enter-active, .step-back-enter-active { transition: opacity var(--base) var(--ease-out), transform var(--base) var(--ease-out); }
+.step-forward-enter-active, .step-back-enter-active { transition: opacity 320ms var(--ease-out), transform 320ms var(--ease-out); }
 .step-forward-leave-active, .step-back-leave-active { transition: opacity 120ms var(--ease-in), transform 120ms var(--ease-in); }
-.step-forward-enter-from { opacity: 0; transform: translateX(16px); }
-.step-forward-leave-to { opacity: 0; transform: translateX(-10px); }
-.step-back-enter-from { opacity: 0; transform: translateX(-16px); }
-.step-back-leave-to { opacity: 0; transform: translateX(10px); }
+.step-forward-enter-from { opacity: 0; transform: translateX(24px); }
+.step-forward-leave-to { opacity: 0; transform: translateX(-12px); }
+.step-back-enter-from { opacity: 0; transform: translateX(-24px); }
+.step-back-leave-to { opacity: 0; transform: translateX(12px); }
 
-@media(max-width: 900px) { .builder-layout { grid-template-columns: 165px minmax(0,1fr); gap: 24px; } .step-card { padding: 24px; } .role-options { grid-template-columns: minmax(0, 1fr); } .question-header { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 1180px) { .builder-layout { grid-template-columns: minmax(0, 1fr); } .plan-summary { position: static; } .plan-summary dl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); column-gap: 24px; } }
+@media(max-width: 900px) { .role-options { grid-template-columns: minmax(0, 1fr); } .question-header { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 860px) { .wizard-actions { bottom: calc(66px + env(safe-area-inset-bottom)); } }
 @media(max-width: 700px) {
-  .creator-wrapper { padding: 32px 20px 48px; } .builder-layout { grid-template-columns: minmax(0,1fr); gap: 24px; }
-  .step-indicator-bar { position: relative; top: 0; }
-  .step-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 4px; margin: -4px; gap: 4px; }
-  .step-track { left: 10%; right: 10%; top: 25px; bottom: auto; width: auto; height: 1px; }
-  .step-track > span { transform-origin: left; transform: scaleX(var(--value)); }
-  .step-pill { min-width: 0; flex-direction: column; align-items: center; padding: 8px 2px; font-size: .6875rem; gap: 6px; text-align: center; }
-  .step-pill:hover:not(:disabled) { background: transparent; }
-  .step-label { overflow-wrap: anywhere; }
-  .step-hint { display: none; } .step-card { padding: 20px; } .step-title { font-size: 1.25rem; }
+  .creator-wrapper { padding: 24px 16px 32px; }
+  .step-list { gap: 2px; }
+  .step-track { top: 19px; }
+  .step-pill { font-size: .75rem; gap: 6px; padding: 4px 0; }
+  .step-number { width: 32px; height: 32px; font-size: .8125rem; }
+  .step-card { padding: 20px; border-radius: 16px; }
   .question-card { padding: 16px; }
-  .input-row, .summary-grid { grid-template-columns: minmax(0,1fr); gap: 0; }
-  .summary-grid { gap: 12px; }
+  .option-inputs { grid-template-columns: minmax(0, 1fr); }
+  .input-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .wizard-actions { flex-direction: column-reverse; } .wizard-actions button { width: 100%; }
 }
-@media(max-width:380px) { .step-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } .step-track { display: none; } }
+@media(max-width:380px) { .step-label { font-size: .6875rem; } .step-number { width: 28px; height: 28px; } .step-track { top: 17px; } }
 </style>

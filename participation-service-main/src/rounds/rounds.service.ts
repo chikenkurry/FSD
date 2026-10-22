@@ -164,10 +164,13 @@ export class RoundsService {
         memberIds: dto.memberIds,
         responses: stored,
         createdAt: new Date(),
+        countRespondedOnly: dto.countRespondedOnly === true,
       });
       // Check while holding the same round lock as writes and freeze. A separate
       // progress check cannot protect against a member editing during closure.
-      if (dto.requireComplete && snapshot.participants.some(p => p.response_status !== 'complete')) {
+      const counted = snapshot.participants.filter(p => p.is_required_for_decision);
+      if ((dto.requireComplete && snapshot.participants.some(p => p.response_status !== 'complete'))
+          || (dto.countRespondedOnly && !counted.length)) {
         await unit.rejectFreeze(dto.operationId, hash);
         return { incomplete: true };
       }

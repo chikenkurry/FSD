@@ -71,12 +71,15 @@ reach Gemini. Member answers, budget caps, private notes, rosters, question text
 and answer choices stay inside the services. An exact amount and cost scope are
 required for a budget comparison; a headline “from” price cannot satisfy it.
 
-An exact, cited, current finding is adopted only when there is one distinct value
-across the returned claims. `status=confirmed` means eligible for deterministic
-comparison under this evidence policy. `context.verification=grounded_search` and
-`reviewed=false` distinguish it from human review. This verifies citation support
-and applicability checks; it cannot independently prove that a publisher or an
-extraction is correct. Existing confirmed organiser corrections are preserved.
+An exact, cited, current finding is adopted automatically (`status=confirmed`) for
+deterministic comparison under `grounded-option-facts-v1`, including multi-value
+categorical claims merged into `tag_set` facts, advertised qualifiers, and
+second-pass attributes discovered during semantic interpretation
+(`_supplement_discovered_facts`). When an option still lacks confirmed evidence
+on a soft criterion at execution time, `enrichment.py` supplements a neutral fallback
+so a single missing detail does not block the entire recommendation.
+`context.verification=grounded_search` and `reviewed=false` distinguish researched
+facts from human edits, while existing organiser values are preserved.
 
 The shared durable cache reuses identical public research within a six-hour
 bucket, keyed by identity, requested types/units, policy and collector/model

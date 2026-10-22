@@ -13,7 +13,7 @@ import OverviewCard from './OverviewCard.vue';
 withDefaults(defineProps<{ options: Snapshot['options']; currency: string; roundId?: string; chosen?: string; compact?: boolean }>(), { compact: false });
 </script>
 <style scoped>
-.option-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.option-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; }
 .option-cards > li { display: flex; min-width: 0; }
 .option-cards > li > * { flex: 1; }
 </style>

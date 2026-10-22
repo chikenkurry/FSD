@@ -15,7 +15,7 @@ SUPPORTED_VALUE_TYPES = {"category", "boolean", "number", "decimal", "tag_set"}
 SUPPORTED_SOFT_RULES = {
     "attribute_match_v1", "neutral_v1", "numeric_target_v1",
     "numeric_maximize_v1", "numeric_minimize_v1", "numeric_range_v1",
-    "tag_overlap_v1",
+    "tag_overlap_v1", "option_rating_v1",
 }
 SUPPORTED_HARD_RULES = {
     "equals_v1", "not_equals_v1", "maximum_v1", "minimum_v1",
@@ -74,6 +74,18 @@ def _validate_handoff(handoff: dict[str, Any]) -> None:
     _validate_option_flags(
         handoff.get("option_flags", []), handoff["candidates"], option_ids, participant_ids,
     )
+    _validate_similarity(handoff.get("similarity", []), definitions)
+
+
+def _validate_similarity(rows: object, definitions: dict) -> None:
+    if not isinstance(rows, list):
+        raise ContractError("similarity must be a list")
+    for row in rows:
+        if (not isinstance(row, dict) or row.get("attribute_id") not in definitions
+                or not isinstance(row.get("preferred"), str) or not isinstance(row.get("actual"), str)
+                or isinstance(row.get("score"), bool) or not isinstance(row.get("score"), (int, float))
+                or not 0 <= row["score"] <= 1):
+            raise ContractError("Similarity rows need a known criterion, two values and a score between 0 and 1")
 
 
 def _unique_ids(records: list[dict], field: str, message: str) -> list[str]:
@@ -189,6 +201,13 @@ def _validate_preferences(preferences: list[dict], definitions: dict) -> None:
         kind = definitions[preference["attribute_id"]]["value_type"]
         if rule.startswith("numeric_") and (kind not in {"number", "decimal"} or preference.get("polarity", "prefer") != "prefer"):
             raise ContractError("Numeric utility needs a numeric criterion and supported polarity")
+        if rule == "option_rating_v1":
+            ratings = preference.get("preferred_value")
+            if kind != "category" or not isinstance(ratings, dict) or not ratings or any(
+                    not isinstance(key, str) or isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1
+                    for key, value in ratings.items()):
+                raise ContractError("Option ratings need option keys and scores between 0 and 1")
+            continue
         if rule == "tag_overlap_v1" and kind != "tag_set":
             raise ContractError("Tag overlap needs a tag-set criterion")
         if rule in {"attribute_match_v1", "tag_overlap_v1"}:

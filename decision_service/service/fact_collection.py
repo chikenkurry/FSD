@@ -156,7 +156,7 @@ class GeminiFactCollector:
             "Copy option_id, attribute_id, entity_id and unit exactly from REQUESTS, without abbreviating names or expanding units. "
             "source_text must preserve the original punctuation and Markdown characters. Decimal values are exact strings, "
             "category values are strings, boolean values are true/false, tag_set values are text arrays. "
-            "qualifier is exact only for unqualified measurements; otherwise retain advertised, up_to, or conditions. "
+            "qualifier is exact for standard, typical, or advertised attributes; use conditions only when a claim is restricted by specific conditions. "
             "valid_until is an explicit ISO timestamp from an offer, otherwise null.\nREQUESTS:\n" + canonical(inputs) +
             "\nSEARCH TEXT:\n" + text)
         schema = deepcopy(CLAIM_SCHEMA)
@@ -231,6 +231,10 @@ def cited_value(segment, excerpt, value, kind, text, excerpt_start):
     """True when a cited segment overlaps the excerpt in the search text and states its value."""
     if excerpt in segment:
         return segment in text
+    clean_excerpt = excerpt.strip(" \t\r\n.,;:!?")
+    clean_segment = segment.strip(" \t\r\n.,;:!?")
+    if clean_excerpt and clean_excerpt in clean_segment:
+        return segment in text
     position = text.find(segment)
     if position < 0 or excerpt_start < 0:
         return False
@@ -242,7 +246,13 @@ def cited_value(segment, excerpt, value, kind, text, excerpt_start):
         return Decimal(str(value)) in {Decimal(number.replace(",", "")) for number in numbers}
     folded = segment.casefold()
     # Yes/no claims rest on the excerpt's wording; the segment must still overlap it.
-    return all(term in folded for term in terms)
+    if all(term in folded for term in terms):
+        return True
+    return all(
+        (words := [w for w in re.findall(r"[a-z0-9]+", term) if len(w) > 1])
+        and sum(w in folded for w in words) >= max(1, (len(words) + 1) // 2)
+        for term in terms
+    )
 
 
 def validate_claims(raw_claims, inputs, text, metadata):

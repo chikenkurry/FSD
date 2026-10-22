@@ -16,9 +16,11 @@ export function tagValues(value: string): string[] {
 export function definitionFor(q: Question): FactDefinition {
   return { criterion: q.criterion!, valueType: factType(q), unit: q.unit || '' };
 }
+// Direct ratings compare the option itself; there is nothing to research.
+export const OPTION_RATING = 'option_rating';
 export function factDefinitions(form: Form): FactDefinition[] {
   const definitions = new Map<string, FactDefinition>();
-  const active = form.questions.filter(q => q.role !== 'informational');
+  const active = form.questions.filter(q => q.role !== 'informational' && q.criterion !== OPTION_RATING);
   for (const q of active) if (q.criterion && q.criterion !== 'preferences') definitions.set(q.criterion, definitionFor(q));
   // A general written question may refer to any already researched attribute.
   if (active.some(q => q.criterion === 'preferences')) for (const o of form.decisionOptions || []) for (const f of o.facts) {
@@ -29,7 +31,7 @@ export function factDefinitions(form: Form): FactDefinition[] {
 export function validFact(fact: Fact | undefined, definition: FactDefinition): boolean {
   if (!fact?.value.trim() || fact.context?.stale || fact.valueType !== definition.valueType || fact.unit !== definition.unit) return false;
   if (typeof fact.context?.valid_until === 'string' && !(Date.parse(fact.context.valid_until) > Date.now())) return false;
-  if (fact.context?.qualifier && fact.context.qualifier !== 'exact' && !fact.context.corrected) return false;
+  if (fact.context?.qualifier && fact.context.qualifier === 'conditions' && !fact.context.corrected) return false;
   if (fact.valueType === 'boolean') return ['true', 'false'].includes(fact.value);
   if (fact.valueType === 'number') return Number.isFinite(Number(fact.value));
   if (fact.valueType === 'decimal') return /^\d+(\.\d{1,2})?$/.test(fact.value.trim());

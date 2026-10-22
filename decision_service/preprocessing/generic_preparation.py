@@ -46,6 +46,14 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
         intents = {answer.get("intent", "match") for answer in answers}
         intent = answers[0].get("intent", "match")
         try:
+            if mapping.get("comparison_rule") == "option_rating_v1":
+                if hard or len(answers) != 1 or not isinstance(raw_values[0], dict) or "ratings" not in raw_values[0]:
+                    raise InputError("INVALID_ANSWER", path, "Option ratings are one soft answer per member")
+                result.append({**provenance, "attribute_id": mapping["attribute_id"], "kind": "attribute_preference",
+                               "value_type": mapping["value_type"], "unit": mapping["unit"], "scope": "all",
+                               "status": "confirmed", "polarity": "prefer", "preferred_value": raw_values[0]["ratings"],
+                               "utility_rule": "option_rating_v1", "utility_parameters": {}})
+                continue
             if hard and mapping["value_type"] in {"number", "decimal"} and len(answers) > 1:
                 interval = intersect_numeric_requirements([
                     (BOUND_RULES.get(answer.get("intent"), answer["mapping"]["comparison_rule"]), answer["value"])
@@ -205,6 +213,8 @@ def compile_preparation(handoff: dict, registry: dict, issues: list[dict]) -> di
                                | {"cost_scope": handoff["context"]["cost_scope"]},
                 })
     for member in handoff["participants"]:
+        if not member.get("is_required_for_decision", True):
+            continue
         for question in questions.values():
             path = f"responses.participants.{member['participant_id']}.answers.{question['question_id']}"
             if question["role"] == "hard" and question["required"]:

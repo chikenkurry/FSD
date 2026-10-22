@@ -48,7 +48,10 @@ func (h *Handler) completeFreeze(ctx context.Context, round Round) (Round, error
 	if err := json.Unmarshal(round.EvaluationSnapshot(), &snapshot); err != nil {
 		return round, err
 	}
-	payload := map[string]any{"operationId": round.FreezeOperationID.String(), "roundId": round.ID.String(), "memberIds": snapshot.Roster, "requireComplete": true}
+	payload := map[string]any{"operationId": round.FreezeOperationID.String(), "roundId": round.ID.String(), "memberIds": snapshot.Roster, "requireComplete": !round.FreezeCountsRespondedOnly}
+	if round.FreezeCountsRespondedOnly {
+		payload["countRespondedOnly"] = true
+	}
 	if round.RosterPolicy == "close" {
 		payload["optionSnapshotId"], payload["optionRevision"] = round.OptionSnapshotID.String(), round.OptionRevision
 	}

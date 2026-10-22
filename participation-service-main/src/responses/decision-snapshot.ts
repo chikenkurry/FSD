@@ -69,6 +69,7 @@ export function toDecisionSnapshot(args: {
   currency?: string;
   minorDigits?: number;
   optionSnapshotId?: string | null;
+  countRespondedOnly?: boolean;
 }): ResponseSnapshotV2 {
   const byMember = new Map(args.responses.map((r) => [r.memberId.toLowerCase(), r]));
   const memberIds = [...args.memberIds].sort((a, b) => a.localeCompare(b));
@@ -83,7 +84,7 @@ export function toDecisionSnapshot(args: {
     participants.push({
       participant_id: memberId,
       response_status: status,
-      is_required_for_decision: true,
+      is_required_for_decision: !args.countRespondedOnly || status === 'complete',
       ...(args.questions?.length ? { answers: structuredClone(response?.answers ?? []) } : {}),
     });
     constraints.push(toConstraint(memberId, response, args.currency ?? "SGD"));

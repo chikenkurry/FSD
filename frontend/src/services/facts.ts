@@ -2,6 +2,8 @@ import type { PublishedFact } from '@/types/form';
 
 export function factLabel(criterion: string) {
   if (criterion === 'max_cost') return 'Cost per person';
+  if (criterion === 'option_rating') return 'Group ratings';
+  if (criterion === 'open_on_plan_dates') return 'Open on the plan dates';
   return criterion.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
 }
 

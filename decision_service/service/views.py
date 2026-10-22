@@ -1,6 +1,7 @@
 """Build aggregate results and member-specific reviews from private run artifacts."""
 from copy import deepcopy
 
+from decision_service.generic_algorithm.run import _constraint_matches, _phrase_similarity, _utility, similarity_table
 from decision_service.ranking import primary_score_key, primary_ties
 from .snapshots import SnapshotError
 
@@ -127,6 +128,8 @@ def recommendation_view(run: dict) -> dict:
         "pareto_alternatives": pareto,
         "unavailable_candidates": unavailable,
         "next_action": next_action,
+        # Count only: who was left out by an early close stays private.
+        "not_counted_members": sum(1 for state in run.get("member_states", {}).values() if state == "not_counted"),
     }
 
 
@@ -146,6 +149,159 @@ def _public_algorithm_result(result: dict) -> dict:
     if "issues" in result:
         public["issues"] = []  # Raw contract errors can include private input values.
     return deepcopy(public)
+
+
+def _attribute_breakdown(run: dict) -> dict[str, list[dict]]:
+    handoff = run.get("algorithm_input")
+    if not isinstance(handoff, dict) or not isinstance(handoff.get("candidates"), list):
+        return {}
+    required = [p["participant_id"] for p in handoff.get("participants", [])
+                if isinstance(p, dict) and p.get("participant_id") and p.get("is_required_for_decision", True)]
+    required_set = set(required)
+    table = similarity_table(handoff)
+    prepared_facts = {}
+    for cand in run.get("processing", {}).get("preparation", {}).get("candidates", []):
+        if isinstance(cand, dict) and cand.get("option_id"):
+            for f in cand.get("facts", []):
+                if isinstance(f, dict) and f.get("attribute_id"):
+                    prepared_facts[(cand["option_id"], f["attribute_id"])] = f
+    supplemented = {}
+    for row in run.get("fact_enrichment", {}).get("applied_facts", []):
+        if isinstance(row, dict) and row.get("option_id") and isinstance(row.get("fact"), dict):
+            supplemented[(row["option_id"], row["fact"].get("criterion"))] = row["fact"]
+
+    by_member_criterion = {}
+    for pref in handoff.get("preferences", []):
+        if isinstance(pref, dict) and "attribute_id" in pref:
+            key = (pref.get("participant_id"), pref.get("source_question_id"), pref.get("attribute_id"))
+            by_member_criterion.setdefault(key, []).append(pref)
+
+    weights_by_attr: dict[str, list[dict]] = {}
+    for w in handoff.get("scoring_model", {}).get("member_weights", []):
+        if isinstance(w, dict) and w.get("status") == "resolved" and w.get("participant_id") in required_set and w.get("attribute_id"):
+            weights_by_attr.setdefault(w["attribute_id"], []).append(w)
+
+    constraints_by_attr: dict[str, list[dict]] = {}
+    for c in handoff.get("constraints", []):
+        if isinstance(c, dict) and c.get("participant_id") in required_set and c.get("kind") != "unlimited" and c.get("attribute_id"):
+            constraints_by_attr.setdefault(c["attribute_id"], []).append(c)
+
+    breakdown: dict[str, list[dict]] = {}
+    for candidate in handoff.get("candidates", []):
+        cid = _candidate_id(candidate)
+        if not cid or not isinstance(candidate.get("facts"), list):
+            continue
+        facts_map = {f["attribute_id"]: f for f in candidate["facts"] if isinstance(f, dict) and f.get("attribute_id")}
+        ordered_attrs = list(dict.fromkeys([
+            *weights_by_attr.keys(),
+            *constraints_by_attr.keys(),
+            *facts_map.keys(),
+        ]))
+        items = []
+        for attr_id in ordered_attrs:
+            fact = facts_map.get(attr_id)
+            prep_fact = prepared_facts.get((cid, attr_id), {})
+            supp_fact = supplemented.get((cid, attr_id), {})
+            context = supp_fact.get("context") or (fact or {}).get("context") or prep_fact.get("context") or {}
+            value = (fact or {}).get("value")
+            value_type = (fact or {}).get("value_type") or prep_fact.get("value_type") or "category"
+            unit = (fact or {}).get("unit") or prep_fact.get("unit")
+            status = (fact or {}).get("status") or "unknown"
+            w_rows = weights_by_attr.get(attr_id, [])
+            c_rows = constraints_by_attr.get(attr_id, [])
+
+            score = None
+            weight = None
+            matched_members = 0
+            total_members = 0
+            role = "soft" if w_rows else "hard" if c_rows else "context"
+            reason = "Supporting option detail"
+
+            if w_rows:
+                weight = round(sum(float(w.get("effective_weight", 0.0)) for w in w_rows) / max(1, len(required)), 4)
+                member_utils = []
+                had_indifferent = False
+                judged = False
+                if fact and status == "confirmed" and value is not None:
+                    for w in w_rows:
+                        answers = by_member_criterion.get((w.get("participant_id"), w.get("source_question_id"), attr_id), [])
+                        if not answers:
+                            continue
+                        if all(ans.get("kind") == "indifferent" for ans in answers):
+                            had_indifferent = True
+                            continue
+                        utils = []
+                        for ans in answers:
+                            if ans.get("kind") != "indifferent":
+                                try:
+                                    utils.append(float(_utility(fact, ans, table)))
+                                    if table and ans.get("utility_rule") in {"attribute_match_v1", "tag_overlap_v1"}:
+                                        judged = judged or any(
+                                            _phrase_similarity(a, p) < 1 and (attr_id, p, a) in table
+                                            for a in (value if isinstance(value, list) else [value])
+                                            for p in (ans.get("preferred_value") if isinstance(ans.get("preferred_value"), list) else [ans.get("preferred_value")]))
+                                except Exception:
+                                    pass
+                        if utils:
+                            member_utils.append(sum(utils) / len(utils))
+                if member_utils:
+                    score = round(sum(member_utils) / len(member_utils), 4)
+                    matched_members = sum(1 for u in member_utils if u >= 0.5)
+                    total_members = len(member_utils)
+                    if score >= 0.8:
+                        reason = f"Strong match ({matched_members}/{total_members} member preferences aligned)"
+                    elif score >= 0.45:
+                        reason = f"Partial match ({matched_members}/{total_members} member preferences aligned)"
+                    else:
+                        reason = f"Lower match ({matched_members}/{total_members} member preferences aligned)"
+                    if attr_id == "option_rating":
+                        reason = f"Rated by {total_members} {'member' if total_members == 1 else 'members'}; {matched_members} rated it OK or better"
+                    elif judged:
+                        reason += "; similar meanings judged by AI (estimate)"
+                elif had_indifferent and fact and status == "confirmed" and value is not None:
+                    score = 1.0
+                    matched_members = len(required)
+                    total_members = len(required)
+                    reason = "All members flexible (no preference constraint)"
+                else:
+                    reason = "No confirmed evidence for this preference"
+            elif c_rows:
+                if fact and status == "confirmed" and value is not None:
+                    try:
+                        passed = all(_constraint_matches(value, c) for c in c_rows)
+                    except Exception:
+                        passed = False
+                    score = 1.0 if passed else 0.0
+                    matched_members = sum(1 for c in c_rows if passed)
+                    total_members = len(c_rows)
+                    reason = "Meets group requirement" if passed else "Does not meet group requirement"
+                else:
+                    reason = "Missing required evidence"
+
+            sources = [
+                {k: s[k] for k in ("url", "title") if k in s and isinstance(s[k], str)}
+                for s in (context.get("sources") or [])
+                if isinstance(s, dict) and isinstance(s.get("url"), str)
+            ]
+            items.append({
+                "attribute_id": attr_id,
+                "role": role,
+                "value": deepcopy(value),
+                "value_type": value_type,
+                "unit": unit,
+                "status": status,
+                "weight": weight,
+                "score": score,
+                "matched_members": matched_members,
+                "total_members": total_members,
+                "reason": reason,
+                "source_text": context.get("source_text", "") if isinstance(context.get("source_text"), str) else "",
+                "sources": sources,
+                "supplemented": (cid, attr_id) in supplemented,
+            })
+        if items:
+            breakdown[cid] = items
+    return breakdown
 
 
 def public_result(run: dict) -> dict:
@@ -171,6 +327,7 @@ def public_result(run: dict) -> dict:
             "execution_specification": run.get("execution_specification", {}),
             "result": result, "fact_requests": facts, "scenario_requests": scenarios,
             "supplemented_facts": supplemented,
+            "attribute_breakdown": _attribute_breakdown(run),
             "recommendation_view": recommendation_view(run),
             "issues": [{"code": issue.get("code", "PROCESSING_ISSUE")} for issue in run.get("issues", [])
                        if not issue.get("path", "").startswith("responses.participants.")]}

@@ -44,10 +44,14 @@ func (h *Handler) Research(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	planID := roundPlan(r)
-	var published int64
-	if h.db.WithContext(r.Context()).Model(&Round{}).Where("id = ?", id).Count(&published); published > 0 {
-		fail(w, 409, "FROZEN_HISTORY")
-		return
+	var published Round
+	if h.db.WithContext(r.Context()).First(&published, "id = ?", id).Error == nil {
+		// A published round's facts are frozen. Before confirming, the organiser
+		// may re-check them; the result is advisory and never changes the round.
+		if body.Task != "facts" || published.State != roundReview || !h.rounds.latestRound(r.Context(), published) {
+			fail(w, 409, "FROZEN_HISTORY")
+			return
+		}
 	}
 	run, err := h.call(r.Context(), h.decision, "POST", "/internal/research", map[string]any{
 		"task": body.Task, "input": body.Input, "retry": body.Retry,

@@ -5,7 +5,7 @@ import "net/http"
 // One dispatcher preserves the existing /rounds/plans/{plan_id} routes without
 // ambiguous ServeMux patterns such as /rounds/{id}/publish.
 func (h *Handler) RegisterRoundRoutes(mux *http.ServeMux, create, list http.HandlerFunc) {
-	posts := map[string]http.HandlerFunc{"publish": h.Publish, "close": h.Close, "recommendations": h.Recommend, "confirm": h.Confirm, "reopen": h.Reopen, "preview": h.Preview, "fact-collection": h.CollectFacts, "accept-facts": h.AcceptFacts, "research": h.Research}
+	posts := map[string]http.HandlerFunc{"publish": h.Publish, "close": h.Close, "recommendations": h.Recommend, "confirm": h.Confirm, "reopen": h.Reopen, "preview": h.Preview, "fact-collection": h.CollectFacts, "accept-facts": h.AcceptFacts, "research": h.Research, "deadline": h.Deadline}
 	gets := map[string]http.HandlerFunc{"form": h.Snapshot, "recommendation": h.Result, "clarifications": h.Clarifications, "selection": h.GetSelection, "preview": h.GetPreview, "readiness": h.Readiness, "fact-collection": h.GetFactCollection, "research": h.GetResearch, "place": h.Place, "place-photo": h.PlacePhoto}
 	dispatch := func(method string, actions map[string]http.HandlerFunc, plans http.HandlerFunc) {
 		mux.HandleFunc(method+" /v1/rounds/{id}/{action}", func(w http.ResponseWriter, r *http.Request) {

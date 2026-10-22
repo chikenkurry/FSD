@@ -3,6 +3,7 @@ package integration
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"context"
@@ -89,7 +90,15 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	round, err := h.rounds.beginFreeze(r.Context(), id)
+	var body struct {
+		CountRespondedOnly bool `json:"count_responded_only"`
+	}
+	// An empty body is a normal close; {"count_responded_only": true} closes early.
+	if err := decode(w, r, &body); err != nil && !errors.Is(err, io.EOF) {
+		fail(w, 400, "INVALID_INPUT")
+		return
+	}
+	round, err := h.rounds.beginFreeze(r.Context(), id, body.CountRespondedOnly)
 	if err != nil {
 		fail(w, 409, "ROUND_NOT_COLLECTING")
 		return
@@ -180,4 +189,29 @@ func (h *Handler) Clarifications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond(w, 200, result)
+}
+
+// Deadline sets or clears the date the organiser wants responses by. It informs
+// members and the organiser; closing collection stays an explicit command.
+func (h *Handler) Deadline(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		DeadlineAt *time.Time `json:"deadline_at"`
+	}
+	if decode(w, r, &body) != nil {
+		fail(w, 400, "INVALID_INPUT")
+		return
+	}
+	id, ok := rowID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.rounds.setDeadline(r.Context(), id, body.DeadlineAt); err != nil {
+		if errors.Is(err, errNotCollecting) {
+			fail(w, 409, "ROUND_NOT_COLLECTING")
+			return
+		}
+		fail(w, 404, "NOT_FOUND")
+		return
+	}
+	respond(w, 200, map[string]any{"round_id": id, "deadline_at": body.DeadlineAt})
 }

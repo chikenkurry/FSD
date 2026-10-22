@@ -5,6 +5,13 @@ export class FreezeRoundDto {
   @IsOptional()
   @IsBoolean()
   requireComplete?: boolean;
+  /**
+   * Early close: freeze with whoever has submitted. Members without a complete,
+   * current response stay on the roster but are not counted in the decision.
+   */
+  @IsOptional()
+  @IsBoolean()
+  countRespondedOnly?: boolean;
   @IsOptional()
   @IsUUID('all')
   optionSnapshotId?: string;

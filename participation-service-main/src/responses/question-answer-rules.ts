@@ -24,6 +24,7 @@ function isAnswered(value: unknown): boolean {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string') return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value as object).length > 0;
   return true;
 }
 
@@ -80,6 +81,11 @@ function matchesFormat(value: unknown, format: string): boolean {
     case 'multi_choice':
     case 'date_intervals':
       return Array.isArray(value);
+    case 'option_rating':
+      // Option ID -> whole-number rating from 0 (not for me) to 4 (love it).
+      return typeof value === 'object' && value !== null && !Array.isArray(value)
+        && Object.keys(value).length <= 20
+        && Object.values(value).every(rating => Number.isInteger(rating) && (rating as number) >= 0 && (rating as number) <= 4);
     default:
       return typeof value === 'string' || typeof value === 'number';
   }

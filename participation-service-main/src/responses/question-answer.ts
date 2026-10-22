@@ -7,7 +7,7 @@ export class QuestionDefinitionDto {
   @IsBoolean()
   required!: boolean;
 
-  @IsIn(['text', 'choice', 'multi_choice', 'number', 'boolean', 'date_intervals'])
+  @IsIn(['text', 'choice', 'multi_choice', 'number', 'boolean', 'date_intervals', 'option_rating'])
   answerFormat!: string;
 
   @IsOptional()
@@ -26,6 +26,11 @@ export class QuestionAnswerDto {
 
   @IsDefined()
   value!: unknown;
+
+  /** How much this answer matters to the member; scales their own weight for it. */
+  @IsOptional()
+  @IsIn(['low', 'normal', 'high'])
+  importance?: 'low' | 'normal' | 'high';
 
   // Meaning is checked by preprocessing; Participation retains the exact review record.
   @Allow()

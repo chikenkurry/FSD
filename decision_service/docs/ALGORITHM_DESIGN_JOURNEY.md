@@ -77,6 +77,16 @@ more total mass than another.
 
 Supported generic utilities include categorical match/avoidance, explicit
 indifference, numeric target/direction/range utilities, and tag overlap.
+Categorical and tag-overlap utilities also apply normalized content-token and
+phrase-subset similarity (`_phrase_similarity`) when exact strings differ so
+that descriptive sourced claims (for example, `"singapore style artisanal craft
+cocktails"` or `"cosy contemporary"`) align with concise member preferences
+(`"craft cocktails"` or `"cozy"`). When a member answers `"No preference"`
+(`indifferent`) on a subset of criteria while expressing active preferences on
+others, their member score is re-normalized over their active criteria so that
+being flexible on secondary questions does not artificially cap their score at
+`50%`. When a member is indifferent across all soft criteria, their score
+remains `0.5`.
 Their input types and validation rules are defined by the execution contract.
 
 The group objective receives the same per-member scores regardless of mode.
@@ -87,7 +97,7 @@ member scoring.
 
 ### Maximin then average
 
-This is the default policy. It orders candidates by the lowest required-member
+This is the contract baseline policy. It orders candidates by the lowest required-member
 score first, then average score. It answers: "Which choice avoids leaving any
 required person with the worst fit?"
 
@@ -105,10 +115,13 @@ group_score = (minimum_weight * minimum + average_weight * average)
               - fairness_weight * population_variance(member_scores)
 ```
 
-It is appropriate when the organiser explicitly wants to balance overall fit
-and fairness differently. The objective is supplied in the round's frozen
-planning snapshot as `group_objective`; Decision forwards it through
-preprocessing. If it is absent, the default is `maximin_then_average`.
+It is appropriate when the group wants to balance overall fit and fairness
+without letting a tiny difference in minimum score override strong group
+consensus. For `facts-v1` option rounds without an explicit custom objective,
+`decision_service/service/execution.py` applies `BLENDED_FAIRNESS_OBJECTIVE`
+(`minimum_score_weight: 0.5`, `average_score_weight: 0.5`,
+`fairness_weight: 0.15`). If an objective is absent on raw contract inputs, the
+fallback remains `maximin_then_average`.
 
 The algorithm does not select a policy automatically from member answers.
 That would make an important social choice implicit and difficult to explain.

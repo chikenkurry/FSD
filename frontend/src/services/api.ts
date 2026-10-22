@@ -1,5 +1,5 @@
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from './checkpoints';
-import { decisionQuestion, factDefinitions, factStatus, factType, tagValues } from './optionFacts';
+import { OPTION_RATING, decisionQuestion, factDefinitions, factStatus, factType, tagValues, validFact } from './optionFacts';
 import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, Overview, ResearchRun, RsvpSummary } from '@/types/form';
 
 // Same-origin proxies keep private service addresses and tokens off browser URLs.
@@ -23,6 +23,8 @@ export async function request<T>(path: string, method = 'GET', body?: unknown, t
 const roundPath = (id: string) => `${planning}/v1/rounds/${encodeURIComponent(id)}`;
 const ownPath = (id: string) => `${participation}/rounds/${encodeURIComponent(id)}/my-response`;
 export function questionDefinition(q: Question, index: number) {
+  // Members rate each option directly; Decision compares the option's own identity.
+  if (q.type === 'Option rating') return { role: 'soft', criterion: OPTION_RATING, relevance: 1, answer_format: 'option_rating' };
   const criterion = q.criterion?.trim() || `preference_${index + 1}`;
   const role = q.role || 'soft';
   const format = q.type === 'Multiple choice' ? 'multi_choice' : q.type === 'Number' ? 'number' : q.type === 'Boolean' ? 'boolean' :
@@ -50,7 +52,8 @@ function validateForm(form: Form, draft = false) {
   if (definitions.length > 8) throw new Error('Use up to eight distinct option attributes. Reuse attributes across questions.');
   // Publishing validates the form structure. Missing evidence is supplemented
   // during Decision processing; it is not a per-question organiser checklist.
-  for (const q of form.questions.filter(q => q.role !== 'informational')) {
+  if (form.questions.filter(q => q.type === 'Option rating').length > 1) throw new Error('Ask members to rate the options once.');
+  for (const q of form.questions.filter(q => q.role !== 'informational' && q.type !== 'Option rating')) {
     if (!draft && !/^[a-z][a-z0-9_]{0,59}$/.test(q.criterion || '') && q.title.trim()) throw new Error('Choose the option detail each question compares.');
     const definition = definitions.find(d => d.criterion === q.criterion);
     if (definition && (definition.valueType !== factType(q) || definition.unit !== (q.unit || ''))) throw new Error('Questions about the same attribute must use the same fact type and unit.');
@@ -116,7 +119,7 @@ export const apiService = {
         brief:o.metadata?.brief,facts:(o.metadata?.facts || []).map(localFact)})),
       questions:[...(plan.questions || [])].sort((a,b)=>a.sort_order-b.sort_order).map(q => { const d=q.options?.decision;
         return {id:q.id,title:q.title,description:q.description || '',isRequired:q.is_required,options:q.options?.options || [],role:d?.role || 'soft',criterion:d?.criterion,
-          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
+          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration',option_rating:'Option rating'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
   },
   // Creates or updates the unpublished plan, options, questions and draft round.
   async saveFormDraft(form: Form, userId: string, username: string): Promise<Form> {
@@ -176,10 +179,18 @@ export const apiService = {
         if (!(error instanceof ApiError && error.code === 'INVALID_DEFINITION')) throw error;
       }
     }
+    for (const option of form.decisionOptions || []) for (const fact of option.facts) {
+      if (validFact(fact, { criterion: fact.criterion, valueType: fact.valueType, unit: fact.unit }) && (!Array.isArray(fact.context?.alternatives) || !fact.context.alternatives.length)) {
+        fact.status = 'confirmed';
+        fact.context = { ...fact.context, reviewed: Boolean(fact.context?.corrected || fact.context?.reviewed), verification: fact.context?.corrected ? 'organiser' : fact.context?.verification || 'grounded_search' };
+      }
+    }
     await apiService.saveFormDraft(form, userId, username);
     form.publishAttempted = true;
     await request(`${roundPath(form.roundId!)}/publish`, 'POST', publishSettings(form));
     form.state = 'Collecting';
+    // The deadline is guidance for the group; publishing never fails because of it.
+    if (form.deadline) await apiService.setDeadline(form.roundId!, new Date(form.deadline).toISOString()).catch(() => undefined);
     return form;
   },
   // Organiser research runs as background jobs; callers poll until each one completes.
@@ -223,7 +234,9 @@ export const apiService = {
   submit: (id: string, revision: number) => request<Draft>(`${ownPath(id)}/submit`, 'POST', { expectedRevision: revision }),
   preview: (id: string, revision: number) => request<Run>(`${roundPath(id)}/preview`, 'POST', { expected_revision: revision, retry: true }),
   review: (id: string) => request<Review | { status: 'pending' }>(`${roundPath(id)}/preview`),
-  close: (id: string) => request(`${roundPath(id)}/close`, 'POST', {}),
+  // Early close counts only members with a submitted, current response.
+  close: (id: string, countRespondedOnly = false) => request(`${roundPath(id)}/close`, 'POST', countRespondedOnly ? { count_responded_only: true } : {}),
+  setDeadline: (id: string, deadline: string | null) => request(`${roundPath(id)}/deadline`, 'POST', { deadline_at: deadline }),
   recommend: (id: string) => request<Run>(`${roundPath(id)}/recommendations`, 'POST', { retry: true }),
   result: (id: string) => request<Run>(`${roundPath(id)}/recommendation`),
   selection: (id: string) => request<Selection>(`${roundPath(id)}/selection`),

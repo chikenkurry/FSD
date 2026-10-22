@@ -35,6 +35,9 @@ type PublishedRound struct {
 	FreezeOperationID    uuid.UUID      `gorm:"type:uuid;not null" json:"-"`
 	ResponseSnapshotID   string         `json:"response_snapshot_id,omitempty"`
 	LastRunID            string         `json:"recommendation_run_id,omitempty"`
+
+	// Early close: members without a complete response are not counted.
+	FreezeCountsRespondedOnly bool `gorm:"not null;default:false" json:"-"`
 }
 
 func (PublishedRound) TableName() string { return "integration_rounds" }

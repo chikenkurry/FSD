@@ -6,6 +6,10 @@ import re
 from decision_service.preprocessing.money import decimal_string
 
 
+# How much a member says a question matters, as a multiplier on its equal share.
+IMPORTANCE_MULTIPLIERS = {"low": 0.5, "normal": 1, "high": 2}
+
+
 class SnapshotError(ValueError):
     pass
 
@@ -70,6 +74,7 @@ def map_snapshots(planning: dict, responses: dict) -> tuple[dict, dict]:
     reply = {"round_id": plan["round_id"], "option_revision": plan["option_revision"],
              "response_snapshot_id": responses["snapshot_id"], "participants": []}
     known = {q["question_id"] for q in plan["questions"]}
+    questions_by_id = {q["question_id"]: q for q in plan["questions"]}
     rows = responses.get("constraints")
     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
         raise SnapshotError("Constraints must be a list of member records")
@@ -119,8 +124,24 @@ def map_snapshots(planning: dict, responses: dict) -> tuple[dict, dict]:
             else:
                 value = "no limit"
             answers.append({"question_id": budget_question, "answer_id": f"{responses['snapshot_id']}:{member['participant_id']}:budget", "value": value})
-        reply["participants"].append({"participant_id": member["participant_id"],
-                                       "response_status": member.get("response_status", "incomplete"), "answers": answers})
+        importance = {}
+        for answer in answers:
+            level = answer.pop("importance", None)
+            question = questions_by_id.get(answer["question_id"], {})
+            criterion = question.get("criterion")
+            if level is None or question.get("role") != "soft" or not isinstance(criterion, str) or criterion in {"preferences", "context"}:
+                continue
+            if level not in IMPORTANCE_MULTIPLIERS:
+                raise SnapshotError("Invalid answer importance")
+            # One criterion asked twice keeps the stronger stated importance.
+            importance[criterion] = max(importance.get(criterion, 0), IMPORTANCE_MULTIPLIERS[level])
+        participant = {"participant_id": member["participant_id"],
+                       "response_status": member.get("response_status", "incomplete"), "answers": answers}
+        if member.get("is_required_for_decision") is False:
+            participant["is_required_for_decision"] = False
+        if importance:
+            participant["importance_scale"] = importance
+        reply["participants"].append(participant)
     return plan, reply
 
 
