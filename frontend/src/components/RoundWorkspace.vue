@@ -67,9 +67,17 @@
       <Transition name="reveal">
         <section class="recommendation-section" v-if="run" aria-labelledby="recommendation-heading">
           <div class="panel-heading"><div><h2 id="recommendation-heading">Group recommendation</h2><p>Options ranked against the group’s confirmed responses.</p></div><span :class="['badge', run.status.toLowerCase()]">{{ stateLabel(run.status) }}</span></div>
-          <div v-if="run.status === 'pending'" class="pending" role="status"><span class="pulse" aria-hidden="true"></span>Calculating the recommendation. This usually takes a few seconds.</div>
+          <div v-if="run.status === 'pending'" class="pending" role="status"><span class="pulse" aria-hidden="true"></span>Interpreting responses, checking any missing evidence and calculating the recommendation. You can return later; progress is saved.</div>
           <p v-if="run.recommendation_view.next_action && nextAction" class="callout warning">{{ nextAction }}</p>
           <ul v-if="run.issues.length" class="issue-list"><li v-for="(issue,index) in run.issues" :key="index">{{ stateLabel(issue.code) }}</li></ul>
+          <details v-if="run.supplemented_facts?.length" class="supplemented-facts"><summary>Evidence added during calculation</summary>
+            <p class="helper-text">These sourced details supplemented the published options for this result. They are saved with the calculation.</p>
+            <div v-for="fact in run.supplemented_facts" :key="`${fact.option_id}:${fact.attribute_id}`">
+              <p><strong>{{ snapshot.options.find(o=>o.option_id===fact.option_id)?.title }} · {{ factLabel(fact.attribute_id) }}</strong>: {{ Array.isArray(fact.value) ? fact.value.join(', ') : fact.value }} {{ fact.unit || '' }}</p>
+              <p class="helper-text">{{ fact.source_text }}</p>
+              <ul><li v-for="source in fact.sources" :key="source.url"><a v-if="safeSource(source.url)" :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title || source.url }}</a></li></ul>
+            </div>
+          </details>
           <div class="candidate-grid">
             <article v-for="(candidate, index) in candidates" :key="candidate.candidate_id" :class="['candidate-card', 'rise', { recommended: candidate.rank === 1, chosen: selection?.candidate_id === candidate.candidate_id }]" :style="{ '--i': index }">
               <p class="rank">{{ selection?.candidate_id === candidate.candidate_id ? 'Confirmed' : candidate.rank === 1 ? 'Recommended' : `Ranked ${ordinal(candidate.rank)}` }}</p>
@@ -123,6 +131,7 @@ import FormParticipantView from './FormParticipantView.vue';
 import OptionCards from './OptionCards.vue';
 import { apiService, ApiError, request } from '@/services/api';
 import { operationId } from '@/services/ids';
+import { factLabel } from '@/services/facts';
 import { useAuthStore } from '@/stores/auth';
 import type { Snapshot, PlanRow, Run, Selection, Candidate } from '@/types/form';
 const props = defineProps<{ roundId: string; inviteToken?: string }>();
@@ -143,13 +152,14 @@ const candidates = computed(() => run.value?.recommendation_view.recommendation 
 const paretoIds = computed(() => new Set(run.value?.recommendation_view.pareto_alternatives.map(row => row.candidate_id)));
 const selectedTitle = computed(() => candidates.value.find(row => row.candidate_id === selection.value?.candidate_id)?.title || snapshot.value?.options.find(row => row.option_id === selection.value?.candidate_id)?.title || 'Selection confirmed');
 const actionMessages: Record<string,string> = {
-  OPTION_FACTS_REQUIRED: 'More confirmed option facts are needed. The organiser must revise the options in a new round.',
+  OPTION_FACTS_REQUIRED: 'Some option facts remain unresolved after the evidence check. The organiser can correct them or try fresh research by revising in a new round.',
   RESPONSES_OR_CONFIRMATIONS_REQUIRED: 'Responses or requirement confirmations are incomplete. Review the round before requesting another calculation.',
   REVISE_OPTIONS_OR_REQUIREMENTS: 'No option meets the group requirements. Revise the choices or requirements in a new round.',
   RECOMMENDATION_IN_PROGRESS: '', DECISION_SETUP_REVIEW_REQUIRED: 'The organiser needs to review the decision setup.', RECOMMENDATION_RETRY_REQUIRED: 'The calculation failed. The organiser can retry.',
 };
 const nextAction = computed(() => actionMessages[run.value?.recommendation_view.next_action || ''] ?? '');
 function stateLabel(value: string) { return value.toLowerCase().replaceAll('_', ' ').replace(/^./, c => c.toUpperCase()); }
+function safeSource(value:string){try{return new URL(value).protocol==='https:';}catch{return false;}}
 function unavailableLabel(status: string) { return ({ INFEASIBLE: 'Doesn’t meet the group’s requirements' } as Record<string,string>)[status] || stateLabel(status); }
 function ordinal(n: number) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]!); }
 const phase = computed(() => selection.value ? 2 : plan.value?.state === 'REVIEWING' ? 1 : plan.value?.state === 'CONFIRMED' ? 2 : 0);
@@ -267,6 +277,7 @@ onUnmounted(()=>{alive=false;clearTimeout(pollTimer);document.removeEventListene
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 .issue-list { font-size: .875rem; color: var(--muted); }
 .candidate-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 16px; }
+.supplemented-facts { overflow-wrap: anywhere; margin: 20px 0; }
 .candidate-card { display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--line); background: #fff; border-radius: 12px; overflow-wrap: anywhere; }
 .candidate-card.recommended { background: #f1f7f2; border-color: #a9c5b2; box-shadow: inset 0 3px 0 var(--accent); }
 .candidate-card.chosen { border-color: var(--accent); }

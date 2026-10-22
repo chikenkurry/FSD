@@ -34,6 +34,9 @@ async function guest(page: Page, name: string) {
 
 test('create, invite, privately review, submit, rank, confirm and RSVP', async ({ page, browser }, info) => {
   const name = `Browser ${info.project.name} ${Date.now()}`;
+  // Observe autosave from the start, including recovery before option research.
+  let planCreates = 0;
+  page.on('request', req => { if (req.method() === 'POST' && req.url().endsWith('/v1/plans')) planCreates++; });
   await page.goto('/'); await fits(page); await capture(page, info.project.name, 'login'); await guest(page, name);
   await expect(page.getByRole('heading', { name: 'What would you like to decide?' })).toBeVisible();
   await capture(page, info.project.name, 'empty');
@@ -80,12 +83,9 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
     researchRuns.set(id, task === 'overviews' ? { options: options.map(o => ({ key: o.key, kind: 'place', place_id: null,
       overview: { source: 'web_search', name: o.title, summary: `${o.title} is a synthetic ${o.title === 'Cafe' ? 'indoor' : 'outdoor'} meeting spot.`, highlights: ['Synthetic fixture'], sources: [], photos: [] } })) }
       : task === 'questions' ? { questions: [{ title: 'Indoors or outdoors?', help: '', type: 'single', role: 'preference', criterion: 'environment', choices: ['indoor', 'outdoor'] }] }
-      : { facts: options.map(o => ({ option: o.key, criterion: 'environment', values: [o.title === 'Cafe' ? 'indoor' : 'outdoor'], reason: 'Synthetic fixture.', sources: [] })) });
+      : { facts: options.map(o => ({ option: o.key, criterion: 'environment', value: o.title === 'Cafe' ? 'indoor' : 'outdoor', value_type:'category', unit:null, context:{qualifier:'exact',source_text:'Synthetic venue environment.'}, sources:[{url:'https://example.com/venue'}] })) });
     return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ run_id: id, status: 'pending', issues: [] }) });
   });
-  // The draft is saved once for research; retries and publish must not create another plan.
-  let planCreates = 0;
-  page.on('request', req => { if (req.method() === 'POST' && req.url().endsWith('/v1/plans')) planCreates++; });
   await page.getByRole('button', { name: 'Look them up' }).click();
   await activeStepFits(page);
   await expect(page.getByRole('heading', { name: 'Your options at a glance' })).toBeVisible();
@@ -96,7 +96,7 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   await page.getByRole('button', { name: 'Draft questions' }).click();
   await activeStepFits(page);
   await expect(page.locator('.step-pill[aria-current="step"]')).toContainText('Questions');
-  // AI drafts questions and places each option within the question's own choices.
+  // Question drafting and sourced facts are separate; facts retain their own values.
   await expect(page.getByLabel('Question', { exact: true })).toHaveValue('Indoors or outdoors?');
   await page.reload();
   await expect(page.getByLabel('Question', { exact: true })).toHaveValue('Indoors or outdoors?');
@@ -108,18 +108,18 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
-  for(const checkbox of await page.getByLabel('I checked this value and confirm it can be used.').all())await checkbox.check();
   await expect(page.getByText('Worth checking before you publish')).toHaveCount(0);
   // Recover from server data after discarding the tab-local creator checkpoint.
   await expect.poll(async()=>page.evaluate(async()=>{
     const user=sessionStorage.getItem('user_id');const saved=JSON.parse(sessionStorage.getItem(`what2do:checkpoint:v1:${user}:creator`)!);
     const response=await fetch(`/api/planning/v1/plans/details/${saved.form.id}`,{headers:{Authorization:`Bearer ${sessionStorage.getItem('session_token')}`}});
-    const row=await response.json();return row.proposed_activities?.length===2 && row.proposed_activities.every((o:{metadata?:{facts?:{context?:{reviewed?:boolean}}[]}})=>!!o.metadata?.facts?.length && o.metadata.facts.every(f=>f.context?.reviewed===true));
-  })).toBe(true);
+    const row=await response.json();return (row.proposed_activities || []).map((o:{metadata?:{facts?:{status?:string;context?:{verification?:string}}[]}})=>
+      (o.metadata?.facts || []).map(f=>({status:f.status,verification:f.context?.verification})));
+  })).toEqual([[{status:'confirmed',verification:'grounded_search'}],[{status:'confirmed',verification:'grounded_search'}]]);
   await page.evaluate(()=>sessionStorage.removeItem(`what2do:checkpoint:v1:${sessionStorage.getItem('user_id')}:creator`));
   await page.reload();
   await expect(page.getByRole('heading',{name:'Review and publish'})).toBeVisible();
-  await expect(page.getByLabel('I checked this value and confirm it can be used.').first()).toBeChecked();
+  await expect(page.getByRole('heading',{name:'Supporting facts'})).toHaveCount(0);
   await fits(page);
   await page.route('**/v1/rounds/*/publish', route => route.fulfill({ status: 503, contentType: 'application/json',
     body: JSON.stringify({ code: 'UPSTREAM_UNAVAILABLE', message: 'Temporary test outage' }) }), { times: 1 });
@@ -221,7 +221,11 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   page.once('dialog',dialog=>dialog.accept());
   await page.getByRole('button',{name:'Revise in a new round',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Review and publish'})).toBeVisible();
-  await expect(page.getByTestId('fact-Cafe-environment')).toBeVisible();
+  await expect(page.getByTestId('fact-Cafe-environment')).toHaveCount(0);
+  await page.getByRole('button',{name:/Overview$/}).click();
+  await page.getByText('View or correct supporting facts',{exact:true}).click();
+  await expect(page.getByTestId('fact-Cafe-environment').getByLabel('Fact value')).toHaveValue('indoor');
+  await page.getByRole('button',{name:/Review$/}).click();
   await page.getByRole('button',{name:'Publish form',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Organiser controls'})).toBeVisible();
   await member.getByRole('button',{name:'My forms',exact:true}).click();

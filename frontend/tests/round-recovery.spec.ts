@@ -11,15 +11,23 @@ test('pending recommendations resume after reload and confirmed results appear a
     if(path.endsWith('/v1/plans/plan'))return reply({id:'plan',title:'A shared decision',created_by_user_id:'owner',state:confirmed?'CONFIRMED':'REVIEWING'});
     if(path.endsWith('/rounds/plans/plan'))return reply({data:[{id:'round',round_number:1}]});
     if(path.endsWith('/recommendations')){recommendationPosts++;return reply({});}
-    if(path.endsWith('/recommendation'))return reply({run_id:'run',status:completed?'ranked':'pending',issues:[],recommendation_view:{recommendation:completed?candidate:null,alternatives:[],pareto_alternatives:[],unavailable_candidates:[],next_action:null}},completed?200:202);
+    if(path.endsWith('/recommendation'))return reply({run_id:'run',status:completed?'ranked':'pending',issues:[],
+      supplemented_facts:completed?[{option_id:'option-a',attribute_id:'cuisine',value:'Italian',value_type:'category',unit:null,
+        source_text:'The current menu lists Italian cuisine.',sources:[{url:'https://example.com/menu',title:'Current menu'},
+          {url:'https://example.com/'+ 'long-source-path-'.repeat(20)}]}]:[],
+      recommendation_view:{recommendation:completed?candidate:null,alternatives:[],pareto_alternatives:[],unavailable_candidates:[],next_action:null}},completed?200:202);
     if(path.endsWith('/selection'))return confirmed?reply({run_id:'run',candidate_id:'option-a',selection_version:1}):reply({code:'NOT_FOUND'},404);
     if(path.endsWith('/my-rsvp'))return reply({revision:0,status:null});
     return reply({});
   });
   await page.goto('/#round=round');
-  await expect(page.getByText('Calculating the recommendation. This usually takes a few seconds.')).toBeVisible();
+  await expect(page.getByRole('status').filter({hasText:'checking any missing evidence'})).toBeVisible();
   await page.reload();completed=true;
   await expect(page.getByRole('heading',{name:'Recommended: Option A'})).toBeVisible();
+  await page.getByText('Evidence added during calculation',{exact:true}).click();
+  await expect(page.getByText('The current menu lists Italian cuisine.')).toBeVisible();
+  await expect(page.getByRole('link',{name:'Current menu'})).toHaveAttribute('href','https://example.com/menu');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
   expect(recommendationPosts).toBe(0);
   confirmed=true;
   await expect(page.getByRole('heading',{name:'Confirmed selection',exact:true})).toBeVisible();

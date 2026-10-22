@@ -1,18 +1,18 @@
 // Organiser research: overviews start in the background as soon as options are saved,
-// questions are drafted from them, and each ranking question's own choices are filled
-// in per option. Every result is a suggestion the organiser can change before publishing.
+// facts are collected as reusable attributes. Question choices and member answers
+// never enter the fact collector. Exact cited facts can be used automatically;
+// the organiser can correct them while reviewing the options.
 import { reactive, ref, onScopeDispose } from 'vue';
-import type { Brief, DecisionOption, DraftedQuestion, Fact, FitFact, Form, OptionKind, Overview, Question } from '@/types/form';
+import type { Brief, DecisionOption, DraftedQuestion, Fact, FactDefinition, ResearchedFact, Form, OptionKind, Overview, Question } from '@/types/form';
 import { apiService, ApiError } from './api';
 import { operationId } from './ids';
-import { comparisonSignature, decisionQuestion, factType, overviewSignature } from './comparisonFacts';
+import { factSignature, decisionQuestion, overviewSignature, validFact } from './optionFacts';
 
 export interface OptionResearch { status: 'idle' | 'loading' | 'done' | 'failed'; title: string; link: string; context?: string; refreshId?:string }
 export interface ResearchState {
   options: Record<string, OptionResearch>;
   questions: 'idle' | 'loading' | 'done' | 'failed';
-  fit: 'idle' | 'loading' | 'done' | 'failed';
-  fitting: Set<string>;
+  facts: 'idle' | 'loading' | 'done' | 'failed';
   message: string;
 }
 
@@ -31,9 +31,11 @@ export function researchMessage(error: unknown) {
 export function optionKey(option: DecisionOption) { return option.id || option.title; }
 
 export function useResearch(form: Form, saveDraft: () => Promise<void>) {
-  const state = reactive<ResearchState>({ options: {}, questions: 'idle', fit: 'idle', fitting: new Set(), message: '' });
+  const state = reactive<ResearchState>({ options: {}, questions: 'idle', facts: 'idle', message: '' });
   const signal = { cancelled: false };
-  onScopeDispose(() => { signal.cancelled = true; });
+  const cancel = () => { signal.cancelled = true; };
+  window.addEventListener('beforeunload',cancel);
+  onScopeDispose(() => { cancel(); window.removeEventListener('beforeunload',cancel); });
   // Bumped once place IDs are saved, so cards know their photos can be loaded.
   const revision = ref(0);
   const options = () => (form.decisionOptions || []).filter(o => o.title.trim());
@@ -59,7 +61,7 @@ export function useResearch(form: Form, saveDraft: () => Promise<void>) {
       try {
         const result = await apiService.research<{ options: { key: string; kind: OptionKind; place_id: string | null; overview: Overview | null }[] }>(form.roundId!, 'overviews', {
           ...context(),refresh_id:state.options[key]?.refreshId, options: [{ key, title: option.title.trim(), source_url: option.identity?.source_url?.trim() || '', kind: option.identity?.kind, place_id: option.identity?.place_id }] }, signal);
-        if (signal.cancelled) return;
+        if (signal.cancelled || form.publishAttempted || form.state !== 'Draft') return;
         if(input!==fingerprint() || previousSummary!==option.summary || refreshId!==state.options[key]?.refreshId){
           if(refreshId===state.options[key]?.refreshId)state.options[key]!.status='failed';
           state.message='The option changed during research. Your edits were kept; research again to update the overview.';return;
@@ -88,7 +90,7 @@ export function useResearch(form: Form, saveDraft: () => Promise<void>) {
     try {
       const { questions } = await apiService.research<{ questions: DraftedQuestion[] }>(form.roundId!, 'questions', {
         ...context(), options: options().map(o => ({ title: o.title.trim(), summary: (o.brief?.summary || o.overview?.summary || o.overview?.review_summary || '').slice(0, 1500) })) }, signal);
-      if (signal.cancelled) return [];
+      if (signal.cancelled || form.publishAttempted || form.state !== 'Draft') return [];
       state.questions = 'done';
       return questions.map(q => toQuestion(q, form.currency || 'SGD'));
     } catch (error) {
@@ -97,68 +99,87 @@ export function useResearch(form: Form, saveDraft: () => Promise<void>) {
     }
   }
 
-  // Asks only for the facts each question still lacks, so new questions trigger new lookups.
-  let fitWork: Promise<void> | undefined;
-  async function fit(questions: Question[]) {
-    if (fitWork) await fitWork;
+  // One active fact job per creator. Further calls recheck missing attributes
+  // after it settles, preserving edits and avoiding duplicate work on navigation.
+  let factWork: Promise<void> | undefined;
+  async function facts(definitions: FactDefinition[]) {
+    if (factWork) await factWork;
     if (signal.cancelled) return;
-    const work = runFit(questions);
-    fitWork = work;
-    try { await work; } finally { if (fitWork === work) fitWork = undefined; }
+    const work = runFacts(definitions);
+    factWork = work;
+    try { await work; } finally { if (factWork === work) factWork = undefined; }
   }
-  async function runFit(questions: Question[], refresh?: { option: DecisionOption; note: string }) {
-    const isBudget = (q: Question) => q.criterion === 'max_cost' && q.type === 'Number';
-    const askable = questions.filter(q => q.role !== 'informational' && q.criterion && (isBudget(q) || ['Single choice', 'Multiple choice', 'Boolean'].includes(q.type))
-      && (isBudget(q) || q.type === 'Boolean' || q.options.filter(c => c.trim()).length >= 2)
-      && (refresh || options().some(o => !o.facts.some(f => f.criterion === q.criterion && f.value.trim() && !f.context?.stale))));
-    if (!askable.length) return;
-    state.fit = 'loading'; state.message = '';
-    for (const q of askable) state.fitting.add(q.criterion!);
+  async function runFacts(definitions: FactDefinition[], refresh?: { option: DecisionOption; note: string }) {
+    const list = refresh ? [refresh.option] : options();
+    const wanted = definitions.filter(d => refresh || list.some(o => {
+      const f = o.facts.find(f => f.criterion === d.criterion);
+      return !f?.value.trim() || f.context?.stale || f.valueType !== d.valueType || f.unit !== d.unit;
+    }));
+    if (!wanted.length) return;
+    if (form.publishAttempted || form.state !== 'Draft') return;
+    state.facts = 'loading'; state.message = '';
     try {
-      await saveDraft();
-      const list = refresh ? [refresh.option] : options();
-      const signatures = new Map<string,string>(list.flatMap(o => askable.map(q => [`${optionKey(o)}:${q.criterion}`, comparisonSignature(form,o,q)] as const)));
-      const before = new Map<string,string | undefined>(list.flatMap(o => askable.map(q => [`${optionKey(o)}:${q.criterion}`, JSON.stringify(o.facts.find(f=>f.criterion===q.criterion))] as const)));
-      const pending = refresh?.option.facts.find(f=>f.criterion===askable[0]?.criterion)?.context?.research_refresh_id;
-      const { facts } = await apiService.research<{ facts: FitFact[] }>(form.roundId!, 'fit', {
-        ...context(), ...(refresh ? { refresh_id:pending, correction:[refresh.note,refresh.option.facts.find(f=>f.criterion===askable[0]?.criterion)?.source].filter(Boolean).join('\nReference to verify: ').slice(0,1000) } : {}), options: list.map(o => ({ key: optionKey(o), title: o.title.trim(), source_url:o.identity?.source_url || '' })),
-        summaries: Object.fromEntries(list.map(o => [optionKey(o), o.brief?.summary || o.overview?.summary || o.overview?.review_summary || ''])),
-        questions: askable.map(q => ({ criterion: q.criterion, title: q.title, type: isBudget(q) ? 'budget' : q.type === 'Multiple choice' ? 'multiple' : q.type === 'Boolean' ? 'yes_no' : 'single',
-          choices: q.type === 'Boolean' || isBudget(q) ? [] : q.options.map(c => c.trim()).filter(Boolean) })) }, signal);
-      if (signal.cancelled) return;
-      for (const fact of facts) {
-        const option = list.find(o => optionKey(o) === fact.option);
-        const question = askable.find(q => q.criterion === fact.criterion);
-        if (!option || !question) continue;
-        if (!refresh && option.facts.some(f=>f.criterion===question.criterion && f.value.trim() && !f.context?.stale)) continue;
-        const key = `${optionKey(option)}:${question.criterion}`;
-        // A slow answer must never replace a manual correction or research for an older definition.
-        if (signatures.get(key) !== comparisonSignature(form,option,question) || before.get(key) !== JSON.stringify(option.facts.find(f=>f.criterion===question.criterion))) continue;
-        const estimateRow = estimate(fact, question, form.currency || 'SGD');
-        estimateRow.context = {...estimateRow.context,input_signature:comparisonSignature(form,option,question)};
-        option.facts = [...option.facts.filter(f => f.criterion !== fact.criterion), estimateRow];
+      for (const o of list) for (const d of wanted) {
+        let fact = o.facts.find(f => f.criterion === d.criterion);
+        if (!fact) { fact = { criterion:d.criterion, value:'', valueType:d.valueType, unit:d.unit, source:'', status:'unknown' }; o.facts.push(fact); }
+        fact.context = { ...fact.context, research_pending:true };
       }
-      state.fit = 'done';
-      const incomplete = askable.filter(q => list.some(o => !o.facts.some(f => f.criterion === q.criterion && f.value.trim())));
-      if (incomplete.length) state.message = 'Research finished without enough evidence for some comparisons. Retry the missing facts or change those questions to context only.';
-      if (refresh && !facts.length) state.message = 'No replacement fact was supported by the research. Your existing value was kept; correct it manually or try another source.';
+      await saveDraft();
+      const key = (o: DecisionOption, d: FactDefinition) => `${optionKey(o)}:${d.criterion}`;
+      const signatures = new Map(list.flatMap(o => wanted.map(d => [key(o,d), factSignature(form,o,d)] as const)));
+      const before = new Map(list.flatMap(o => wanted.map(d => [key(o,d), JSON.stringify(o.facts.find(f => f.criterion === d.criterion))] as const)));
+      const pending = refresh?.option.facts.find(f => f.criterion === wanted[0]?.criterion)?.context?.research_refresh_id;
+      const result = await apiService.research<{ facts: ResearchedFact[]; issues: { code: string }[] }>(form.roundId!, 'facts', {
+        region: form.location.trim(), currency: form.currency || 'SGD', refresh_id: pending,
+        ...(refresh ? { correction: refresh.note.slice(0,1000) } : {}),
+        options: list.map(o => ({ key: optionKey(o), title: o.title.trim(), source_url: o.identity?.source_url || '' })),
+        attributes: wanted.map(d => ({ criterion: d.criterion, value_type: d.valueType, unit: d.unit || null })) }, signal);
+      if (signal.cancelled || form.publishAttempted || form.state !== 'Draft') return;
+      for (const option of list) for (const definition of wanted) {
+        const current = option.facts.find(f => f.criterion === definition.criterion);
+        if (!refresh && current?.value.trim() && !current.context?.stale && current.valueType === definition.valueType && current.unit === definition.unit) continue;
+        if (signatures.get(key(option,definition)) !== factSignature(form,option,definition) || before.get(key(option,definition)) !== JSON.stringify(current)) continue;
+        const claims = result.facts.filter(f => f.option === optionKey(option) && f.criterion === definition.criterion && f.value_type === definition.valueType && (f.unit || '') === definition.unit);
+        const unique = [...new Map(claims.map(c => [JSON.stringify([c.value,c.context.qualifier]),c])).values()];
+        const row: Fact = unique.length === 1 ? researchedFact(unique[0]!, signatures.get(key(option,definition))!) : {
+          ...(current || { criterion: definition.criterion, value: '', valueType: definition.valueType, unit: definition.unit, source: '' }), status: 'estimated',
+          context: { ...current?.context, reviewed: false, alternatives: unique,
+            reason: unique.length ? 'Sources disagree. Choose a supported finding or correct this fact.' : 'No cited evidence was found. Your existing value was kept.',
+            input_signature: signatures.get(key(option,definition)) }
+        };
+        if (unique.length === 1 && validFact(row,definition)) {
+          row.status='confirmed'; row.context={...row.context,verification:'grounded_search'};
+        }
+        option.facts = [...option.facts.filter(f => f.criterion !== definition.criterion), row];
+      }
+      state.facts = 'done';
+      if (!result.facts.length) state.message = 'No supported facts were found. You can still publish; Decision will try to supplement missing evidence when processing answers.';
     } catch (error) {
-      state.fit = 'failed'; state.message = researchMessage(error);
+      state.facts = 'failed'; state.message = researchMessage(error);
     } finally {
-      if (refresh) for (const fact of refresh.option.facts) if (askable.some(q=>q.criterion===fact.criterion) && fact.context) delete fact.context.research_refresh_id;
-      for (const q of askable) state.fitting.delete(q.criterion!);
+      // A leaving tab must retain its pending operation for refresh recovery.
+      if (!signal.cancelled) {
+        for (const o of list) for (const f of o.facts) if (wanted.some(d=>d.criterion===f.criterion) && f.context) delete f.context.research_pending;
+        if (refresh) for (const f of refresh.option.facts) if (wanted.some(d => d.criterion === f.criterion) && f.context) delete f.context.research_refresh_id;
+      }
     }
   }
-  async function researchAgain(option: DecisionOption, question: Question, note = '') {
-    if (fitWork) await fitWork;
-    let fact = option.facts.find(f=>f.criterion===question.criterion);
-    if (!fact) { fact={criterion:question.criterion!,value:'',valueType:factType(question),unit:question.unit || '',source:'',status:'unknown'}; option.facts.push(fact); }
-    fact.status='estimated';
-    fact.context={...fact.context,reviewed:false,research_refresh_id:fact.context?.research_refresh_id || operationId(),research_note:note.slice(0,1000)};
-    const work=runFit([question],{option,note:note.slice(0,1000)}); fitWork=work;
-    try { await work; } finally { if (fitWork===work) fitWork=undefined; }
+  async function researchAgain(option: DecisionOption, definition: FactDefinition, note = '') {
+    if (factWork) await factWork;
+    let fact = option.facts.find(f => f.criterion === definition.criterion);
+    if (!fact) { fact = { criterion: definition.criterion, value: '', valueType: definition.valueType, unit: definition.unit, source: '', status: 'unknown' }; option.facts.push(fact); }
+    fact.status = 'estimated';
+    fact.context = { ...fact.context, reviewed: false, research_refresh_id: fact.context?.research_refresh_id || operationId(), research_note: note.slice(0,1000) };
+    const work = runFacts([definition], { option, note }); factWork = work;
+    try { await work; } finally { if (factWork === work) factWork = undefined; }
   }
-  return { state, revision, overviews, draftQuestions, fit, researchAgain };
+  return { state, revision, overviews, draftQuestions, facts, researchAgain };
+}
+
+export function researchedFact(fact: ResearchedFact, signature: string): Fact {
+  return { criterion: fact.criterion, value: fact.value_type === 'tag_set' ? JSON.stringify(fact.value) : String(fact.value),
+    valueType: fact.value_type, unit: fact.unit || '', source: fact.sources[0]?.url || '', status: 'estimated',
+    context: { ...fact.context, estimated: true, reviewed: false, sources: fact.sources, retrieved_at: fact.retrieved_at, input_signature: signature } };
 }
 
 // Our own (web or AI) description, safe to store and publish with the option.
@@ -169,16 +190,9 @@ function brief(overview?: Overview | null): Brief | undefined {
 }
 
 function toQuestion(d: DraftedQuestion, currency: string): Question {
-  const base = { title: d.title, description: d.help, criterion: d.criterion, role: d.role === 'requirement' ? 'hard' : 'soft' } as const;
+  const base = { title: d.title, description: d.help, criterion: d.criterion, role: d.role === 'requirement' ? 'hard' : 'soft', valueType: d.value_type } as const;
   if (d.type === 'budget') return { ...base, role: 'hard', type: 'Number', unit: currency, options: [] };
   if (d.type === 'yes_no') return { ...base, type: 'Boolean', options: [] };
+  if (d.type === 'written') return { ...base, type: 'Short answer', options: [] };
   return { ...base, type: d.type === 'multiple' ? 'Multiple choice' : 'Single choice', options: d.choices };
-}
-
-// AI placements become option facts marked as estimates, keeping their reason and sources.
-function estimate(fact: FitFact, question: Question, currency: string): Fact {
-  const cost = fact.criterion === 'max_cost';
-  const valueType: Fact['valueType'] = cost ? 'decimal' : question.type === 'Multiple choice' ? 'tag_set' : question.type === 'Boolean' ? 'boolean' : 'category';
-  return { criterion: fact.criterion, value: valueType==='tag_set' ? JSON.stringify(fact.values) : fact.values.join(', '), valueType, unit: cost ? currency : '', source: fact.sources[0]?.url || 'AI estimate', status:'estimated',
-    context: { estimated: true, reason: fact.reason, sources: fact.sources } };
 }

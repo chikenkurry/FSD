@@ -88,7 +88,8 @@
               <div v-else-if="currentStep === 3" key="3" class="step-card">
                 <p class="step-eyebrow">Step 3 of 5</p>
                 <h2 ref="stepHeading" tabindex="-1" class="step-title">Your options at a glance</h2>
-                <p class="step-lede">AI looked each option up{{ placesHint }}. This is what your group will see. Change an option’s type if it was misread.</p>
+                <p class="step-lede">Review your options here once. Check their identity and overview, and correct anything inaccurate. This is what your group will see.</p>
+                <details><summary>What does research do?</summary><p class="helper-text">Web research looks up option details and supporting sources{{ placesHint }}. It can help draft questions. Decision interprets members’ answers, and the algorithm calculates the ranking.</p></details>
                 <Transition name="reveal"><p v-if="research.state.message" class="callout warning" role="status">{{ research.state.message }}</p></Transition>
                 <div class="overview-grid">
                   <OverviewCard v-for="(option, index) in form.decisionOptions" :key="keyOf(option)" class="rise" :style="{ '--i': index }"
@@ -103,7 +104,11 @@
                     <details class="overview-correction"><summary>Correct this overview</summary><label>Option overview<textarea :value="option.summary || option.brief?.summary || ''" maxlength="4000" @input="correctOverview(option,($event.target as HTMLTextAreaElement).value)"></textarea></label></details>
                   </OverviewCard>
                 </div>
-                <p class="helper-text overview-note">Next, AI drafts questions for your group from these overviews.</p>
+                <p v-if="research.state.facts === 'loading'" class="drafting" role="status">Looking up supporting facts… You can continue while this runs.</p>
+                <details v-if="reviewDefinitions.length" class="option-evidence"><summary>View or correct supporting facts</summary>
+                  <FactReview :form="form" :options="form.decisionOptions || []" :definitions="reviewDefinitions" :researching="research.state.facts === 'loading'" @research="research.researchAgain" />
+                </details>
+                <p class="helper-text overview-note">Missing facts don’t block publishing. Decision looks for additional evidence when processing answers; unresolved evidence will be shown with the result.</p>
               </div>
 
               <!-- 4: Questions -->
@@ -131,9 +136,9 @@
                     <div v-if="hasChoices(question)" class="choices">
                       <p class="choices-label">{{ question.type === 'Budget' ? 'Budget ranges' : question.type === 'Location' ? 'Suggested locations' : 'Choices' }}</p>
                       <TransitionGroup name="list" tag="div">
-                        <div v-for="(choice, oIndex) in question.options" :key="`${keyOf(question)}-${oIndex}`" class="option-row">
+                        <div v-for="(_, oIndex) in question.options" :key="`${keyOf(question)}-${oIndex}`" class="option-row">
                           <span :class="['choice-marker', { square: question.type === 'Multiple choice' }]" aria-hidden="true"></span>
-                          <input type="text" v-model="question.options[oIndex]" :aria-label="`Question ${qIndex + 1} choice ${oIndex + 1}`" :placeholder="choicePlaceholder(question, oIndex)" />
+                          <input type="text" v-model="question.options[oIndex]" :aria-label="`Question ${qIndex + 1} choice ${oIndex + 1}`" :placeholder="choicePlaceholder(oIndex)" />
                           <button v-if="question.options.length > 1" type="button" class="btn-icon btn-quiet btn-danger" :aria-label="`Remove choice ${oIndex + 1}`" @click="removeOption(qIndex, oIndex)"><UiIcon name="close" /></button>
                         </div>
                       </TransitionGroup>
@@ -141,12 +146,20 @@
                     </div>
                     <p v-else-if="question.type === 'Duration'" class="callout">Members enter a start and end date. Dates are collected as context only and don’t generate scheduled options.</p>
                     <p v-else-if="question.type === 'Boolean'" class="callout">Members answer yes or no.</p>
-                    <p v-else-if="question.type === 'Short answer'" class="callout">Members type a short answer.</p>
+                    <p v-else-if="question.type === 'Short answer'" class="callout">Members describe their preferences or requirements in their own words. They review the interpretation and confirm requirements before submitting.</p>
                     <div v-else-if="question.type === 'Number'" class="input-row">
                       <label>Unit <span class="optional">(optional)</span><input v-model="question.unit" placeholder="e.g. km, hours" /></label>
                       <label v-if="question.role !== 'hard'">Tolerance around the preferred value<input v-model.number="question.scale" type="number" min="0.000001" step="any" :aria-invalid="flag(4, question.role === 'soft' && !(Number(question.scale) > 0))" /></label>
                     </div>
 
+                    <details v-if="question.role !== 'informational'" class="comparison-settings"><summary>What this question compares</summary>
+                      <label>Option detail to compare<input :value="question.criterion === 'preferences' ? 'All researched attributes' : factLabel(question.criterion || '')" placeholder="e.g. cuisine, atmosphere" @change="detailChanged(question,($event.target as HTMLInputElement).value)" /></label>
+                      <p class="helper-text">Reuse a detail across questions. For a broad written answer, enter “All researched attributes”.</p>
+                      <template v-if="question.criterion !== 'preferences'">
+                        <label>Fact format<select v-model="question.valueType"><option value="category">Text</option><option value="tag_set">List of attributes</option><option value="boolean">Yes or no</option><option value="number">Number</option><option value="decimal">Currency amount</option></select></label>
+                        <label v-if="['number','decimal'].includes(factType(question)) && question.type !== 'Number'">Unit<input v-model="question.unit" placeholder="e.g. km, hours, SGD" /></label>
+                      </template>
+                    </details>
                     <fieldset class="role-field">
                       <legend>How this answer is used</legend>
                       <div class="role-options">
@@ -160,6 +173,7 @@
                   </article>
                 </TransitionGroup>
                 <button type="button" class="add-question" @click="addQuestion"><UiIcon name="plus" />Add question</button>
+                <button type="button" class="btn-quiet" @click="addWrittenPreferences">Add general written preferences</button>
               </div>
 
               <!-- 5: Review -->
@@ -190,14 +204,10 @@
                     <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role) }}</span></li>
                   </ol>
                 </section>
-                <FactReview :form="form" :options="form.decisionOptions || []" :questions="comparisonQuestions" :researching="research.state.fit === 'loading'" @research="research.researchAgain" />
-                <p v-if="research.state.message" class="helper-text" role="status">{{ research.state.message }}</p>
+                <p class="helper-text">Option details were reviewed in Overview. You can publish while background research is still running; Decision supplements missing facts during processing.</p>
                 <div v-if="warnings.length" class="callout warning">
                   <p><strong>Worth checking before you publish</strong></p>
-                  <p v-if="research.state.message">{{ research.state.message }}</p>
                   <ul><li v-for="w in warnings" :key="w">{{ w }}</li></ul>
-                  <button type="button" :disabled="research.state.fit === 'loading'" @click="fillMissing">{{ research.state.fit === 'loading' ? 'Checking comparisons…' : 'Retry missing comparisons' }}</button>
-                  <p class="helper-text">If evidence stays unavailable, edit the question to use “Context only”, or revise its choices. Don’t use an unverified dietary claim as a requirement.</p>
                 </div>
               </div>
             </Transition>
@@ -218,10 +228,11 @@
 import { computed, nextTick, reactive, ref, watch, onMounted, onScopeDispose } from 'vue';
 import OverviewCard from './OverviewCard.vue';
 import FactReview from './FactReview.vue';
-import { comparisonSignature, factStatus, overviewSignature, validFact } from '@/services/comparisonFacts';
+import { factDefinitions, factSignature, factType, overviewSignature } from '@/services/optionFacts';
 import { useAuthStore } from '@/stores/auth';
 import type { DecisionOption, Form, OptionKind, Question } from '@/types/form';
 import UiIcon from './UiIcon.vue';
+import { factLabel } from '@/services/facts';
 import { apiService, ApiError } from '@/services/api.ts';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import { optionKey, useResearch, type OptionResearch } from '@/services/research';
@@ -290,19 +301,23 @@ function saveDraftQuietly() {
 const research = useResearch(form, saveDraftQuietly);
 const recoveryMessage = ref(restored ? 'Draft restored. Your changes and current step are kept in this browser tab.' : 'Changes are saved in this browser tab as you work.');
 const storageFailed = ref(false);
-const comparisonQuestions=computed(()=>form.questions.filter(q=>q.role!=='informational' && q.criterion));
-// Definition changes invalidate both machine estimates and earlier approvals.
+const definitions = computed(() => factDefinitions(form));
+// This optional editor displays stored option attributes, independently of any
+// subsequent question edits. It never becomes a question readiness checklist.
+const reviewDefinitions = computed(() => [...new Map((form.decisionOptions || []).flatMap(o => o.facts.map(f =>
+  [f.criterion,{criterion:f.criterion,valueType:f.valueType,unit:f.unit}] as const))).values()]);
+// Only option identity and attribute definition changes invalidate reusable facts.
 function syncFactSignatures(){
   if(loadingDraft.value)return;
-  for(const o of form.decisionOptions || []) for(const q of form.questions) {
-    const fact=o.facts.find(f=>f.criterion===q.criterion); if(!fact)continue;
-    const signature=comparisonSignature(form,o,q);
+  for(const o of form.decisionOptions || []) for(const definition of reviewDefinitions.value) {
+    const fact=o.facts.find(f=>f.criterion===definition.criterion); if(!fact)continue;
+    const signature=factSignature(form,o,definition);
     if(fact.context?.input_signature===signature)continue;
     if(fact.context?.input_signature && fact.context.input_signature!==signature) fact.status='estimated';
     fact.context={...fact.context,...(fact.context?.input_signature && fact.context.input_signature!==signature ? {stale:true} : {}),input_signature:signature};
   }
 }
-watch(()=>JSON.stringify([form.currency,form.location,form.decisionQuestion,form.decisionOptions?.map(o=>[o.title,o.summary,o.identity]),form.questions.map(q=>[q.criterion,q.title,q.type,q.role,q.options,q.unit,q.scale])]),syncFactSignatures,{flush:'sync',immediate:true});
+watch(()=>JSON.stringify([form.currency,form.location,form.decisionOptions?.map(o=>[o.title,o.summary,o.identity]),reviewDefinitions.value]),syncFactSignatures,{flush:'sync',immediate:true});
 watch(()=>form.currency,()=>{for(const q of form.questions)if(q.criterion==='max_cost')q.unit=form.currency || 'SGD';});
 async function loadServerDraft(){
   if(!props.planId)return;
@@ -336,7 +351,10 @@ watch([form, currentStep, visited, research.state.options], () => {
 onMounted(async () => {
   await loadServerDraft();
   if (draftLoadError.value || (!restored && !props.planId) || form.publishAttempted) return;
-  for(const option of form.decisionOptions || []) for(const q of form.questions){const f=option.facts.find(f=>f.criterion===q.criterion);if(f?.context?.research_refresh_id) await research.researchAgain(option,q,String(f.context.research_note || ''));}
+  // A refresh can interrupt the debounced save after a result/edit was written
+  // to the tab checkpoint. Resume that server save even if no new edit occurs.
+  if (restored && form.title.trim() && form.category) void saveServerDraft();
+  for(const option of form.decisionOptions || []) for(const definition of definitions.value){const f=option.facts.find(f=>f.criterion===definition.criterion);if(f?.context?.research_refresh_id) await research.researchAgain(option,definition,String(f.context.research_note || ''));}
   if (currentStep.value >= 3) {
     startOverviews();
     for (const option of form.decisionOptions || []) if (option.identity?.place_id && form.roundId) {
@@ -345,10 +363,8 @@ onMounted(async () => {
       }).catch(() => undefined);
     }
   }
-  if (currentStep.value >= 4 && !form.publishAttempted) {
-    if (!form.questions.length) await startQuestions();
-    else await fillMissing();
-  }
+  const pending = reviewDefinitions.value.filter(d => form.decisionOptions?.some(o=>o.facts.some(f=>f.criterion===d.criterion && f.context?.research_pending)));
+  if (pending.length) void research.facts(pending);
 });
 
 const placesHint = computed(() => (form.decisionOptions || []).some(o => o.overview?.source === 'google_places') ? ' with Google Maps and the web' : ' on the web');
@@ -360,8 +376,6 @@ async function changeKind(option: DecisionOption, kind: OptionKind) {
 async function retryOverview(option: DecisionOption) { try{await research.overviews(option);}catch(e){research.state.message=e instanceof Error ? e.message:'The draft could not be saved for research. Your current overview was kept.';} }
 function correctOverview(option:DecisionOption,value:string){ option.summary=value;option.brief={source:'organiser',summary:value,highlights:[],price_note:'',when:'',where:'',sources:[],input_signature:overviewSignature(form,option)}; }
 
-function canFit(q: Question) { return !!q.criterion && (q.criterion === 'max_cost' ? q.type === 'Number' : q.type === 'Boolean' || (hasChoices(q) && q.options.filter(o => o.trim()).length >= 2)); }
-function missingFor(criterion: string) { return (form.decisionOptions || []).filter(o => !o.facts.some(f => f.criterion === criterion && f.value.trim())).map(o => o.title); }
 // Criteria come from the question wording, so a new question gets its own fact.
 function slug(text: string) { return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^(\d)/, 'q_$1').slice(0, 50) || 'preference'; }
 function ensureCriterion(q: Question, index: number) {
@@ -371,18 +385,21 @@ function ensureCriterion(q: Question, index: number) {
   q.criterion = name;
 }
 
-function criterionOf(q: Question, index: number) { return q.criterion?.trim() || `preference_${index + 1}`; }
 function hasChoices(q: Question) { return ['Single choice', 'Multiple choice', 'Location', 'Budget'].includes(q.type); }
 function lockedToContext(q: Question) { return q.type === 'Duration'; }
 function typeChanged(q: Question) {
-  if (lockedToContext(q) || q.type === 'Short answer') q.role = 'informational';
+  if (lockedToContext(q)) q.role = 'informational';
   if (hasChoices(q) && !q.options.length) q.options.push('', '');
-  // A different answer type compares a different kind of fact, so drop estimates made for the old one.
-  for (const o of form.decisionOptions || []) o.facts = o.facts.filter(f => f.criterion !== q.criterion);
+  // Answer format and fact type are separate. Existing facts survive changes
+  // from choices to written answers; explicit fact-format edits require review.
+  if(q.type==='Number')q.valueType=q.criterion==='max_cost'?'decimal':'number';
+  else if(q.type==='Boolean')q.valueType='boolean';
+  else if(q.type==='Multiple choice')q.valueType='tag_set';
+  else q.valueType ??= factType(q);
   if (q.type === 'Number' && q.role === 'soft' && !q.scale) q.scale = 1;
   if (q.criterion === 'max_cost') q.unit = form.currency || 'SGD';
 }
-function choicePlaceholder(q: Question, i: number) { return `Choice ${i + 1}`; }
+function choicePlaceholder(i: number) { return `Choice ${i + 1}`; }
 function roleLabel(role?: string) { return roles.find(r => r.value === (role || 'soft'))?.label; }
 function formatDate(value: string) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
 
@@ -411,6 +428,8 @@ function problem(step: number): string {
   }
   if (step === 4) {
     if (!form.questions.length) return 'Add at least one question.';
+    if (definitions.value.length > 8) return 'Use up to eight distinct option details; reuse them across questions.';
+    if (form.questions.some(q => q.role !== 'informational' && q.criterion !== 'preferences' && !/^[a-z][a-z0-9_]{0,59}$/.test(q.criterion || ''))) return 'Choose an option detail for each scored question.';
     if (form.questions.some(q => !q.title.trim())) return 'Write each question, or remove the empty ones.';
     if (form.questions.some(q => hasChoices(q) && !q.options.some(o => o.trim()))) return 'Give each choice question at least one choice.';
     if (form.questions.some(q => q.type === 'Number' && q.role === 'soft' && !(Number(q.scale) > 0))) return 'Numeric preferences need a positive tolerance.';
@@ -422,12 +441,6 @@ function flag(step: number, invalid: boolean) { return attempted.has(step) && in
 
 const warnings = computed(() => {
   const list: string[] = [];
-  for (const q of form.questions) {
-    if (q.role === 'informational' || !q.criterion) continue;
-    const missing = missingFor(q.criterion);
-    if (missing.length) list.push(`“${q.title}” can’t be compared for ${missing.join(', ')} yet because matching option facts are missing. Ranking may be blocked until these are researched or the question is changed to context only.`);
-    else if((form.decisionOptions || []).some(o=>{const f=o.facts.find(f=>f.criterion===q.criterion);return !validFact(f,q)||factStatus(f)!=='confirmed';})) list.push(`Review and confirm the comparison facts for “${q.title}” before publishing.`);
-  }
   if (form.questions.length && !form.questions.some(q => q.role !== 'informational')) list.push('Every question is context only, so all options will rank equally.');
   return list;
 });
@@ -441,39 +454,37 @@ async function show(step: number) {
   // Wait for the outgoing step to leave before moving focus to the new heading.
   setTimeout(() => stepHeading.value?.focus({ preventScroll: true }), 260);
 }
-async function nextStep() {
+function nextStep() {
   attempted.add(currentStep.value);
   const issue = problem(currentStep.value);
   if (issue) { saveError.value = issue; return; }
   if (currentStep.value === 2) { tidyOptions(); startOverviews(); }
   if (currentStep.value === 3) startQuestions();
-  if (currentStep.value === 4) await fillMissing();
+  // Research can take minutes. Open review immediately, keep edits/navigation
+  // available, and show its background progress instead of blocking this click.
+  if (currentStep.value === 4) { void show(5); return; }
   if (currentStep.value < 5) show(currentStep.value + 1);
 }
 // Overviews run in the background while the organiser reads; saving happens first.
 let overviewWork: Promise<void> | undefined;
 function startOverviews() {
-  overviewWork ??= research.overviews().catch(error => { research.state.message = error instanceof Error ? error.message : 'The draft could not be saved for research.'; }).finally(() => { overviewWork = undefined; });
+  overviewWork ??= research.overviews().catch(error => { research.state.message = error instanceof Error ? error.message : 'The draft could not be saved for research.'; }).finally(() => {
+    overviewWork = undefined;
+    // Prepare optional evidence while the leader reviews the options. Question
+    // editing and publishing never start or wait for a facts checklist.
+    if (alive && !form.publishAttempted && form.state==='Draft') void startQuestions();
+  });
   return overviewWork;
 }
 // Questions are drafted once; later visits keep the organiser's edits.
 async function startQuestions() {
-  if (form.questions.length || research.state.questions === 'loading') return;
+  if (form.questions.length || form.publishAttempted) return;
   if (overviewWork) await overviewWork;
-  if (!alive) return;
+  if (!alive || form.publishAttempted || form.questions.length || research.state.questions === 'loading') return;
   const drafted = await research.draftQuestions();
   if (!alive || form.questions.length) return;
   form.questions.push(...(drafted.length ? drafted : [blankQuestion()]));
-  await research.fit(form.questions);
-}
-// Before review, fill in any question whose fit is still unknown (e.g. ones added by hand).
-let fitWork: Promise<void> | undefined;
-async function fillMissing() {
-  if (fitWork) return fitWork;
-  if (!alive || form.publishAttempted) return;
-  form.questions.forEach(ensureCriterion);
-  fitWork = research.fit(form.questions.filter(canFit)).finally(() => { fitWork = undefined; });
-  return fitWork;
+  await research.facts(definitions.value);
 }
 function prevStep() { if (currentStep.value > 1) show(currentStep.value - 1); }
 function goToStep(target: number) {
@@ -510,8 +521,10 @@ function tidyOptions() {
   for (const o of form.decisionOptions) { o.title = o.title.trim(); if (o.identity?.source_url) o.identity.source_url = o.identity.source_url.trim(); }
 }
 
-const blankQuestion = (): Question => ({ title: '', description: '', role: 'soft', type: 'Single choice', criterion: '', options: ['', ''] });
+const blankQuestion = (): Question => ({ title: '', description: '', role: 'soft', type: 'Short answer', valueType: 'category', criterion: '', options: [] });
 const addQuestion = () => { form.questions.push(blankQuestion()); };
+function addWrittenPreferences(){form.questions.push({title:'What preferences or requirements should we consider?',description:'Describe what matters, and distinguish preferences from must-haves.',role:'soft',type:'Short answer',criterion:'preferences',options:[]});}
+function detailChanged(q:Question,value:string){q.criterion=value.trim().toLowerCase()==='all researched attributes' ? 'preferences' : slug(value);if(q.criterion==='max_cost'){q.valueType='decimal';q.unit=form.currency || 'SGD';}else if(q.criterion!=='preferences'){const existing=definitions.value.find(d=>d.criterion===q.criterion);if(existing){q.valueType=existing.valueType;q.unit=existing.unit;}}}
 const removeQuestion = (index: number) => { const [gone] = form.questions.splice(index, 1); if (gone?.id) (form.removedQuestionIds ??= []).push(gone.id); };
 const addOption = (qIndex: number) => { form.questions[qIndex]?.options.push(''); };
 const removeOption = (qIndex: number, oIndex: number) => {

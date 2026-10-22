@@ -1,6 +1,6 @@
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from './checkpoints';
-import { decisionQuestion, factStatus, tagValues, validFact } from './comparisonFacts';
-import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, FactCollectionRun, Overview, ResearchRun } from '@/types/form';
+import { decisionQuestion, factDefinitions, factStatus, factType, tagValues } from './optionFacts';
+import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, Overview, ResearchRun } from '@/types/form';
 
 // Same-origin proxies keep private service addresses and tokens off browser URLs.
 const planning = '/api/planning';
@@ -29,13 +29,13 @@ export function questionDefinition(q: Question, index: number) {
     q.type === 'Duration' ? 'date_intervals' : ['Single choice', 'Location', 'Budget'].includes(q.type) ? 'choice' : 'text';
   // Cost compares exact currency amounts and a requirement means "at most"; other numbers are plain numbers.
   const isCost = criterion === 'max_cost';
-  const valueType = q.type === 'Multiple choice' ? 'tag_set' : q.type === 'Number' ? (isCost ? 'decimal' : 'number') : q.type === 'Boolean' ? 'boolean' : 'category';
+  const valueType = factType(q);
   const decision: Record<string, unknown> = { role, criterion: role === 'informational' ? 'context' : criterion, relevance: role === 'soft' ? 1 : 0, answer_format: format };
-  if (role !== 'informational') {
+  if (role !== 'informational' && criterion !== 'preferences') {
     decision.mapping = { value_type: valueType, ...(q.unit ? { unit: q.unit } : {}),
       comparison_rule: role === 'hard' ? (valueType === 'tag_set' ? 'contains_all_v1' : isCost ? 'maximum_v1' : 'equals_v1') :
-        valueType === 'tag_set' ? 'tag_overlap_v1' : q.type === 'Number' ? 'numeric_target_v1' : 'attribute_match_v1',
-      ...(q.type === 'Number' && role === 'soft' ? { scale: q.scale || 1 } : {}) };
+        valueType === 'tag_set' ? 'tag_overlap_v1' : ['number', 'decimal'].includes(valueType) ? 'numeric_target_v1' : 'attribute_match_v1',
+      ...(['number', 'decimal'].includes(valueType) && role === 'soft' ? { scale: q.scale || 1 } : {}) };
     if (q.type === 'Number' && role === 'soft') decision.numeric_intent = 'target';
   }
   return decision;
@@ -46,14 +46,18 @@ function validateForm(form: Form, draft = false) {
   if ((form.decisionOptions?.length || 0) > 8 || (!draft && (!form.decisionOptions?.length || form.decisionOptions.some(o => !o.title.trim())))) throw new Error('Add 1–8 named options.');
   // Drafts saved for fact finding come before the questions are written.
   if (!draft && (!form.questions.length || form.questions.some(q => !q.title.trim()))) throw new Error('Name each question.');
-  if (!draft) for (const q of form.questions.filter(q => q.role !== 'informational')) {
-    if (form.decisionOptions!.some(o => { const fact = o.facts.find(f => f.criterion === q.criterion); return !validFact(fact, q) || factStatus(fact) !== 'confirmed'; })) {
-      throw new Error(`Review and confirm the comparison facts for “${q.title}” before publishing, or change the question to context only.`);
-    }
+  const definitions = factDefinitions(form);
+  if (definitions.length > 8) throw new Error('Use up to eight distinct option attributes. Reuse attributes across questions.');
+  // Publishing validates the form structure. Missing evidence is supplemented
+  // during Decision processing; it is not a per-question organiser checklist.
+  for (const q of form.questions.filter(q => q.role !== 'informational')) {
+    if (!draft && !/^[a-z][a-z0-9_]{0,59}$/.test(q.criterion || '') && q.title.trim()) throw new Error('Choose the option detail each question compares.');
+    const definition = definitions.find(d => d.criterion === q.criterion);
+    if (definition && (definition.valueType !== factType(q) || definition.unit !== (q.unit || ''))) throw new Error('Questions about the same attribute must use the same fact type and unit.');
   }
   if (form.questions.some(q => q.type === 'Duration' && q.role !== 'informational')) throw new Error('Date availability requires scenario or scheduled setup. Use an informational date question in this option form.');
   if (form.questions.some(q => q.type === 'Number' && q.role !== 'hard' && q.role !== 'informational' && !(Number(q.scale) > 0))) throw new Error('Numeric preferences need a positive tolerance.');
-  // Facts left blank are an unfilled checklist, not an error; they are not saved.
+  // Blank facts persist as typed unknowns, including pending research/recovery metadata.
   for (const option of form.decisionOptions || []) for (const fact of option.facts.filter(f => f.value.trim())) {
     if (!/^[a-z][a-z0-9_]{0,99}$/.test(fact.criterion.trim())) throw new Error('Give each fact a criterion name using lowercase letters, numbers and underscores.');
     if (fact.valueType === 'number' && !Number.isFinite(Number(fact.value))) throw new Error('Numeric facts need a finite number.');
@@ -62,7 +66,7 @@ function validateForm(form: Form, draft = false) {
 function publishSettings(form: Form) {
   const question = decisionQuestion(form);
   return { currency: form.currency || 'SGD', currency_minor_digits: 2, cost_scope: 'per_person_total',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, execution_mode: 'options', ...(question ? { decision_question: question } : {}) };
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, execution_mode: 'options', interpretation_policy: 'facts-v1', ...(question ? { decision_question: question } : {}) };
 }
 // The collector searches for this identity; acceptance rejects claims if it changes afterwards.
 export function optionIdentity(option: DecisionOption, form: Form) {
@@ -72,11 +76,11 @@ export function optionIdentity(option: DecisionOption, form: Form) {
     ...(place_id ? { place_id } : {}), ...(kind ? { kind } : {}) };
 }
 function optionMetadata(option: DecisionOption, form: Form) {
-  const facts = option.facts.filter(f => f.value.trim()).map(f => ({ criterion: f.criterion.trim(), value_type: f.valueType,
-    value: f.valueType === 'number' ? Number(f.value) : f.valueType === 'boolean' ? f.value === 'true' : f.valueType === 'tag_set' ? tagValues(f.value) : f.value,
+  const facts = option.facts.map(f => ({ criterion: f.criterion.trim(), value_type: f.valueType,
+    value: !f.value.trim() ? null : f.valueType === 'number' ? Number(f.value) : f.valueType === 'boolean' ? f.value === 'true' : f.valueType === 'tag_set' ? tagValues(f.value) : f.value,
     ...(f.unit ? { unit: f.unit } : {}),
     ...(f.context || f.criterion === 'max_cost' ? { context: { ...f.context, ...(f.criterion === 'max_cost' ? { scope: 'per_person_total' } : {}) } } : {}),
-    status: factStatus(f), source: f.source || 'Organiser supplied' }));
+    status: f.value.trim() ? factStatus(f) : 'unknown', source: f.source || 'Organiser supplied' }));
   // The summary is stored as the option description so members see it; place content is not.
   return { identity: optionIdentity(option, form), facts, ...(option.brief ? { brief: option.brief } : {}) };
 }
@@ -84,7 +88,6 @@ export function localFact(row: PublishedFact): Fact {
   const value = Array.isArray(row.value) ? row.value_type==='tag_set' ? JSON.stringify(row.value) : row.value.join(', ') : String(row.value ?? '');
   return { criterion: row.criterion, value, valueType: (row.value_type || 'category') as Fact['valueType'], unit: row.unit || '', source: row.source || '', status: row.status as Fact['status'], ...(row.context ? { context: row.context } : {}) };
 }
-export interface FactRequest { option_id: string; attribute_id: string; value_type: Fact['valueType']; unit: string | null }
 export const apiService = {
   register: (username: string) => request<Session>(`${planning}/v1/users`, 'POST', { username }, ''),
   resume: (id: string, token: string) => request<{ id: string; username: string }>(`${planning}/v1/users/${encodeURIComponent(id)}`, 'GET', undefined, token),
@@ -100,7 +103,7 @@ export const apiService = {
     const plan = await request<PlanRow & { time_window_start?: string; time_window_end?: string;
       rounds: Round[]; proposed_activities?: { id:string; title:string; description?:string; metadata?: { identity?:DecisionOption['identity']; facts?:PublishedFact[]; brief?:DecisionOption['brief'] } }[];
       questions?: { id:string; title:string; description?:string; is_required:boolean; sort_order:number; type:string;
-        options?: { options?:string[]; decision?: { role?:Question['role']; criterion?:string; answer_format?:string; mapping?: { unit?:string; scale?:number } } } }[] }>(`${planning}/v1/plans/details/${planId}`);
+        options?: { options?:string[]; decision?: { role?:Question['role']; criterion?:string; answer_format?:string; mapping?: { value_type?:Fact['valueType']; unit?:string; scale?:number } } } }[] }>(`${planning}/v1/plans/details/${planId}`);
     const round = [...(plan.rounds || [])].sort((a,b) => b.round_number-a.round_number)[0];
     if (!round || plan.state !== 'DRAFT') throw new Error('This plan is already published. Open its round instead.');
     const { state } = await request<{state: {currency?:string; decision_question?:string; location?:string; step?:number; visited?:number}}>(`${roundPath(round.id)}/draft`);
@@ -113,7 +116,7 @@ export const apiService = {
         brief:o.metadata?.brief,facts:(o.metadata?.facts || []).map(localFact)})),
       questions:[...(plan.questions || [])].sort((a,b)=>a.sort_order-b.sort_order).map(q => { const d=q.options?.decision;
         return {id:q.id,title:q.title,description:q.description || '',isRequired:q.is_required,options:q.options?.options || [],role:d?.role || 'soft',criterion:d?.criterion,
-          unit:d?.mapping?.unit,scale:d?.mapping?.scale,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
+          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
   },
   // Creates or updates the unpublished plan, options, questions and draft round.
   async saveFormDraft(form: Form, userId: string, username: string): Promise<Form> {
@@ -173,12 +176,8 @@ export const apiService = {
     form.state = 'Collecting';
     return form;
   },
-  // Only currency and cost scope matter to collection; free-form plan text stays out of web searches.
-  collectFacts: (form: Form, requests: FactRequest[], retry = false) => request<FactCollectionRun>(`${roundPath(form.roundId!)}/fact-collection`, 'POST', { requests, retry, settings: { currency: form.currency || 'SGD', cost_scope: 'per_person_total' } }),
-  factCollection: (roundId: string) => request<FactCollectionRun>(`${roundPath(roundId)}/fact-collection`),
-  acceptFacts: (roundId: string, body: { operation_id: string; collection_run_id: string; claim_ids: string[]; reviewed: true; replace_existing: boolean }) => request(`${roundPath(roundId)}/accept-facts`, 'POST', body),
   // Organiser research runs as background jobs; callers poll until each one completes.
-  async research<T>(roundId: string, task: 'overviews' | 'questions' | 'fit', input: Record<string, unknown>, signal?: { cancelled: boolean }): Promise<T> {
+  async research<T>(roundId: string, task: 'overviews' | 'questions' | 'facts', input: Record<string, unknown>, signal?: { cancelled: boolean }): Promise<T> {
     const signature = JSON.stringify(input);
     // LAN HTTP may not expose Web Crypto. Exact input is also a collision-free local key.
     const digest = globalThis.crypto?.subtle ? await crypto.subtle.digest('SHA-256', new TextEncoder().encode(signature)) : undefined;
@@ -205,10 +204,6 @@ export const apiService = {
   },
   placeCard: (roundId: string, placeId: string) => request<Overview>(`${roundPath(roundId)}/place?place_id=${encodeURIComponent(placeId)}`),
   placePhotoUrl: (roundId: string, name: string) => `${roundPath(roundId)}/place-photo?name=${encodeURIComponent(name)}`,
-  async storedFacts(optionId: string): Promise<Fact[]> {
-    const row = await request<{ metadata?: { facts?: PublishedFact[] } }>(`${planning}/v1/proposed_activity/${optionId}`);
-    return (row.metadata?.facts || []).map(localFact);
-  },
   rounds: (id: string) => request<{ data: Round[] }>(`${planning}/v1/rounds/plans/${id}`),
   plan: (id: string) => request<PlanRow>(`${planning}/v1/plans/${id}`),
   snapshot: (id: string) => request<Snapshot>(`${roundPath(id)}/form`),
