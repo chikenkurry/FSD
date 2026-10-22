@@ -38,7 +38,7 @@
                 <p id="title-help" :class="['helper-text', { 'field-error': flag(1, !form.title.trim()) }]">{{ flag(1, !form.title.trim()) ? 'Give the plan a name your group will recognise.' : 'Your group sees this name on the invitation.' }}</p>
                 <label for="form-description">Description <span class="optional">(optional)</span></label>
                 <textarea id="form-description" v-model="form.description" placeholder="Context that helps people answer, such as the occasion or constraints" rows="3"></textarea>
-                <fieldset class="category-field" :disabled="!!form.id" :aria-invalid="flag(1, !form.category)">
+                <fieldset class="category-field" :aria-invalid="flag(1, !form.category)">
                   <legend>Category<span class="required-mark" aria-hidden="true">*</span></legend>
                   <div class="choice-list">
                     <label v-for="c in categories" :key="c.value" class="choice-option category-option">
@@ -47,7 +47,6 @@
                     </label>
                   </div>
                   <p v-if="flag(1, !form.category)" class="helper-text field-error">Choose the category closest to this plan.</p>
-                  <p v-else-if="form.id" class="helper-text">The category is fixed once a draft is saved.</p>
                 </fieldset>
                 <h3 class="sub-heading">When and where</h3>
                 <p class="step-lede">Context for your group. It doesn’t create time slots or limit anyone’s availability.</p>
@@ -172,8 +171,11 @@
                     </fieldset>
                   </article>
                 </TransitionGroup>
-                <button type="button" class="add-question" @click="addQuestion"><UiIcon name="plus" />Add question</button>
-                <button type="button" class="btn-quiet" @click="addWrittenPreferences">Add general written preferences</button>
+                <div class="question-actions">
+                  <button type="button" class="add-question" @click="addQuestion"><UiIcon name="plus" />Add question</button>
+                  <button v-if="!form.questions.some(q => q.criterion === 'max_cost')" type="button" class="btn-quiet" @click="addBudgetQuestion">Add spending limit</button>
+                  <button v-if="!form.questions.some(q => q.criterion === 'preferences')" type="button" class="btn-quiet" @click="addWrittenPreferences">Add general written preferences</button>
+                </div>
               </div>
 
               <!-- 5: Review -->
@@ -449,6 +451,7 @@ const saveError = ref('');
 async function show(step: number) {
   direction.value = step >= currentStep.value ? 1 : -1;
   currentStep.value = step; visited.value = Math.max(visited.value, step); saveError.value = '';
+  if (!loadingDraft.value && !draftLoadError.value && !isSaving.value && form.id && form.title.trim() && form.category && !form.publishAttempted) void saveServerDraft();
   await nextTick();
   if (stepTop.value && stepTop.value.getBoundingClientRect().top < 0) stepTop.value.scrollIntoView({ block: 'start' });
   // Wait for the outgoing step to leave before moving focus to the new heading.
@@ -523,6 +526,7 @@ function tidyOptions() {
 
 const blankQuestion = (): Question => ({ title: '', description: '', role: 'soft', type: 'Short answer', valueType: 'category', criterion: '', options: [] });
 const addQuestion = () => { form.questions.push(blankQuestion()); };
+function addBudgetQuestion(){form.questions.push({title:`What is your maximum budget per person (${form.currency || 'SGD'})?`,description:'Options above a confirmed budget requirement are ruled out.',role:'hard',type:'Number',valueType:'decimal',criterion:'max_cost',unit:form.currency || 'SGD',options:[]});}
 function addWrittenPreferences(){form.questions.push({title:'What preferences or requirements should we consider?',description:'Describe what matters, and distinguish preferences from must-haves.',role:'soft',type:'Short answer',criterion:'preferences',options:[]});}
 function detailChanged(q:Question,value:string){q.criterion=value.trim().toLowerCase()==='all researched attributes' ? 'preferences' : slug(value);if(q.criterion==='max_cost'){q.valueType='decimal';q.unit=form.currency || 'SGD';}else if(q.criterion!=='preferences'){const existing=definitions.value.find(d=>d.criterion===q.criterion);if(existing){q.valueType=existing.valueType;q.unit=existing.unit;}}}
 const removeQuestion = (index: number) => { const [gone] = form.questions.splice(index, 1); if (gone?.id) (form.removedQuestionIds ??= []).push(gone.id); };
@@ -636,7 +640,8 @@ const submitForm = async (): Promise<void> => {
 .role-option.unavailable { opacity: .55; }
 .criterion-field label { margin: 18px 0 0; max-width: 420px; }
 .criterion-field .helper-text { max-width: 60ch; }
-.add-question { margin-top: 20px; }
+.question-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
+.add-question { margin: 0; }
 
 .review-block { padding: 20px 0; border-top: 1px solid var(--line); }
 .review-block:first-of-type { margin-top: 20px; }

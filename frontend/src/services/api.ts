@@ -1,6 +1,6 @@
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from './checkpoints';
 import { decisionQuestion, factDefinitions, factStatus, factType, tagValues } from './optionFacts';
-import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, Overview, ResearchRun } from '@/types/form';
+import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, Overview, ResearchRun, RsvpSummary } from '@/types/form';
 
 // Same-origin proxies keep private service addresses and tokens off browser URLs.
 const planning = '/api/planning';
@@ -96,7 +96,7 @@ export const apiService = {
     const response = await request<Array<Omit<PlanRow, 'category'> & { plan_category: string }>>(`${planning}/v1/plans/member/${encodeURIComponent(userID)}`);
     const states: Record<string, Form['state']> = { DRAFT: 'Draft', COLLECTING: 'Collecting', REVIEWING: 'Reviewing', CONFIRMED: 'Confirmed', ARCHIVED: 'Archived' };
     return (response || []).map(row => ({ id: row.id, title: row.title, description: row.description || '', category: ({ TRAVEL: 'Travel', DINING: 'Event', MEETING: 'Work', GENERAL: 'General' } as Record<string, string>)[row.plan_category] || row.plan_category,
-      state: states[row.state] || 'Draft', membersCount: row.members_count, createdBy: row.organiser_name || 'You',
+      state: states[row.state] || 'Draft', membersCount: row.members_count, createdBy: row.organiser_name || 'You', createdByUserId: row.created_by_user_id,
       questions: [], startDateRange: '', endDateRange: '', location: '' }));
   },
   async loadFormDraft(planId: string): Promise<Form> {
@@ -134,12 +134,9 @@ export const apiService = {
     // Items removed after an earlier draft save still exist on the server.
     while (form.removedOptionIds?.length) { await request(`${planning}/v1/proposed_activity/${form.removedOptionIds[0]}`, 'DELETE'); form.removedOptionIds.shift(); }
     while (form.removedQuestionIds?.length) { await request(`${planning}/v1/question/${form.removedQuestionIds[0]}`, 'DELETE'); form.removedQuestionIds.shift(); }
-    // Keep acknowledged IDs to resume the same draft after a partial failure.
-    for (const option of (form.decisionOptions || []).filter(o => o.title.trim())) {
-      const body = { title: option.title, description: option.summary || '', metadata: optionMetadata(option, form) };
-      if (option.id) await request(`${planning}/v1/proposed_activity/${option.id}`, 'PATCH', body);
-      else option.id = (await request<{ id: string }>(`${planning}/v1/proposed_activity/plans/${form.id}`, 'POST', body)).id;
-    }
+    if (!form.roundId) form.roundId = (await request<Round>(`${planning}/v1/rounds/plans/${form.id}`, 'POST', {})).id;
+    await request(`${roundPath(form.roundId)}/draft`, 'PUT', { currency:form.currency || 'SGD', decision_question:form.decisionQuestion || '',
+      location:form.location, step:form.wizardStep || 1, visited:Math.max(form.wizardStep || 1, form.wizardVisited || 1) });
     for (const [index, question] of form.questions.entries()) {
       if (!question.title.trim()) continue;
       const body = { title: question.title, description: question.description, question_type:
@@ -149,9 +146,12 @@ export const apiService = {
       if (question.id) await request(`${planning}/v1/question/${question.id}`, 'PATCH', body);
       else question.id = (await request<{ id: string }>(`${planning}/v1/question`, 'POST', { ...body, plan_id: form.id })).id;
     }
-    if (!form.roundId) form.roundId = (await request<Round>(`${planning}/v1/rounds/plans/${form.id}`, 'POST', {})).id;
-    await request(`${roundPath(form.roundId)}/draft`, 'PUT', { currency:form.currency || 'SGD', decision_question:form.decisionQuestion || '',
-      location:form.location, step:form.wizardStep || 1, visited:Math.max(form.wizardStep || 1, form.wizardVisited || 1) });
+    // Keep acknowledged IDs to resume the same draft after a partial failure.
+    for (const option of (form.decisionOptions || []).filter(o => o.title.trim())) {
+      const body = { title: option.title, description: option.summary || '', metadata: optionMetadata(option, form) };
+      if (option.id) await request(`${planning}/v1/proposed_activity/${option.id}`, 'PATCH', body);
+      else option.id = (await request<{ id: string }>(`${planning}/v1/proposed_activity/plans/${form.id}`, 'POST', body)).id;
+    }
     return form;
   },
   async publishForm(form: Form, userId: string, username: string): Promise<Form> {
@@ -206,6 +206,8 @@ export const apiService = {
   placePhotoUrl: (roundId: string, name: string) => `${roundPath(roundId)}/place-photo?name=${encodeURIComponent(name)}`,
   rounds: (id: string) => request<{ data: Round[] }>(`${planning}/v1/rounds/plans/${id}`),
   plan: (id: string) => request<PlanRow>(`${planning}/v1/plans/${id}`),
+  deletePlan: (id: string) => request(`${planning}/v1/plans/${encodeURIComponent(id)}`, 'DELETE'),
+  removeMember: (id: string) => request(`${planning}/v1/members/${encodeURIComponent(id)}`, 'DELETE'),
   snapshot: (id: string) => request<Snapshot>(`${roundPath(id)}/form`),
   invite: (planId: string, userId: string) => request<{ token: string }>(`${planning}/v1/plans/${planId}/invites`, 'POST', { created_by: userId }),
   join: (invite: string, id: string, username: string) => request(`${planning}/v1/invites/${encodeURIComponent(invite)}/join`, 'POST', { user_id: id, display_name: username }),
@@ -221,6 +223,6 @@ export const apiService = {
   selection: (id: string) => request<Selection>(`${roundPath(id)}/selection`),
   confirm: (id: string, run: string, candidate: string, operation: string) => request<Selection>(`${roundPath(id)}/confirm`, 'POST', { operation_id: operation, run_id: run, candidate_id: candidate }),
   reopen: (id: string, operation: string) => request<Round>(`${roundPath(id)}/reopen`, 'POST', { operation_id: operation }),
-  rsvp: (id: string) => request<{ revision: number; status: string | null }>(`${participation}/rounds/${id}/my-rsvp`),
+  rsvp: (id: string) => request<{ revision: number; status: string | null; summary?: RsvpSummary }>(`${participation}/rounds/${id}/my-rsvp`),
   saveRsvp: (id: string, selectionVersion: number, expectedRevision: number, status: string) => request(`${participation}/rounds/${id}/my-rsvp`, 'PUT', { selectionVersion, expectedRevision, status }),
 };

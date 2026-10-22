@@ -13,8 +13,9 @@
         </form>
         <p class="session-note"><UiIcon name="lock" />No account needed. Your answers stay private to you.</p>
         <details><summary>I’ve joined before on another device</summary><form @submit.prevent="resume">
-          <label>User ID<input v-model="id" required autocomplete="off" /></label>
-          <label>Session token<input v-model="token" type="password" required autocomplete="off" /></label>
+          <p class="helper-text">Paste copied session details into either field, or enter them below.</p>
+          <label>User ID<input v-model="id" @input="parseSession" required autocomplete="off" /></label>
+          <label>Session token<input v-model="token" @input="parseSession" type="password" required autocomplete="off" /></label>
           <button :disabled="busy">Resume session<UiIcon name="arrow" /></button>
         </form></details>
       </section>
@@ -43,8 +44,9 @@
         </form>
         <p class="session-note"><UiIcon name="lock" />Keep your session details to return on another device.</p>
         <details><summary>Resume an existing session</summary><form @submit.prevent="resume">
-          <label>User ID<input v-model="id" required autocomplete="off" /></label>
-          <label>Session token<input v-model="token" type="password" required autocomplete="off" /></label>
+          <p class="helper-text">Paste copied session details into either field, or enter them below.</p>
+          <label>User ID<input v-model="id" @input="parseSession" required autocomplete="off" /></label>
+          <label>Session token<input v-model="token" @input="parseSession" type="password" required autocomplete="off" /></label>
           <button :disabled="busy">Resume session<UiIcon name="arrow" /></button>
         </form></details>
       </section>
@@ -62,8 +64,19 @@ defineProps<{ invited?: boolean }>();
 const emit = defineEmits<{ (e: 'navigate', frame: string): void }>();
 const auth = useAuthStore();
 const name = ref(''); const id = ref(''); const token = ref(''); const error = ref(''); const busy = ref(false);
+function parseSession(event?: Event) {
+  const candidate = event ? (event.target as HTMLInputElement).value.trim() : id.value.trim();
+  if (!candidate.startsWith('{')) return;
+  try {
+    const parsed = JSON.parse(candidate) as { user_id?: string; session_token?: string };
+    if (typeof parsed.user_id === 'string' && typeof parsed.session_token === 'string') {
+      id.value = parsed.user_id.trim();
+      token.value = parsed.session_token.trim();
+    }
+  } catch { /* plain text input */ }
+}
 async function create() { await act(async () => auth.setSession(await apiService.register(name.value.trim()))); }
-async function resume() { await act(async () => { const user = await apiService.resume(id.value, token.value); auth.setSession({ ...user, session_token: token.value }); }); }
+async function resume() { parseSession(); await act(async () => { const user = await apiService.resume(id.value.trim(), token.value.trim()); auth.setSession({ ...user, session_token: token.value.trim() }); }); }
 async function act(fn: () => Promise<void>) {
   if (busy.value) return;
   busy.value = true; error.value = '';

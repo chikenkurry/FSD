@@ -41,6 +41,7 @@ export interface Form {
   location: string;
   membersCount?: number;
   createdBy?: string;
+  createdByUserId?: string;
   questions: Question[];
   // Set once a publish request has been sent, so a retry resumes it instead of editing.
   publishAttempted?: boolean;
@@ -82,7 +83,9 @@ export interface Draft {
   answers: Answer[]; privateNote: string | null; round: { state: string };
 }
 export interface Constraint { source_question_id: string; attribute_id: string; required_value: unknown; constraint_rule: string; unit?: string; kind?: string; status?: string }
-export interface Review { status: string; response_revision: number; run_id: string; constraints: Constraint[]; preferences?: { attribute_id: string; kind: string; preferred_value?: unknown; polarity?: string; utility_rule?: string }[]; issues: { code: string; message?: string }[] }
+export interface Review { status: string; response_revision: number; run_id: string; constraints: Constraint[]; preferences?: { attribute_id: string; kind: string; preferred_value?: unknown; polarity?: string; utility_rule?: string }[]; issues: { code: string; message?: string; question_id?: string }[] }
+export interface ReadinessMember { id?: string; user_id?: string; role?: string; name: string; status: string }
+export interface RsvpSummary { going: number; maybe: number; declined: number; total: number }
 export interface Candidate { candidate_id: string; title: string; rank: number; primary_objective_tie_size: number; group_score: number; minimum_member_score: number; average_member_score: number; start_at?: string; end_at?: string; estimated_cost_minor?: number | null; currency?: string; currency_minor_digits?: number; tradeoffs?: string[] }
 export interface Run { run_id: string; status: string; issues: { code: string }[]; fact_requests?: { option_id: string; attribute_id: string }[]; supplemented_facts?: { option_id:string; attribute_id:string; value:unknown; value_type:string; unit?:string|null; source_text:string; sources:{url:string;title?:string}[]; retrieved_at?:string|null }[]; recommendation_view: { recommendation: Candidate | null; alternatives: Candidate[]; pareto_alternatives: Candidate[]; next_action: string | null; unavailable_candidates: { candidate_id: string; title: string; status: string }[] } }
 export interface Selection { run_id: string; candidate_id: string; selection_version: number }
