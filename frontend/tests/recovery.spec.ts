@@ -2,15 +2,18 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function setup(page: Page, emptyFit = false) {
   let holdOverviews = false;
+  let holdFit = false;
   const posts = { overviews: 0, questions: 0, fit: 0, plans: 0 };
   const runs = new Map<string, { task: string; research: unknown }>();
   let serial = 0;
+  let plan:Record<string,unknown>={};let metadata:Record<string,unknown>={};
+  const savedOptions:Record<string,unknown>[]=[];const savedQuestions:Record<string,unknown>[]=[];
   await page.route('**/api/**', async route => {
     const req = route.request(); const path = new URL(req.url()).pathname;
-    const body = req.method() === 'POST' || req.method() === 'PATCH' ? req.postDataJSON() : undefined;
+    const body = ['POST','PATCH','PUT'].includes(req.method()) ? req.postDataJSON() : undefined;
     const reply = (data: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     if (path.endsWith('/v1/users')) return reply({ id: 'recovery-user', username: 'Recovery test', session_token: 'synthetic-recovery-token' });
-    if (path.includes('/plans/organiser/')) return reply([]);
+    if (path.includes('/plans/member/')) return reply([]);
     if (path.endsWith('/research')) {
       if (req.method() === 'POST') {
         const task = body.task as 'overviews' | 'questions' | 'fit'; posts[task]++;
@@ -23,19 +26,24 @@ async function setup(page: Page, emptyFit = false) {
       }
       const id = new URL(req.url()).searchParams.get('run')!;
       const run = runs.get(id)!;
-      return reply({ run_id: id, status: run.task === 'overviews' && holdOverviews ? 'pending' : 'completed', issues: [], research: run.research });
+      return reply({ run_id: id, status: run.task === 'overviews' && holdOverviews || run.task==='fit' && holdFit ? 'pending' : 'completed', issues: [], research: run.research });
     }
-    if (path.endsWith('/v1/plans') && req.method() === 'POST') { posts.plans++; return reply({ id: 'saved-plan' }); }
-    if (path.includes('/proposed_activity/plans/')) return reply({ id: `option-${++serial}` });
-    if (path.endsWith('/v1/question') && req.method() === 'POST') return reply({ id: `question-${++serial}` });
-    if (path.includes('/rounds/plans/')) return reply({ id: 'saved-round' });
+    if (path.endsWith('/v1/plans') && req.method() === 'POST') { posts.plans++;plan={...body,id:'saved-plan',category:body.plan_category,state:'DRAFT'}; return reply({ id: 'saved-plan' }); }
+    if(path.endsWith('/v1/plans/saved-plan') && req.method()==='PATCH'){Object.assign(plan,body);return reply(plan);}
+    if(path.endsWith('/plans/details/saved-plan'))return reply({...plan,rounds:[{id:'saved-round',round_number:1}],proposed_activities:savedOptions,questions:savedQuestions});
+    if(path.endsWith('/draft')){if(req.method()==='PUT')metadata=body;return reply({state:metadata});}
+    if (path.includes('/proposed_activity/plans/')) {const row={...body,id:`option-${++serial}`};savedOptions.push(row);return reply(row);}
+    if(path.includes('/proposed_activity/') && req.method()==='PATCH'){Object.assign(savedOptions.find(o=>path.endsWith(String(o.id)))!,body);return reply({});}
+    if (path.endsWith('/v1/question') && req.method() === 'POST') {const row={...body,type:body.question_type,id:`question-${++serial}`};savedQuestions.push(row);return reply(row);}
+    if(path.includes('/v1/question/') && req.method()==='PATCH'){Object.assign(savedQuestions.find(q=>path.endsWith(String(q.id)))!,body);return reply({});}
+    if (path.includes('/rounds/plans/')) return req.method()==='GET'?reply({data:[{id:'saved-round',round_number:1}]}):reply({ id: 'saved-round' });
     return reply({});
   });
   await page.goto('/');
   await page.getByLabel('Your display name').fill('Recovery test');
   await page.getByRole('button', { name: 'Create guest session' }).click();
   await page.getByRole('button', { name: 'Create form', exact: true }).first().click();
-  return { posts, hold: (value: boolean) => { holdOverviews = value; } };
+  return { posts, hold: (value: boolean) => { holdOverviews = value; }, holdFit:(value:boolean)=>{holdFit=value;} };
 }
 
 async function basics(page: Page) {
@@ -72,6 +80,7 @@ test('creator resumes every step and pending research without duplicate plans or
   await page.getByRole('button', { name: 'Review form' }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
+  for(const checkbox of await page.getByLabel('I checked this value and confirm it can be used.').all())await checkbox.check();
   await expect(page.getByText('Worth checking before you publish')).toHaveCount(0);
   const restored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('what2do:checkpoint:v1:recovery-user:creator')!));
   expect(restored.form.id).toBe('saved-plan');
@@ -98,8 +107,35 @@ test('missing comparisons explain the evidence gap and can be retried', async ({
   await expect(page.getByText(/Ranking may be blocked/)).toBeVisible();
   await expect(page.getByText(/won’t affect those options/)).toHaveCount(0);
   await page.getByRole('button', { name: 'Retry missing comparisons' }).click();
+  for(const checkbox of await page.getByLabel('I checked this value and confirm it can be used.').all())await checkbox.check();
   await expect(page.getByText('Worth checking before you publish')).toHaveCount(0);
   expect(fixture.posts.fit).toBe(2);
+});
+
+test('slow research keeps manual corrections and changed questions invalidate approval',async({page})=>{
+  const fixture=await setup(page);await basics(page);
+  await page.getByRole('button',{name:'Look them up'}).click();
+  await expect(page.locator('.overview-card').first()).toContainText('verified description');
+  await page.getByRole('button',{name:'Draft questions'}).click();
+  await expect(page.getByLabel('Question',{exact:true})).toHaveValue('What atmosphere do you prefer?');
+  await page.getByRole('button',{name:'Review form'}).click();
+  const row=page.getByTestId('fact-Restaurant A-atmosphere');
+  await row.getByText('Research or correct this comparison',{exact:true}).click();
+  fixture.holdFit(true);
+  await row.getByRole('button',{name:'Research again',exact:true}).click();
+  await expect.poll(()=>fixture.posts.fit).toBe(2);
+  await row.getByLabel('Comparison value').selectOption('Lively');
+  await row.getByLabel('I checked this value and confirm it can be used.').check();
+  fixture.holdFit(false);
+  await expect(row.getByRole('button',{name:'Research again',exact:true})).toBeEnabled();
+  await expect(row.getByLabel('Comparison value')).toHaveValue('Lively');
+  await expect(row.getByLabel('I checked this value and confirm it can be used.')).toBeChecked();
+  await page.getByRole('button',{name:/Questions$/}).click();
+  await page.getByLabel('Question',{exact:true}).fill('What setting should we choose?');
+  await page.getByRole('button',{name:/Review$/}).click();
+  await expect(row.getByText('Needs updating',{exact:false})).toBeVisible();
+  await expect(row.getByLabel('I checked this value and confirm it can be used.')).not.toBeChecked();
+  await expect(row.getByLabel('I checked this value and confirm it can be used.')).toBeDisabled();
 });
 
 
@@ -114,4 +150,29 @@ test('storage failure is visible instead of promising refresh recovery', async (
   await setup(page);
   await page.getByLabel('Plan name').fill('Unsaved browser edit');
   await expect(page.getByRole('alert')).toContainText('Browser storage is unavailable');
+});
+
+test('facts can be corrected, explicitly confirmed, and researched again without losing other corrections', async ({page})=>{
+  // LAN HTTP exposes getRandomValues but may not expose randomUUID.
+  await page.addInitScript(()=>Object.defineProperty(crypto,'randomUUID',{value:undefined,configurable:true}));
+  const fixture=await setup(page);await basics(page);
+  await page.getByRole('button',{name:'Look them up'}).click();
+  await expect(page.locator('.overview-card').first()).toContainText('verified description');
+  await page.getByRole('button',{name:'Draft questions'}).click();
+  await expect(page.getByLabel('Question',{exact:true})).toHaveValue('What atmosphere do you prefer?');
+  await page.getByRole('button',{name:'Review form'}).click();
+  const first=page.getByTestId('fact-Restaurant A-atmosphere');const second=page.getByTestId('fact-Restaurant B-atmosphere');
+  await expect(first.getByText('Needs review',{exact:true})).toBeVisible();
+  await first.getByLabel('Comparison value').selectOption('Lively');
+  await first.getByLabel('I checked this value and confirm it can be used.').check();
+  await second.getByLabel('Comparison value').selectOption('Lively');
+  await second.getByLabel('I checked this value and confirm it can be used.').check();
+  await first.getByText('Research or correct this comparison',{exact:true}).click();
+  await first.getByLabel('What should research check?').fill('Check the latest venue description.');
+  await first.getByRole('button',{name:'Research again',exact:true}).click();
+  await expect(first.getByLabel('Comparison value')).toHaveValue('Quiet');
+  await expect(first.getByLabel('I checked this value and confirm it can be used.')).not.toBeChecked();
+  await expect(second.getByLabel('Comparison value')).toHaveValue('Lively');
+  await expect(second.getByLabel('I checked this value and confirm it can be used.')).toBeChecked();
+  expect(fixture.posts.fit).toBe(2);
 });

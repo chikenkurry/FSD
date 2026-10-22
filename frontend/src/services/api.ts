@@ -1,4 +1,5 @@
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from './checkpoints';
+import { decisionQuestion, factStatus, tagValues, validFact } from './comparisonFacts';
 import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, FactCollectionRun, Overview, ResearchRun } from '@/types/form';
 
 // Same-origin proxies keep private service addresses and tokens off browser URLs.
@@ -13,7 +14,10 @@ export async function request<T>(path: string, method = 'GET', body?: unknown, t
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(response.status, data.code || 'REQUEST_FAILED', data.message || data.error || `Request failed (${response.status})`);
+  if (!response.ok) {
+    const messages:Record<string,string>={RESPONSES_INCOMPLETE:'A member has not submitted a complete response. Collection is still open; refresh the progress before closing again.',STALE_DRAFT:'A newer draft round exists. Return to My forms and open it.',REOPEN_REQUIRED:'This round is published. Revise it in a new round to change its definition.'};
+    throw new ApiError(response.status, data.code || 'REQUEST_FAILED', messages[data.code] || data.message || data.error || `Request failed (${response.status})`);
+  }
   return data as T;
 }
 const roundPath = (id: string) => `${planning}/v1/rounds/${encodeURIComponent(id)}`;
@@ -39,19 +43,24 @@ export function questionDefinition(q: Question, index: number) {
 function validateForm(form: Form, draft = false) {
   if (!form.title.trim() || !form.category) throw new Error('Add a title and category.');
   if ((form.decisionQuestion?.trim().length || 0) > 300) throw new Error('Keep the decision question under 300 characters.');
-  if (!form.decisionOptions?.length || form.decisionOptions.length > 8 || form.decisionOptions.some(o => !o.title.trim())) throw new Error('Add 1–8 named options.');
+  if ((form.decisionOptions?.length || 0) > 8 || (!draft && (!form.decisionOptions?.length || form.decisionOptions.some(o => !o.title.trim())))) throw new Error('Add 1–8 named options.');
   // Drafts saved for fact finding come before the questions are written.
-  if ((!draft && !form.questions.length) || form.questions.some(q => !q.title.trim())) throw new Error('Name each question.');
+  if (!draft && (!form.questions.length || form.questions.some(q => !q.title.trim()))) throw new Error('Name each question.');
+  if (!draft) for (const q of form.questions.filter(q => q.role !== 'informational')) {
+    if (form.decisionOptions!.some(o => { const fact = o.facts.find(f => f.criterion === q.criterion); return !validFact(fact, q) || factStatus(fact) !== 'confirmed'; })) {
+      throw new Error(`Review and confirm the comparison facts for “${q.title}” before publishing, or change the question to context only.`);
+    }
+  }
   if (form.questions.some(q => q.type === 'Duration' && q.role !== 'informational')) throw new Error('Date availability requires scenario or scheduled setup. Use an informational date question in this option form.');
   if (form.questions.some(q => q.type === 'Number' && q.role !== 'hard' && q.role !== 'informational' && !(Number(q.scale) > 0))) throw new Error('Numeric preferences need a positive tolerance.');
   // Facts left blank are an unfilled checklist, not an error; they are not saved.
-  for (const option of form.decisionOptions) for (const fact of option.facts.filter(f => f.value.trim())) {
+  for (const option of form.decisionOptions || []) for (const fact of option.facts.filter(f => f.value.trim())) {
     if (!/^[a-z][a-z0-9_]{0,99}$/.test(fact.criterion.trim())) throw new Error('Give each fact a criterion name using lowercase letters, numbers and underscores.');
     if (fact.valueType === 'number' && !Number.isFinite(Number(fact.value))) throw new Error('Numeric facts need a finite number.');
   }
 }
 function publishSettings(form: Form) {
-  const question = form.decisionQuestion?.trim();
+  const question = decisionQuestion(form);
   return { currency: form.currency || 'SGD', currency_minor_digits: 2, cost_scope: 'per_person_total',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, execution_mode: 'options', ...(question ? { decision_question: question } : {}) };
 }
@@ -64,16 +73,16 @@ export function optionIdentity(option: DecisionOption, form: Form) {
 }
 function optionMetadata(option: DecisionOption, form: Form) {
   const facts = option.facts.filter(f => f.value.trim()).map(f => ({ criterion: f.criterion.trim(), value_type: f.valueType,
-    value: f.valueType === 'number' ? Number(f.value) : f.valueType === 'boolean' ? f.value === 'true' : f.valueType === 'tag_set' ? f.value.split(',').map(x => x.trim()).filter(Boolean) : f.value,
+    value: f.valueType === 'number' ? Number(f.value) : f.valueType === 'boolean' ? f.value === 'true' : f.valueType === 'tag_set' ? tagValues(f.value) : f.value,
     ...(f.unit ? { unit: f.unit } : {}),
     ...(f.context || f.criterion === 'max_cost' ? { context: { ...f.context, ...(f.criterion === 'max_cost' ? { scope: 'per_person_total' } : {}) } } : {}),
-    status: 'confirmed', source: f.source || 'Organiser supplied' }));
+    status: factStatus(f), source: f.source || 'Organiser supplied' }));
   // The summary is stored as the option description so members see it; place content is not.
   return { identity: optionIdentity(option, form), facts, ...(option.brief ? { brief: option.brief } : {}) };
 }
 export function localFact(row: PublishedFact): Fact {
-  const value = Array.isArray(row.value) ? row.value.join(', ') : String(row.value ?? '');
-  return { criterion: row.criterion, value, valueType: (row.value_type || 'category') as Fact['valueType'], unit: row.unit || '', source: row.source || '', ...(row.context ? { context: row.context } : {}) };
+  const value = Array.isArray(row.value) ? row.value_type==='tag_set' ? JSON.stringify(row.value) : row.value.join(', ') : String(row.value ?? '');
+  return { criterion: row.criterion, value, valueType: (row.value_type || 'category') as Fact['valueType'], unit: row.unit || '', source: row.source || '', status: row.status as Fact['status'], ...(row.context ? { context: row.context } : {}) };
 }
 export interface FactRequest { option_id: string; attribute_id: string; value_type: Fact['valueType']; unit: string | null }
 export const apiService = {
@@ -81,16 +90,35 @@ export const apiService = {
   resume: (id: string, token: string) => request<{ id: string; username: string }>(`${planning}/v1/users/${encodeURIComponent(id)}`, 'GET', undefined, token),
   revoke: () => request(`${planning}/v1/session/revoke`, 'POST', {}),
   async getForms(userID: string): Promise<Form[]> {
-    const response = await request<Array<Omit<PlanRow, 'category'> & { plan_category: string }>>(`${planning}/v1/plans/organiser/${encodeURIComponent(userID)}`);
+    const response = await request<Array<Omit<PlanRow, 'category'> & { plan_category: string }>>(`${planning}/v1/plans/member/${encodeURIComponent(userID)}`);
     const states: Record<string, Form['state']> = { DRAFT: 'Draft', COLLECTING: 'Collecting', REVIEWING: 'Reviewing', CONFIRMED: 'Confirmed', ARCHIVED: 'Archived' };
     return (response || []).map(row => ({ id: row.id, title: row.title, description: row.description || '', category: ({ TRAVEL: 'Travel', DINING: 'Event', MEETING: 'Work', GENERAL: 'General' } as Record<string, string>)[row.plan_category] || row.plan_category,
       state: states[row.state] || 'Draft', membersCount: row.members_count, createdBy: row.organiser_name || 'You',
       questions: [], startDateRange: '', endDateRange: '', location: '' }));
   },
+  async loadFormDraft(planId: string): Promise<Form> {
+    const plan = await request<PlanRow & { time_window_start?: string; time_window_end?: string;
+      rounds: Round[]; proposed_activities?: { id:string; title:string; description?:string; metadata?: { identity?:DecisionOption['identity']; facts?:PublishedFact[]; brief?:DecisionOption['brief'] } }[];
+      questions?: { id:string; title:string; description?:string; is_required:boolean; sort_order:number; type:string;
+        options?: { options?:string[]; decision?: { role?:Question['role']; criterion?:string; answer_format?:string; mapping?: { unit?:string; scale?:number } } } }[] }>(`${planning}/v1/plans/details/${planId}`);
+    const round = [...(plan.rounds || [])].sort((a,b) => b.round_number-a.round_number)[0];
+    if (!round || plan.state !== 'DRAFT') throw new Error('This plan is already published. Open its round instead.');
+    const { state } = await request<{state: {currency?:string; decision_question?:string; location?:string; step?:number; visited?:number}}>(`${roundPath(round.id)}/draft`);
+    return { id:plan.id, roundId:round.id, sourceRoundId:round.source_round_id, title:plan.title, description:plan.description || '',
+      category:({TRAVEL:'Travel',DINING:'Event',MEETING:'Work',GENERAL:'General'} as Record<string,string>)[plan.category] || plan.category,
+      state:'Draft', currency:state.currency || 'SGD', decisionQuestion:state.decision_question || '', location:state.location || '',
+      startDateRange:plan.time_window_start?.slice(0,10) || '', endDateRange:plan.time_window_end?.slice(0,10) || '',
+      wizardStep:state.step || (round.source_round_id ? 4 : 1), wizardVisited:state.visited || 1,
+      decisionOptions:(plan.proposed_activities || []).map(o => ({id:o.id,title:o.title,summary:o.description || '',identity:o.metadata?.identity,
+        brief:o.metadata?.brief,facts:(o.metadata?.facts || []).map(localFact)})),
+      questions:[...(plan.questions || [])].sort((a,b)=>a.sort_order-b.sort_order).map(q => { const d=q.options?.decision;
+        return {id:q.id,title:q.title,description:q.description || '',isRequired:q.is_required,options:q.options?.options || [],role:d?.role || 'soft',criterion:d?.criterion,
+          unit:d?.mapping?.unit,scale:d?.mapping?.scale,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
+  },
   // Creates or updates the unpublished plan, options, questions and draft round.
   async saveFormDraft(form: Form, userId: string, username: string): Promise<Form> {
     validateForm(form, true);
-    const description = [form.description, form.location ? `Location: ${form.location}` : ''].filter(Boolean).join('\n');
+    const description = form.description;
     const timeWindow = { ...(form.startDateRange ? { time_window_start: `${form.startDateRange}T00:00:00Z` } : {}),
       ...(form.endDateRange ? { time_window_end: `${form.endDateRange}T23:59:59Z` } : {}) };
     if (!form.id) {
@@ -98,17 +126,19 @@ export const apiService = {
         plan_category: ({ Travel: 'TRAVEL', Event: 'DINING', Work: 'MEETING', General: 'GENERAL' } as Record<string, string>)[form.category] || 'GENERAL',
         plan_state: 'DRAFT', organiser_id: userId, organiser_name: username });
       form.id = row.id;
-    } else await request(`${planning}/v1/plans/${form.id}`, 'PATCH', { title: form.title, description, ...timeWindow });
+    } else await request(`${planning}/v1/plans/${form.id}`, 'PATCH', { title: form.title, description, ...timeWindow,
+      plan_category:({Travel:'TRAVEL',Event:'DINING',Work:'MEETING',General:'GENERAL'} as Record<string,string>)[form.category] || 'GENERAL' });
     // Items removed after an earlier draft save still exist on the server.
     while (form.removedOptionIds?.length) { await request(`${planning}/v1/proposed_activity/${form.removedOptionIds[0]}`, 'DELETE'); form.removedOptionIds.shift(); }
     while (form.removedQuestionIds?.length) { await request(`${planning}/v1/question/${form.removedQuestionIds[0]}`, 'DELETE'); form.removedQuestionIds.shift(); }
     // Keep acknowledged IDs to resume the same draft after a partial failure.
-    for (const option of form.decisionOptions || []) {
+    for (const option of (form.decisionOptions || []).filter(o => o.title.trim())) {
       const body = { title: option.title, description: option.summary || '', metadata: optionMetadata(option, form) };
       if (option.id) await request(`${planning}/v1/proposed_activity/${option.id}`, 'PATCH', body);
       else option.id = (await request<{ id: string }>(`${planning}/v1/proposed_activity/plans/${form.id}`, 'POST', body)).id;
     }
     for (const [index, question] of form.questions.entries()) {
+      if (!question.title.trim()) continue;
       const body = { title: question.title, description: question.description, question_type:
         question.type === 'Multiple choice' ? 'CUSTOM_MULTI_CHOICE' : ['Single choice', 'Location', 'Budget'].includes(question.type) ? 'CUSTOM_SINGLE_CHOICE' : 'CUSTOM_TEXT',
         is_required: question.isRequired !== false, sort_order: index,
@@ -117,6 +147,8 @@ export const apiService = {
       else question.id = (await request<{ id: string }>(`${planning}/v1/question`, 'POST', { ...body, plan_id: form.id })).id;
     }
     if (!form.roundId) form.roundId = (await request<Round>(`${planning}/v1/rounds/plans/${form.id}`, 'POST', {})).id;
+    await request(`${roundPath(form.roundId)}/draft`, 'PUT', { currency:form.currency || 'SGD', decision_question:form.decisionQuestion || '',
+      location:form.location, step:form.wizardStep || 1, visited:Math.max(form.wizardStep || 1, form.wizardVisited || 1) });
     return form;
   },
   async publishForm(form: Form, userId: string, username: string): Promise<Form> {
@@ -184,6 +216,7 @@ export const apiService = {
   join: (invite: string, id: string, username: string) => request(`${planning}/v1/invites/${encodeURIComponent(invite)}/join`, 'POST', { user_id: id, display_name: username }),
   draft: (id: string) => request<Draft>(ownPath(id)),
   saveDraft: (id: string, body: unknown) => request<Draft>(ownPath(id), 'PUT', body),
+  copyResponse: (id: string, source: string) => request<Draft>(`${ownPath(id)}/copy`, 'POST', { sourceRoundId: source }),
   submit: (id: string, revision: number) => request<Draft>(`${ownPath(id)}/submit`, 'POST', { expectedRevision: revision }),
   preview: (id: string, revision: number) => request<Run>(`${roundPath(id)}/preview`, 'POST', { expected_revision: revision, retry: true }),
   review: (id: string) => request<Review | { status: 'pending' }>(`${roundPath(id)}/preview`),

@@ -34,7 +34,7 @@
             </tr></TransitionGroup>
           </table>
         </div>
-        <p class="list-note">{{ filteredForms.length === forms.length ? `${forms.length} ${forms.length === 1 ? 'form' : 'forms'}` : `Showing ${filteredForms.length} of ${forms.length} forms` }} you organise. Plans you’ve joined as a member open from their invitation link.</p>
+        <p class="list-note">{{ filteredForms.length === forms.length ? `${forms.length} ${forms.length === 1 ? 'form' : 'forms'}` : `Showing ${filteredForms.length} of ${forms.length} forms` }} you organise or have joined. Open a saved draft to continue setting it up.</p>
       </template>
     </section>
   </main>

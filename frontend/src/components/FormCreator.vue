@@ -7,6 +7,8 @@
       </div>
 
       <p class="helper-text" :role="storageFailed ? 'alert' : undefined">{{ storageFailed ? 'Browser storage is unavailable. Keep this page open; unsaved edits cannot survive refresh.' : recoveryMessage }}</p>
+      <p v-if="draftLoadError" role="alert">{{ draftLoadError }} <button @click="loadServerDraft">Retry loading draft</button></p>
+      <p v-if="serverSaveError" role="alert">{{ serverSaveError }} <button @click="saveServerDraft">Retry saving draft</button></p>
       <div class="builder-layout">
         <nav class="step-indicator-bar" aria-label="Form setup steps">
           <div class="step-list">
@@ -25,7 +27,7 @@
         <form @submit.prevent="submitForm" class="form-builder" novalidate>
           <div ref="stepTop" class="step-top"></div>
           <Transition name="reveal"><p v-if="saveError" role="alert">{{ saveError }}</p></Transition>
-          <fieldset :disabled="isSaving">
+          <fieldset :disabled="isSaving || loadingDraft || !!draftLoadError">
             <Transition :name="direction > 0 ? 'step-forward' : 'step-back'" mode="out-in">
               <!-- 1: Basics -->
               <div v-if="currentStep === 1" key="1" class="step-card">
@@ -96,8 +98,9 @@
                       <label class="kind-field">Type<select :value="option.identity?.kind || 'other'" @change="changeKind(option, ($event.target as HTMLSelectElement).value as OptionKind)">
                         <option value="place">Place</option><option value="destination">Destination</option><option value="event">Event</option><option value="activity">Activity</option><option value="other">Other</option>
                       </select></label>
-                      <button v-if="research.state.options[optionKey(option)]?.status === 'failed'" type="button" class="btn-quiet btn-small" @click="retryOverview(option)">Try again</button>
+                      <button type="button" class="btn-quiet btn-small" :disabled="research.state.options[optionKey(option)]?.status === 'loading'" @click="retryOverview(option)">Research again</button>
                     </div>
+                    <details class="overview-correction"><summary>Correct this overview</summary><label>Option overview<textarea :value="option.summary || option.brief?.summary || ''" maxlength="4000" @input="correctOverview(option,($event.target as HTMLTextAreaElement).value)"></textarea></label></details>
                   </OverviewCard>
                 </div>
                 <p class="helper-text overview-note">Next, AI drafts questions for your group from these overviews.</p>
@@ -187,6 +190,8 @@
                     <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role) }}</span></li>
                   </ol>
                 </section>
+                <FactReview :form="form" :options="form.decisionOptions || []" :questions="comparisonQuestions" :researching="research.state.fit === 'loading'" @research="research.researchAgain" />
+                <p v-if="research.state.message" class="helper-text" role="status">{{ research.state.message }}</p>
                 <div v-if="warnings.length" class="callout warning">
                   <p><strong>Worth checking before you publish</strong></p>
                   <p v-if="research.state.message">{{ research.state.message }}</p>
@@ -212,6 +217,8 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch, onMounted, onScopeDispose } from 'vue';
 import OverviewCard from './OverviewCard.vue';
+import FactReview from './FactReview.vue';
+import { comparisonSignature, factStatus, overviewSignature, validFact } from '@/services/comparisonFacts';
 import { useAuthStore } from '@/stores/auth';
 import type { DecisionOption, Form, OptionKind, Question } from '@/types/form';
 import UiIcon from './UiIcon.vue';
@@ -219,9 +226,11 @@ import { apiService, ApiError } from '@/services/api.ts';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import { optionKey, useResearch, type OptionResearch } from '@/services/research';
 
+const props = defineProps<{ planId?: string }>();
 const emit = defineEmits<{
   (e: 'navigate', frame: string): void;
   (e: 'published', form: Form): void;
+  (e: 'draft-saved', id: string): void;
 }>();
 
 const steps = ['Basics', 'Options', 'Overview', 'Questions', 'Review'];
@@ -240,7 +249,7 @@ const roles = [
 const auth = useAuthStore();
 const recoveryKey = checkpointKey(auth.userID, 'creator');
 const saved = readCheckpoint<{ form: Form; step: number; visited: number; researchOptions?: Record<string, OptionResearch> }>(recoveryKey);
-const restored = saved && Array.isArray(saved.form?.questions) && Array.isArray(saved.form?.decisionOptions) && saved.form.state === 'Draft' ? saved : undefined;
+const restored = saved && (!props.planId || saved.form?.id === props.planId) && Array.isArray(saved.form?.questions) && Array.isArray(saved.form?.decisionOptions) && saved.form.state === 'Draft' ? saved : undefined;
 const currentStep = ref(restored ? Math.max(1, Math.min(5, restored.step || 1)) : 1);
 const visited = ref(restored?.visited || currentStep.value);
 const direction = ref(1);
@@ -260,12 +269,20 @@ function keyOf(item: object) { if (!keys.has(item)) keys.set(item, nextKey++); r
 function identity(option: DecisionOption) { return option.identity ??= { source_url: '' }; }
 
 let alive = true;
-onScopeDispose(() => { alive = false; });
+let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
+onScopeDispose(() => { alive = false; clearTimeout(autoSaveTimer); });
+const loadingDraft = ref(false); const draftLoadError = ref(''); const serverSaveError = ref('');
 // Fact finding needs saved options (with IDs) and a draft round to research against.
 let draftSave = Promise.resolve();
 function saveDraftQuietly() {
+  clearTimeout(autoSaveTimer);
   const save = draftSave.catch(() => undefined).then(async () => {
-    if (alive) await apiService.saveFormDraft(form, auth.userID, auth.username);
+    if (alive) {
+      form.wizardStep=currentStep.value;form.wizardVisited=visited.value;
+      await apiService.saveFormDraft(form, auth.userID, auth.username);
+      serverSaveError.value=''; recoveryMessage.value='Draft saved to the server. You can resume it from My forms using this session.';
+      emit('draft-saved',form.id);
+    }
   });
   draftSave = save;
   return save;
@@ -273,11 +290,38 @@ function saveDraftQuietly() {
 const research = useResearch(form, saveDraftQuietly);
 const recoveryMessage = ref(restored ? 'Draft restored. Your changes and current step are kept in this browser tab.' : 'Changes are saved in this browser tab as you work.');
 const storageFailed = ref(false);
+const comparisonQuestions=computed(()=>form.questions.filter(q=>q.role!=='informational' && q.criterion));
+// Definition changes invalidate both machine estimates and earlier approvals.
+function syncFactSignatures(){
+  if(loadingDraft.value)return;
+  for(const o of form.decisionOptions || []) for(const q of form.questions) {
+    const fact=o.facts.find(f=>f.criterion===q.criterion); if(!fact)continue;
+    const signature=comparisonSignature(form,o,q);
+    if(fact.context?.input_signature===signature)continue;
+    if(fact.context?.input_signature && fact.context.input_signature!==signature) fact.status='estimated';
+    fact.context={...fact.context,...(fact.context?.input_signature && fact.context.input_signature!==signature ? {stale:true} : {}),input_signature:signature};
+  }
+}
+watch(()=>JSON.stringify([form.currency,form.location,form.decisionQuestion,form.decisionOptions?.map(o=>[o.title,o.summary,o.identity]),form.questions.map(q=>[q.criterion,q.title,q.type,q.role,q.options,q.unit,q.scale])]),syncFactSignatures,{flush:'sync',immediate:true});
+watch(()=>form.currency,()=>{for(const q of form.questions)if(q.criterion==='max_cost')q.unit=form.currency || 'SGD';});
+async function loadServerDraft(){
+  if(!props.planId)return;
+  loadingDraft.value=true;draftLoadError.value='';
+  try{ const row=await apiService.loadFormDraft(props.planId);
+    if(restored && restored.form.roundId===row.roundId)return;
+    Object.assign(form,row);
+    if(!form.decisionOptions?.length)form.decisionOptions=[{title:'',facts:[]},{title:'',facts:[]}];
+    currentStep.value=Math.max(1,Math.min(5,row.wizardStep || 1));visited.value=Math.max(currentStep.value,row.wizardVisited || 1);
+    recoveryMessage.value='Saved draft loaded from the server. Review any changes before publishing.';
+  }catch(e){draftLoadError.value=e instanceof Error ? e.message:'Could not load the saved draft.';}
+  finally{loadingDraft.value=false;syncFactSignatures();}
+}
+async function saveServerDraft(){try{await saveDraftQuietly();}catch(e){serverSaveError.value=`Server save failed. Your edits remain in this tab. ${e instanceof Error ? e.message : ''}`;}}
 for (const option of form.decisionOptions || []) {
   if (option.brief) {
-    option.overview = { ...option.brief };
+    if(option.brief.source!=='organiser')option.overview = { ...option.brief,source:option.brief.source };
     const status = restored?.researchOptions?.[optionKey(option)];
-    if (status?.status === 'done') research.state.options[optionKey(option)] = status;
+    if (status) research.state.options[optionKey(option)] = status;
   }
 }
 watch([form, currentStep, visited, research.state.options], () => {
@@ -286,9 +330,13 @@ watch([form, currentStep, visited, research.state.options], () => {
   const copy = JSON.parse(JSON.stringify(form)) as Form;
   for (const option of copy.decisionOptions || []) delete option.overview;
   storageFailed.value = !writeCheckpoint(recoveryKey, { form: copy, step: currentStep.value, visited: visited.value, researchOptions: research.state.options });
+  clearTimeout(autoSaveTimer);
+  if(alive && !loadingDraft.value && !draftLoadError.value && !isSaving.value && form.title.trim() && form.category && !form.publishAttempted) autoSaveTimer=setTimeout(saveServerDraft,800);
 }, { deep: true, flush: 'sync' });
 onMounted(async () => {
-  if (!restored || form.publishAttempted) return;
+  await loadServerDraft();
+  if (draftLoadError.value || (!restored && !props.planId) || form.publishAttempted) return;
+  for(const option of form.decisionOptions || []) for(const q of form.questions){const f=option.facts.find(f=>f.criterion===q.criterion);if(f?.context?.research_refresh_id) await research.researchAgain(option,q,String(f.context.research_note || ''));}
   if (currentStep.value >= 3) {
     startOverviews();
     for (const option of form.decisionOptions || []) if (option.identity?.place_id && form.roundId) {
@@ -309,7 +357,8 @@ async function changeKind(option: DecisionOption, kind: OptionKind) {
   option.identity = { ...option.identity, kind, ...(kind === 'place' || kind === 'destination' ? {} : { place_id: undefined }) };
   await retryOverview(option);
 }
-async function retryOverview(option: DecisionOption) { delete research.state.options[optionKey(option)]; await research.overviews(); }
+async function retryOverview(option: DecisionOption) { try{await research.overviews(option);}catch(e){research.state.message=e instanceof Error ? e.message:'The draft could not be saved for research. Your current overview was kept.';} }
+function correctOverview(option:DecisionOption,value:string){ option.summary=value;option.brief={source:'organiser',summary:value,highlights:[],price_note:'',when:'',where:'',sources:[],input_signature:overviewSignature(form,option)}; }
 
 function canFit(q: Question) { return !!q.criterion && (q.criterion === 'max_cost' ? q.type === 'Number' : q.type === 'Boolean' || (hasChoices(q) && q.options.filter(o => o.trim()).length >= 2)); }
 function missingFor(criterion: string) { return (form.decisionOptions || []).filter(o => !o.facts.some(f => f.criterion === criterion && f.value.trim())).map(o => o.title); }
@@ -377,6 +426,7 @@ const warnings = computed(() => {
     if (q.role === 'informational' || !q.criterion) continue;
     const missing = missingFor(q.criterion);
     if (missing.length) list.push(`“${q.title}” can’t be compared for ${missing.join(', ')} yet because matching option facts are missing. Ranking may be blocked until these are researched or the question is changed to context only.`);
+    else if((form.decisionOptions || []).some(o=>{const f=o.facts.find(f=>f.criterion===q.criterion);return !validFact(f,q)||factStatus(f)!=='confirmed';})) list.push(`Review and confirm the comparison facts for “${q.title}” before publishing.`);
   }
   if (form.questions.length && !form.questions.some(q => q.role !== 'informational')) list.push('Every question is context only, so all options will rank equally.');
   return list;
@@ -440,7 +490,8 @@ function goToStep(target: number) {
 const dirty = computed(() => !!(form.title || form.description || form.category || form.location || form.startDateRange || form.decisionOptions?.some(o => o.title)));
 function leave() {
   if (storageFailed.value && dirty.value && !window.confirm('Browser storage is unavailable. Leaving may lose your unsaved edits. Continue?')) return;
-  emit('navigate', 'dashboard');
+  if(form.title.trim() && form.category && !form.publishAttempted){saveServerDraft().then(()=>{if(!serverSaveError.value)emit('navigate','dashboard');});}
+  else emit('navigate', 'dashboard');
 }
 
 function addDecisionOption() { form.decisionOptions?.push({ title: '', facts: [], identity: { source_url: '' } }); }
@@ -474,6 +525,7 @@ const submitForm = async (): Promise<void> => {
   for (let s = 1; s < 5; s++) if (problem(s)) { goToStep(s + 1); return; }
   form.questions.forEach(ensureCriterion);
   isSaving.value = true; saveError.value = '';
+  clearTimeout(autoSaveTimer);
   try {
     // Empty choice rows are a typing convenience, not answers.
     for (const q of form.questions) if (hasChoices(q)) q.options = q.options.map(o => o.trim()).filter(Boolean); else q.options = [];

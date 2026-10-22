@@ -1,6 +1,11 @@
 <template>
   <section v-if="snapshot && draft" :class="['response-flow', { guided }]" aria-labelledby="flow-heading">
     <p v-if="recoveryNotice" class="helper-text">{{ recoveryNotice }}</p>
+    <div v-if="snapshot.previous_round_id && draft.revision === 0 && !closed" class="callout">
+      <p>This is a new round. You can copy your earlier answers, then review them against the revised options and confirm requirements again.</p>
+      <button :disabled="busy" @click="copyEarlier">Copy my earlier answers</button>
+      <p v-if="error" role="alert">{{ error }}</p>
+    </div>
     <div v-if="page.kind !== 'intro' && page.kind !== 'done'" class="flow-progress">
       <span class="meter" aria-hidden="true"><span :style="{ '--value': progressValue }"></span></span>
       <span class="progress-text">{{ progressLabel }}</span>
@@ -297,6 +302,10 @@ async function submit() {
     draft.value = await apiService.submit(props.roundId, draft.value!.revision);
   });
   if (ok) { direction.value = 1; submitted.value = true; }
+}
+async function copyEarlier(){
+  const ok=await action('copy',async()=>{await apiService.copyResponse(props.roundId,props.snapshot.previous_round_id!);});
+  if(ok){await load();review.value=undefined;confirmed.value=false;recoveryNotice.value='Earlier answers copied as a draft. Check each answer and review requirements again before submitting.';}
 }
 async function load() { await action('load', async () => {
   const own = await apiService.draft(props.roundId); draft.value = own; privateNote.value = own.privateNote || '';

@@ -23,7 +23,8 @@
         <details v-if="data?.review_summary" class="reviews"><summary>What reviewers say</summary><p>{{ data.review_summary }}</p><p v-if="data.review_disclosure" class="disclosure">{{ data.review_disclosure }}</p></details>
         <p class="provenance">
           <a v-if="data?.maps_url" :href="data.maps_url" target="_blank" rel="noopener noreferrer">View on Google Maps</a>
-          <span v-if="source === 'ai_general'">General description by AI, not about a specific venue.</span>
+          <span v-if="source === 'organiser'">Overview corrected by the organiser.</span>
+          <span v-else-if="source === 'ai_general'">General description by AI, not about a specific venue.</span>
           <span v-else-if="sources.length">Summary from <template v-for="(s, si) in sources" :key="s.url"><a :href="s.url" target="_blank" rel="noopener noreferrer">{{ s.title || 'the web' }}</a><template v-if="si < sources.length - 1">, </template></template></span>
         </p>
       </template>

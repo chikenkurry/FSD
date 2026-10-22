@@ -15,15 +15,15 @@
     <Transition name="reveal"><div v-if="error" class="app-error" role="alert"><span>{{ error }}</span><button class="btn-quiet btn-small" @click="error = ''">Dismiss</button></div></Transition>
     <Transition name="view" mode="out-in">
       <Login v-if="!auth.token" :invited="!!inviteToken" @navigate="afterLogin" />
-      <RoundWorkspace v-else-if="roundId" :key="roundId" :round-id="roundId" :invite-token="inviteToken" @open-round="openRound" />
-      <FormCreator v-else-if="frame === 'creator'" @navigate="frame = $event" @published="published" />
-      <FormsDashboard v-else @navigate="frame = $event" @open-plan="openPlan" />
+      <RoundWorkspace v-else-if="roundId" :key="roundId" :round-id="roundId" :invite-token="inviteToken" @open-round="openRound" @open-draft="openDraft" />
+      <FormCreator v-else-if="frame === 'creator'" :plan-id="creatorPlanId" @navigate="navigate" @draft-saved="draftSaved" @published="published" />
+      <FormsDashboard v-else @navigate="navigate" @open-plan="openPlan" />
     </Transition>
   </div>
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { checkpointKey, readCheckpoint, writeCheckpoint } from '@/services/checkpoints';
+import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import BrandMark from '@/components/BrandMark.vue';
 import Login from '@/components/Login.vue';
 import FormsDashboard from '@/components/FormsDashboard.vue';
@@ -33,17 +33,31 @@ import { useAuthStore } from '@/stores/auth';
 import { apiService, ApiError } from '@/services/api';
 import type { Form } from '@/types/form';
 const auth = useAuthStore(); const frame = ref(readCheckpoint<string>(checkpointKey(auth.userID, 'screen')) === 'creator' ? 'creator' : 'dashboard'); const roundId = ref(''); const inviteToken = ref(''); const error = ref(''); const copied = ref(false);
+const creatorPlanId=ref('');
 watch(frame, value => { if (auth.userID) writeCheckpoint(checkpointKey(auth.userID, 'screen'), value); }, { flush: 'sync' });
 const menu = ref<HTMLDetailsElement>();
 function message(e: unknown) { return e instanceof Error ? e.message : String(e); }
 function focusContent() { const main = document.getElementById('main-content'); main?.focus(); main?.scrollIntoView(); }
-function readLink() { const params = new URLSearchParams(location.hash.slice(1)); roundId.value = params.get('round') || ''; inviteToken.value = params.get('invite') || ''; }
+function readLink() { const params = new URLSearchParams(location.hash.slice(1)); roundId.value = params.get('round') || ''; inviteToken.value = params.get('invite') || ''; creatorPlanId.value=params.get('draft') || ''; if(creatorPlanId.value)frame.value='creator'; }
 readLink();
 function openRound(id: string) { error.value = ''; location.hash = new URLSearchParams({ round: id }).toString(); readLink(); }
 function dashboard() { error.value = ''; location.hash = ''; readLink(); frame.value = 'dashboard'; }
+function navigate(next:string){ if(next==='creator'){removeCheckpoint(checkpointKey(auth.userID,'creator'));creatorPlanId.value='';location.hash='';readLink();frame.value='creator';}else dashboard(); }
+function openDraft(id:string){location.hash=new URLSearchParams({draft:id}).toString();readLink();frame.value='creator';}
+function draftSaved(id:string){history.replaceState(null,'',`/#${new URLSearchParams({draft:id})}`);creatorPlanId.value=id;}
 function published(form: Form) { if (form.roundId) openRound(form.roundId); }
 function afterLogin() { readLink(); frame.value = readCheckpoint<string>(checkpointKey(auth.userID, 'screen')) === 'creator' ? 'creator' : 'dashboard'; }
-async function openPlan(id: string) { const local = readCheckpoint<{ form: Form }>(checkpointKey(auth.userID, 'creator')); if (local?.form.id === id && local.form.state === 'Draft') { location.hash = ''; readLink(); frame.value = 'creator'; return; } try { const result = await apiService.rounds(id); const latest = [...result.data].sort((a,b) => b.round_number-a.round_number)[0]; if (!latest) throw new Error('This draft has no published round yet. Finish it in the creator.'); openRound(latest.id); } catch(e) { error.value = message(e); } }
+async function openPlan(id: string) {
+  try {
+    const plan=await apiService.plan(id);
+    if(plan.state==='DRAFT' && plan.created_by_user_id===auth.userID){openDraft(id);return;}
+    const result=await apiService.rounds(id);
+    for(const round of [...result.data].sort((a,b)=>b.round_number-a.round_number)){
+      try{await apiService.snapshot(round.id);openRound(round.id);return;}catch(e){if(!(e instanceof ApiError && e.status===404))throw e;}
+    }
+    throw new Error('The organiser has not published a round yet.');
+  }catch(e){error.value=message(e);}
+}
 async function copySession() { try { await navigator.clipboard.writeText(JSON.stringify({ user_id: auth.userID, session_token: auth.token })); copied.value = true; setTimeout(() => { copied.value = false; }, 2400); } catch { error.value = 'Clipboard unavailable. Select and copy your session fields manually.'; } }
 async function logout() { try { await apiService.revoke(); auth.logout(); } catch(e) { if(e instanceof ApiError && e.status === 401) auth.logout(); else error.value = message(e); } }
 function closeMenu() { if (menu.value?.open) { menu.value.open = false; menu.value.querySelector('summary')?.focus(); } }

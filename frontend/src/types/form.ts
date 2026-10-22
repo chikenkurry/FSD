@@ -44,6 +44,9 @@ export interface Form {
   publishAttempted?: boolean;
   removedOptionIds?: string[];
   removedQuestionIds?: string[];
+  wizardStep?: number;
+  wizardVisited?: number;
+  sourceRoundId?: string;
 }
 
 export interface LoginPayload {
@@ -52,13 +55,13 @@ export interface LoginPayload {
   rememberMe?: boolean;
 }
 
-export interface Fact { criterion: string; value: string; valueType: 'category' | 'number' | 'boolean' | 'tag_set' | 'decimal'; unit: string; source: string; context?: FactContext }
+export interface Fact { criterion: string; value: string; valueType: 'category' | 'number' | 'boolean' | 'tag_set' | 'decimal'; unit: string; source: string; status?: 'confirmed' | 'estimated' | 'unknown'; context?: FactContext }
 // Provenance written by Planning when an organiser accepts a web-sourced claim.
 export interface FactContext { claim_id?: string; sources?: { url: string; title?: string }[]; source_text?: string; retrieved_at?: string; qualifier?: string; [key: string]: unknown }
 export type OptionKind = 'place' | 'destination' | 'event' | 'activity' | 'other';
 export interface DecisionOption { id?: string; title: string; facts: Fact[]; identity?: { source_url?: string; place_id?: string; kind?: OptionKind }; overview?: Overview; summary?: string; brief?: Brief }
 // The stored, publishable part of an overview: written by web search or AI, never copied from Google Places.
-export interface Brief { source: 'web_search' | 'ai_general'; summary: string; highlights: string[]; price_note: string; when: string; where: string; sources: { url: string; title?: string }[] }
+export interface Brief { source: 'web_search' | 'ai_general' | 'organiser'; summary: string; highlights: string[]; price_note: string; when: string; where: string; sources: { url: string; title?: string }[]; input_signature?:string }
 // Display-only research about an option. Place content is fetched live and never stored.
 export interface Overview { source: 'google_places' | 'web_search' | 'ai_general'; name?: string; summary?: string; review_summary?: string; review_disclosure?: string;
   highlights?: string[]; rating?: number | null; rating_count?: number | null; price_level?: number | null; price_note?: string; when?: string; where?: string;
@@ -72,10 +75,10 @@ export interface FactClaim { claim_id: string; option_id: string; attribute_id: 
 export interface FactCollectionRun { run_id: string; status: string; issues: { code: string; fields?: string[] }[]; collection?: { claims: FactClaim[]; issues: { code: string }[]; grounding?: { searchEntryPoint?: { renderedContent?: string } } } }
 export interface Session { id: string; username: string; session_token: string }
 export interface PlanRow { id: string; title: string; description?: string; category: string; state: string; created_by_user_id: string; members_count?: number; organiser_name?: string }
-export interface Round { id: string; round_number: number }
+export interface Round { id: string; round_number: number; source_round_id?: string }
 export type Choice = string | { choice_id: string; label: string };
 export interface PublishedQuestion { question_id: string; label: string; role?: string; criterion?: string; answer_format?: string; choices?: Choice[]; mapping?: { value_type?: string; unit?: string }; required?: boolean }
-export interface Snapshot { plan_id: string; round_id: string; option_revision: number; decision_question: string; currency: string; currency_minor_digits: number; execution_mode: string; questions: PublishedQuestion[]; options: { option_id: string; title: string; description?: string; facts?: PublishedFact[]; identity?: { place_id?: string; kind?: OptionKind; source_url?: string }; brief?: Brief }[] }
+export interface Snapshot { plan_id: string; round_id: string; previous_round_id?: string; option_revision: number; decision_question: string; currency: string; currency_minor_digits: number; execution_mode: string; questions: PublishedQuestion[]; options: { option_id: string; title: string; description?: string; facts?: PublishedFact[]; identity?: { place_id?: string; kind?: OptionKind; source_url?: string }; brief?: Brief }[] }
 export interface Answer { question_id: string; value: unknown; reviewed_revision?: number; confirmed_requirements?: unknown[] }
 export interface Draft {
   revision: number; status: string; acknowledgedOptionRevision: number;

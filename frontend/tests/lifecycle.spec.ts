@@ -108,7 +108,18 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
+  for(const checkbox of await page.getByLabel('I checked this value and confirm it can be used.').all())await checkbox.check();
   await expect(page.getByText('Worth checking before you publish')).toHaveCount(0);
+  // Recover from server data after discarding the tab-local creator checkpoint.
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const user=sessionStorage.getItem('user_id');const saved=JSON.parse(sessionStorage.getItem(`what2do:checkpoint:v1:${user}:creator`)!);
+    const response=await fetch(`/api/planning/v1/plans/details/${saved.form.id}`,{headers:{Authorization:`Bearer ${sessionStorage.getItem('session_token')}`}});
+    const row=await response.json();return row.proposed_activities?.length===2 && row.proposed_activities.every((o:{metadata?:{facts?:{context?:{reviewed?:boolean}}[]}})=>!!o.metadata?.facts?.length && o.metadata.facts.every(f=>f.context?.reviewed===true));
+  })).toBe(true);
+  await page.evaluate(()=>sessionStorage.removeItem(`what2do:checkpoint:v1:${sessionStorage.getItem('user_id')}:creator`));
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Review and publish'})).toBeVisible();
+  await expect(page.getByLabel('I checked this value and confirm it can be used.').first()).toBeChecked();
   await fits(page);
   await page.route('**/v1/rounds/*/publish', route => route.fulfill({ status: 503, contentType: 'application/json',
     body: JSON.stringify({ code: 'UPSTREAM_UNAVAILABLE', message: 'Temporary test outage' }) }), { times: 1 });
@@ -186,7 +197,6 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Confirm Cafe', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Confirmed selection', exact: true })).toBeVisible();
-  await member.getByRole('button', { name: 'Check for results', exact: true }).click();
   await expect(member.getByRole('heading', { name: 'Confirmed selection', exact: true })).toBeVisible();
   await member.getByRole('radio', { name: 'Going' }).check();
   await member.getByRole('button', { name: 'Save RSVP', exact: true }).click();
@@ -207,6 +217,23 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.getByLabel('Filter by status').selectOption('Confirmed');
   await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  await page.getByRole('button',{name,exact:true}).click();
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByRole('button',{name:'Revise in a new round',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Review and publish'})).toBeVisible();
+  await expect(page.getByTestId('fact-Cafe-environment')).toBeVisible();
+  await page.getByRole('button',{name:'Publish form',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Organiser controls'})).toBeVisible();
+  await member.getByRole('button',{name:'My forms',exact:true}).click();
+  await expect(member.getByRole('button',{name,exact:true})).toBeVisible();
+  await member.getByRole('button',{name,exact:true}).click();
+  await member.getByRole('button',{name:'Copy my earlier answers'}).click();
+  await expect(member.getByText('Earlier answers copied as a draft.',{exact:false})).toBeVisible();
+  // Reopening cannot change the earlier saved selection or attendance.
+  await member.goto(`${new URL(member.url()).origin}/${roundHash}`);
+  await expect(member.getByRole('heading',{name:'Confirmed selection',exact:true})).toBeVisible();
+  await expect(member.getByRole('radio',{name:'Going',exact:true})).toBeChecked();
+  await expect(member.getByRole('radio',{name:'Going',exact:true})).toBeDisabled();
   await context.close();
 });
 
@@ -224,7 +251,7 @@ test('public browser proxy never exposes internal APIs', async ({ request }) => 
 test('dashboard recovery, long content and session details fit the viewport', async ({ page }, info) => {
   const longTitle = 'A'.repeat(255);
   let attempts = 0;
-  await page.route('**/v1/plans/organiser/*', route => {
+  await page.route('**/v1/plans/member/*', route => {
     attempts++;
     return route.fulfill(attempts === 1 ? {
       status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Synthetic outage' }),

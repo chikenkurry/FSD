@@ -6,7 +6,7 @@
     <template v-else-if="snapshot && plan">
       <header class="round-header page-heading">
         <div>
-          <div class="round-meta"><Transition name="swap" mode="out-in"><span :key="plan.state" :class="['badge', plan.state.toLowerCase()]">{{ stateLabel(plan.state) }}</span></Transition><span>{{ organiser ? 'You’re organising' : 'You’re a member' }}</span><span aria-hidden="true">·</span><span>Costs in {{ snapshot.currency }}</span></div>
+          <div class="round-meta"><Transition name="swap" mode="out-in"><span :key="displayState" :class="['badge', displayState.toLowerCase()]">{{ stateLabel(displayState) }}</span></Transition><span>{{ organiser ? 'You’re organising' : 'You’re a member' }}</span><span aria-hidden="true">·</span><span>Costs in {{ snapshot.currency }}</span></div>
           <h1>{{ plan.title }}</h1>
           <p v-if="snapshot.decision_question && snapshot.decision_question !== plan.title" class="decision-question">{{ snapshot.decision_question }}</p>
           <p v-if="plan.description" class="plan-description">{{ plan.description }}</p>
@@ -20,20 +20,24 @@
       </ol>
 
       <Transition name="reveal" mode="out-in">
-        <section class="panel organiser-panel" v-if="organiser && ['COLLECTING','REVIEWING'].includes(plan.state)" :key="plan.state" aria-labelledby="organiser-heading">
-          <div class="panel-heading"><div><h2 id="organiser-heading">Organiser controls</h2><p>{{ plan.state === 'COLLECTING' ? 'Share the invitation, then close collection once enough people have responded.' : 'Collection is closed. Calculate the recommendation to compare eligible options.' }}</p></div></div>
+        <section class="panel organiser-panel" v-if="organiser && !historical && ['COLLECTING','REVIEWING'].includes(plan.state)" :key="plan.state" aria-labelledby="organiser-heading">
+          <div class="panel-heading"><div><h2 id="organiser-heading">Organiser controls</h2><p>{{ plan.state === 'COLLECTING' ? 'Share the invitation, then close collection once every member has submitted.' : 'Collection is closed. Calculate the recommendation to compare eligible options.' }}</p></div></div>
           <div v-if="plan.state === 'COLLECTING'" class="collect-progress">
             <template v-if="readiness">
               <div class="collect-figure"><strong>{{ readiness.submitted }}</strong><span>of {{ readiness.members }} {{ readiness.members === 1 ? 'member has' : 'members have' }} submitted</span></div>
               <span class="meter" aria-hidden="true"><span :style="{ '--value': readiness.members ? readiness.submitted / readiness.members : 0 }"></span></span>
-              <p class="helper-text">Closing collection freezes the roster and any unfinished responses.</p>
+              <p class="helper-text">Closing collection freezes the roster and submitted responses.</p>
             </template>
             <p v-else-if="progressError" class="helper-text">{{ progressError }}</p>
           </div>
           <div class="actions">
             <button class="btn-primary" v-if="plan.state === 'COLLECTING' && !shareUrl" :disabled="busy" @click="makeInvite"><UiIcon name="people" />Create invitation link</button>
-            <button v-if="plan.state === 'COLLECTING'" :disabled="busy" @click="close">Close collection</button>
-            <button class="btn-primary" v-if="plan.state === 'REVIEWING'" :disabled="busy" @click="recommend">{{ calculating ? 'Calculating…' : run?.status === 'failed' ? 'Retry recommendation' : run ? 'Recalculate' : 'Calculate recommendation' }}<UiIcon v-if="!calculating" name="arrow" /></button>
+            <button v-if="plan.state === 'COLLECTING'" :disabled="busy || !readiness?.can_close" @click="close">Close collection</button>
+            <button class="btn-primary" v-if="plan.state === 'REVIEWING'" :disabled="busy || run?.status === 'pending'" @click="recommend">{{ calculating || run?.status === 'pending' ? 'Calculating…' : run?.status === 'failed' ? 'Retry recommendation' : run ? 'Recalculate' : 'Calculate recommendation' }}<UiIcon v-if="!calculating && run?.status !== 'pending'" name="arrow" /></button>
+          </div>
+          <div v-if="plan.state === 'COLLECTING' && readiness && !readiness.can_close" class="callout warning">
+            <p>Collection stays open until every member has submitted a complete, current response.</p>
+            <ul><li v-for="(member,index) in readiness.members_status.filter(m=>m.status!=='complete')" :key="index">{{ member.name }}: {{ member.status === 'stale' ? 'Needs to review the current form' : 'Awaiting complete submission' }}</li></ul>
           </div>
           <Transition name="reveal">
             <div v-if="shareUrl && plan.state === 'COLLECTING'" class="invitation-field">
@@ -46,13 +50,19 @@
       </Transition>
 
       <Transition name="reveal"><p v-if="!organiser && plan.state === 'REVIEWING' && !run" class="callout waiting">Collection has closed. The organiser is reviewing the options. Refresh status to check for the result.</p></Transition>
+      <p v-if="backgroundError" role="status" class="helper-text">{{ backgroundError }} <button @click="refresh">Retry status</button></p>
+      <section v-if="organiser && !historical && ['REVIEWING','CONFIRMED'].includes(plan.state)" class="panel">
+        <h2>Need to change the decision?</h2><p>Revise the options, facts or questions in a new round. This round and any confirmed choice remain in the history. Members review their answers again.</p>
+        <button :disabled="busy" @click="reopen">Revise in a new round</button>
+      </section>
+      <p v-if="historical" class="callout">You’re viewing an earlier round. Its result is preserved; RSVPs for it are read-only.</p>
 
       <section class="options-section" aria-labelledby="options-heading">
         <h2 id="options-heading">Options being considered <span class="muted">{{ snapshot.options.length }}</span></h2>
         <OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" :chosen="selection?.candidate_id" compact />
       </section>
 
-      <FormParticipantView v-if="plan.state === 'COLLECTING'" :round-id="roundId" :snapshot="snapshot" @saved="updateProgress" />
+      <FormParticipantView v-if="plan.state === 'COLLECTING' && !historical" :round-id="roundId" :snapshot="snapshot" @saved="updateProgress" />
 
       <Transition name="reveal">
         <section class="recommendation-section" v-if="run" aria-labelledby="recommendation-heading">
@@ -92,7 +102,7 @@
             <div><h2 id="selection-heading">Confirmed selection</h2><p class="selected-title">{{ selectedTitle }}</p></div>
           </div>
           <p class="muted">The choice is confirmed. Let your group know whether you’ll be joining.</p>
-          <fieldset class="rsvp" :disabled="busy">
+          <fieldset class="rsvp" :disabled="busy || historical">
             <legend>Your RSVP</legend>
             <div class="choice-list rsvp-options">
               <label v-for="o in rsvpOptions" :key="o.value" class="choice-option"><input type="radio" name="rsvp" :value="o.value" v-model="rsvpStatus" />{{ o.label }}</label>
@@ -112,18 +122,22 @@ import UiIcon from './UiIcon.vue';
 import FormParticipantView from './FormParticipantView.vue';
 import OptionCards from './OptionCards.vue';
 import { apiService, ApiError, request } from '@/services/api';
+import { operationId } from '@/services/ids';
 import { useAuthStore } from '@/stores/auth';
 import type { Snapshot, PlanRow, Run, Selection, Candidate } from '@/types/form';
 const props = defineProps<{ roundId: string; inviteToken?: string }>();
+const emit=defineEmits<{(event:'open-round',id:string):void;(event:'open-draft',id:string):void}>();
 const auth = useAuthStore(); const snapshot = ref<Snapshot>(); const plan = ref<PlanRow>();
 const run = ref<Run>(); const selection = ref<Selection>(); const busy = ref(false); const error = ref('');
 const shareUrl = ref(''); const copied = ref(false); const notice = ref(''); const calculating = ref(false);
-const readiness = ref<{ submitted: number; members: number }>(); const progressError = ref('');
+const readiness = ref<{ submitted: number; members: number; can_close:boolean; members_status:{name:string;status:string}[] }>(); const progressError = ref('');
+const backgroundError=ref('');const historical=ref(false);let pollTimer:ReturnType<typeof setTimeout> | undefined;let polling=false;
 const rsvpStatus = ref(''); const savedRsvp = ref(''); const rsvpRevision = ref(0); let alive = true;
 const rsvpOptions = [{ value: 'GOING', label: 'Going' }, { value: 'MAYBE', label: 'Maybe' }, { value: 'DECLINED', label: 'Not joining' }];
 const organiser = computed(() => plan.value?.created_by_user_id === auth.userID);
+const displayState=computed(()=>historical.value ? selection.value ? 'CONFIRMED':'REVIEWING' : plan.value?.state || '');
 // Members answer in a focused, page-by-page flow; organisers keep the full workspace.
-const memberCollecting = computed(() => !organiser.value && plan.value?.state === 'COLLECTING');
+const memberCollecting = computed(() => !organiser.value && !historical.value && plan.value?.state === 'COLLECTING');
 const hasPreferences = computed(() => snapshot.value?.questions.some(question => question.role === 'soft' || !question.role));
 const candidates = computed(() => run.value?.recommendation_view.recommendation ? [run.value.recommendation_view.recommendation, ...run.value.recommendation_view.alternatives] : []);
 const paretoIds = computed(() => new Set(run.value?.recommendation_view.pareto_alternatives.map(row => row.candidate_id)));
@@ -147,6 +161,8 @@ async function act(fn: () => Promise<void>) { if (busy.value) return; busy.value
 async function load() {
   snapshot.value = await apiService.snapshot(props.roundId);
   plan.value = await apiService.plan(snapshot.value.plan_id);
+  const rounds=await apiService.rounds(snapshot.value.plan_id);
+  historical.value=[...rounds.data].sort((a,b)=>b.round_number-a.round_number)[0]?.id!==props.roundId;
   run.value = await optional(() => apiService.result(props.roundId));
   selection.value = await optional(() => apiService.selection(props.roundId));
   if (selection.value) { const own = await apiService.rsvp(props.roundId); rsvpRevision.value = own.revision; rsvpStatus.value = savedRsvp.value = own.status || ''; }
@@ -156,8 +172,8 @@ async function refresh() { await act(load); }
 async function updateProgress() {
   if (!organiser.value || plan.value?.state !== 'COLLECTING') { readiness.value = undefined; return; }
   try {
-    const row = await request<{ member_count:number; progress: { submittedCount?:number } }>(`/api/planning/v1/rounds/${props.roundId}/readiness`);
-    readiness.value = { submitted: row.progress.submittedCount || 0, members: row.member_count }; progressError.value = '';
+    const row = await request<{ member_count:number; complete_count:number; can_close:boolean; members:{name:string;status:string}[]; progress: { submittedCount?:number } }>(`/api/planning/v1/rounds/${props.roundId}/readiness`);
+    readiness.value = { submitted: row.complete_count, members: row.member_count, can_close:row.can_close, members_status:row.members }; progressError.value = '';
   } catch { readiness.value = undefined; progressError.value = 'Progress could not be loaded. Refresh before closing.'; }
 }
 async function makeInvite() { await act(async () => { const invite=await apiService.invite(snapshot.value!.plan_id,auth.userID); shareUrl.value=`${location.origin}/#${new URLSearchParams({round:props.roundId,invite:invite.token})}`; }); }
@@ -167,12 +183,34 @@ async function close() {
   if (!window.confirm(`Close collection?${count} This freezes the roster and responses; members can’t edit afterwards.`)) return;
   await act(async () => { await apiService.close(props.roundId); await load(); });
 }
-async function recommend() { calculating.value = true; await act(async () => { run.value=await apiService.recommend(props.roundId); const until=Date.now()+30000; while(alive && run.value.status==='pending' && Date.now()<until) { await new Promise(resolve=>setTimeout(resolve,500)); if (alive) run.value=await apiService.result(props.roundId); } }); calculating.value = false; }
+async function recommend() { calculating.value=true;await act(async()=>{run.value=await apiService.recommend(props.roundId);});calculating.value=false;schedulePoll(); }
+async function reopen(){
+  if(!window.confirm('Create a new editable round? Existing results and RSVPs stay attached to this round.'))return;
+  await act(async()=>{const key=`reopen:${props.roundId}`;const operation=sessionStorage.getItem(key)||operationId();sessionStorage.setItem(key,operation);
+    await apiService.reopen(props.roundId,operation);emit('open-draft',snapshot.value!.plan_id);});
+}
+function schedulePoll(){clearTimeout(pollTimer);if(alive && !selection.value)pollTimer=setTimeout(pollStatus,run.value?.status==='pending'?1000:5000);}
+async function pollStatus(){
+  if(!alive)return;
+  if(document.hidden || busy.value || polling){schedulePoll();return;}
+  polling=true;
+  try{
+    const current=await apiService.plan(snapshot.value!.plan_id);if(!alive)return;const previousState=plan.value?.state;plan.value=current;
+    if(current.state!==previousState){const rounds=await apiService.rounds(snapshot.value!.plan_id);if(alive)historical.value=[...rounds.data].sort((a,b)=>b.round_number-a.round_number)[0]?.id!==props.roundId;}
+    if(current.state==='COLLECTING' && !historical.value){await updateProgress();backgroundError.value='';return;}
+    const latestRun=await optional(()=>apiService.result(props.roundId));if(!alive)return;run.value=latestRun;
+    const chosen=await optional(()=>apiService.selection(props.roundId));if(!alive)return;
+    if(chosen && !selection.value){selection.value=chosen;const own=await apiService.rsvp(props.roundId);if(!alive)return;rsvpRevision.value=own.revision;rsvpStatus.value=savedRsvp.value=own.status || '';}
+    await updateProgress();backgroundError.value='';
+  }catch{if(alive)backgroundError.value='Status could not be updated. Your saved response and background calculation are retained; updates will retry.';}
+  finally{polling=false;schedulePoll();}
+}
+function visible(){if(!document.hidden && alive && snapshot.value){clearTimeout(pollTimer);void pollStatus();}}
 async function confirm(candidate: Candidate) {
   if (!window.confirm(`Confirm “${candidate.title}” as the group’s choice? Members will be asked to RSVP.`)) return;
   await act(async () => {
     const key=`confirmation:${props.roundId}:${run.value!.run_id}:${candidate.candidate_id}`;
-    const operation=sessionStorage.getItem(key)||crypto.randomUUID();sessionStorage.setItem(key,operation);
+    const operation=sessionStorage.getItem(key)||operationId();sessionStorage.setItem(key,operation);
     selection.value=await apiService.confirm(props.roundId,run.value!.run_id,candidate.candidate_id,operation); await load();
   });
 }
@@ -187,8 +225,8 @@ onMounted(async () => { await act(async () => {
   }
   await load();
   if (props.inviteToken) history.replaceState(null, '', `/#${new URLSearchParams({round:props.roundId})}`);
-}); });
-onUnmounted(()=>{alive=false;});
+}); if(!alive)return;if(snapshot.value)schedulePoll();document.addEventListener('visibilitychange',visible); });
+onUnmounted(()=>{alive=false;clearTimeout(pollTimer);document.removeEventListener('visibilitychange',visible);});
 </script>
 <style scoped>
 .workspace { max-width: 1200px; margin: auto; padding: 48px 32px 80px; }
