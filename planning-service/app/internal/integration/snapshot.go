@@ -23,7 +23,8 @@ type Settings struct {
 	Canonicalization map[string]any   `json:"canonicalization,omitempty"`
 	GroupObjective   map[string]any   `json:"group_objective,omitempty"`
 	// DecisionQuestion is the question members help answer; the plan title is used when empty.
-	DecisionQuestion string `json:"decision_question,omitempty"`
+	DecisionQuestion     string `json:"decision_question,omitempty"`
+	InterpretationPolicy string `json:"interpretation_policy,omitempty"`
 }
 
 func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, settings Settings) (map[string]any, error) {
@@ -123,6 +124,9 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 		"execution_context": map[string]any{"candidates": candidates}}
 	if round.SourceRoundID != nil {
 		snapshot["previous_round_id"] = round.SourceRoundID.String()
+	}
+	if settings.InterpretationPolicy != "" {
+		snapshot["interpretation_policy"] = settings.InterpretationPolicy
 	}
 	if settings.Criteria != nil {
 		snapshot["criteria"] = settings.Criteria

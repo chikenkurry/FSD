@@ -15,7 +15,7 @@ BOUND_RULES = {"maximum": "maximum_v1", "minimum": "minimum_v1", "less_than": "l
 BOUND_WORDS = {
     "at least": "minimum", "minimum": "minimum", "no less than": "minimum",
     "at most": "maximum", "maximum": "maximum", "no more than": "maximum",
-    "under": "less_than", "less than": "less_than", "over": "greater_than",
+    "under": "less_than", "below": "less_than", "less than": "less_than", "over": "greater_than", "above": "greater_than",
     "more than": "greater_than", "greater than": "greater_than",
 }
 BOUND_PATTERN = "|".join(re.escape(word) for word in sorted(BOUND_WORDS, key=len, reverse=True))

@@ -3,7 +3,7 @@
     "schema_version": "sparse-v4",
     "round_id": "product-1",
     "option_revision": "1",
-    "processing_version": "sparse-v11",
+    "processing_version": "sparse-v12",
     "policy_version": "generic-question-relevance-v1",
     "option_snapshot_id": "products-1-intent-v2",
     "response_snapshot_id": "product-responses-1",

@@ -30,7 +30,7 @@ from .semantics import (
 
 
 SCHEMA_VERSION = "sparse-v4"
-VERSION = "sparse-v11"
+VERSION = "sparse-v12"
 
 
 def _slug(value: str) -> str:
@@ -204,6 +204,8 @@ def preprocess_sparse(
         if responses.get("round_id") != round_id or responses.get("option_revision") != revision:
             raise InputError("STALE_SNAPSHOT", "responses", "Response round or option revision does not match planning")
         decision = require_text(planning.get("decision_question"), "planning.decision_question")
+        interpretation_policy = require_in(planning.get("interpretation_policy", "choice-labels-v1"),
+                                           {"choice-labels-v1", "facts-v1"}, "planning.interpretation_policy")
         context = {"decision_question": decision, "currency": planning.get("currency"),
                    "cost_scope": planning.get("cost_scope"),
                    "details": require_object(planning.get("context", {}), "planning.context")}
@@ -243,6 +245,8 @@ def preprocess_sparse(
                 raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence", "Evidence does not match these snapshots")
             if semantic_evidence.get("scenario_policy", {"max_requests": DEFAULT_MAX_SCENARIO_REQUESTS}) != {"max_requests": scenario_limit}:
                 raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence.scenario_policy", "Scenario policy differs from the recorded run")
+            if semantic_evidence.get("interpretation_policy", "choice-labels-v1") != interpretation_policy:
+                raise InputError("STALE_SEMANTIC_EVIDENCE", "semantic_evidence.interpretation_policy", "Interpretation policy differs from the recorded run")
             assessments = require_object(semantic_evidence.get("question_assessments"), "semantic_evidence.question_assessments")
             extracted = require_object(semantic_evidence.get("answer_assessments"), "semantic_evidence.answer_assessments")
             suggestions = require_object(semantic_evidence.get("option_suggestions", {}), "semantic_evidence.option_suggestions")
@@ -346,7 +350,11 @@ def preprocess_sparse(
                 intent, intent_source = question_numeric_intent({**question, **({"numeric_intent": item["numeric_intent"]} if "numeric_intent" in item else {})}, item.get("mapping"))
                 question.update(numeric_intent=intent, numeric_intent_source=intent_source)
             question["mapping"] = resolve_mapping(question, registry, candidates, context, item.get("mapping"))
-            canonicalizer.register_choices(question)
+            # Existing rounds keep their declared-choice semantics. New forms
+            # resolve answer wording against sourced fact vocabulary instead;
+            # declaring a choice must not make it an option fact or synonym.
+            if interpretation_policy == "choice-labels-v1":
+                canonicalizer.register_choices(question)
             if question["mapping"]["status"] == "unresolved" and question["role"] != "unclassified":
                 issues.append(_issue("UNRESOLVED_QUESTION_MAPPING", path, "Define a supported comparison or numeric scale for this question"))
         soft = [q for q in questions if q["role"] == "soft"]
@@ -391,7 +399,8 @@ def preprocess_sparse(
                                | {q["criterion"] for q in questions if q["role"] == "soft" and q["weight"]
                                   and q["question_id"] not in answered_questions and q["criterion"] in candidate["missing_criteria"]})
             requested = [aid for aid in requested if registry.get(aid, {}).get("value_type") in {"category", "tag_set"}]
-            if option_id not in suggestions and requested and semantic_provider is not None and hasattr(semantic_provider, "suggest_option_tags"):
+            if (interpretation_policy == "choice-labels-v1" and option_id not in suggestions and requested
+                    and semantic_provider is not None and hasattr(semantic_provider, "suggest_option_tags")):
                 suggestions[option_id] = semantic_provider.suggest_option_tags(
                     {"option_id": option_id, "title": candidate["title"], "description": candidate["description"]}, requested, context,
                 )
@@ -434,6 +443,7 @@ def preprocess_sparse(
                                            "canonical_assessments": canonical_assessments,
                                            "canonicalization_enabled": canonicalizer.model_enabled,
                                            "canonicalization_declarations": canonicalizer.declarations,
+                                           "interpretation_policy": interpretation_policy,
                                            "scenario_policy": {"max_requests": scenario_limit}}
         artifact_id = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
         handoff = {"context": {"schema_version": SCHEMA_VERSION, "round_id": round_id, "option_revision": revision,
