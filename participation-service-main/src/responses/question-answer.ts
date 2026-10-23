@@ -7,7 +7,7 @@ export class QuestionDefinitionDto {
   @IsBoolean()
   required!: boolean;
 
-  @IsIn(['text', 'choice', 'multi_choice', 'number', 'boolean', 'date_intervals', 'option_rating'])
+  @IsIn(['text', 'choice', 'multi_choice', 'number', 'boolean', 'date_intervals', 'option_rating', 'date_poll'])
   answerFormat!: string;
 
   @IsOptional()

@@ -62,6 +62,12 @@ export function validateQuestionAnswers(
 
 function matchesQuestionValue(value: unknown, definition: QuestionDefinitionDto): boolean {
   if (!matchesFormat(value, definition.answerFormat)) return false;
+  if (definition.answerFormat === 'date_poll') {
+    // Each proposed date gets yes, maybe or no; only published dates can be answered.
+    const dates = new Set((definition.choices ?? []).map(choice => String(choice)));
+    return Object.entries(value as Record<string, unknown>)
+      .every(([day, answer]) => dates.has(day) && ['yes', 'maybe', 'no'].includes(answer as string));
+  }
   if (definition.answerFormat !== 'choice' && definition.answerFormat !== 'multi_choice') return true;
   const choices = (definition.choices ?? []).map(choice =>
     typeof choice === 'object' && choice !== null ? (choice as { choice_id?: unknown }).choice_id : choice,
@@ -81,6 +87,8 @@ function matchesFormat(value: unknown, format: string): boolean {
     case 'multi_choice':
     case 'date_intervals':
       return Array.isArray(value);
+    case 'date_poll':
+      return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length <= 31;
     case 'option_rating':
       // Option ID -> whole-number rating from 0 (not for me) to 4 (love it).
       return typeof value === 'object' && value !== null && !Array.isArray(value)

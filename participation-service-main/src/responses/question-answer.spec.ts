@@ -101,3 +101,24 @@ describe('direct ratings, importance and early close', () => {
       .rejects.toMatchObject({code: 'RESPONSES_INCOMPLETE'});
   });
 });
+
+describe('date polls', () => {
+  const pollId = '32345678-1234-4234-8234-123456789abc';
+  function pollSetup() {
+    const rounds = new InMemoryRoundRepository();
+    rounds.rounds.set(ROUND_ID, aRound({questions: [{questionId: pollId, required: true, answerFormat: 'date_poll', choices: ['2027-06-01', '2027-06-02']}],
+      memberIds: [MEMBER_1], currency: 'USD'}));
+    return new ResponsesService(rounds, new InMemoryResponseRepository(rounds));
+  }
+
+  it('accepts yes, maybe or no for published dates only', async () => {
+    const service = pollSetup();
+    await expect(service.saveDraft(ROUND_ID, member, aDraft({activityAnswers: [], budget: {kind: 'UNANSWERED'},
+      answers: [{question_id: pollId, value: {'2027-06-01': 'yes', '2027-06-02': 'maybe'}}]}))).resolves.toMatchObject({revision: 1});
+    for (const value of [{'2027-06-05': 'yes'}, {'2027-06-01': 'sure'}, ['2027-06-01']]) {
+      await expect(service.saveDraft(ROUND_ID, member, aDraft({expectedRevision: 1, answers: [{question_id: pollId, value}]})))
+        .rejects.toMatchObject({code: 'INVALID_INPUT'});
+    }
+  });
+});
+
