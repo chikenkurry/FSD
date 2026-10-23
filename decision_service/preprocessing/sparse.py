@@ -347,7 +347,9 @@ def preprocess_sparse(
             if model_canonical:
                 question["canonicalization_source"] = "semantic_model"
             question["answer_format"] = require_in(item.get("answer_format", "choice" if choices else "text"),
-                                                  {"text", "choice", "multi_choice", "number", "boolean", "date_intervals", "option_rating"}, f"{path}.answer_format")
+                                                  {"text", "choice", "multi_choice", "number", "boolean", "date_intervals", "option_rating", "date_poll"}, f"{path}.answer_format")
+            if question["answer_format"] == "date_poll" and question["role"] != "informational":
+                raise InputError("INVALID_MAPPING", f"{path}.answer_format", "A date poll chooses when, so it cannot rank options")
             if (question["answer_format"] == "option_rating") != (question["criterion"] == OPTION_RATING):
                 raise InputError("INVALID_MAPPING", f"{path}.answer_format", "Option ratings use the option_rating format and criterion together")
             definition = registry.get(question["criterion"])

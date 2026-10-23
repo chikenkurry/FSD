@@ -144,6 +144,19 @@
         },
         "recommendation_view": {
           "$ref": "#/$defs/recommendation_view"
+        },
+        "date_poll": {
+          "description": "Aggregate answers to a 'which dates work?' poll; counts only, never individual answers.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "respondents", "dates", "best_date"],
+          "properties": {
+            "question_id": {"type": "string"},
+            "respondents": {"type": "integer", "minimum": 0},
+            "best_date": {"type": ["string", "null"], "format": "date"},
+            "dates": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["date", "works", "maybe", "cannot"],
+              "properties": {"date": {"type": "string", "format": "date"}, "works": {"type": "integer", "minimum": 0}, "maybe": {"type": "integer", "minimum": 0}, "cannot": {"type": "integer", "minimum": 0}}}}
+          }
         }
       }
     },

@@ -329,6 +329,7 @@ def public_result(run: dict) -> dict:
             "supplemented_facts": supplemented,
             "attribute_breakdown": _attribute_breakdown(run),
             "recommendation_view": recommendation_view(run),
+            **({"date_poll": deepcopy(run["date_poll"])} if run.get("date_poll") else {}),
             "issues": [{"code": issue.get("code", "PROCESSING_ISSUE")} for issue in run.get("issues", [])
                        if not issue.get("path", "").startswith("responses.participants.")]}
 

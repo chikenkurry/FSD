@@ -4,6 +4,7 @@ from decision_service.preprocessing import preprocess
 
 from .enrichment import requested_facts
 from .execution import execute_preparation, adapt_preparation
+from .date_poll import date_poll_summary
 from .snapshots import map_snapshots
 from .views import member_review, public_result
 
@@ -40,6 +41,12 @@ def _supplement_discovered_facts(planning, responses, processed, enrichment, *,
 
 
 def execute(planning: dict, responses: dict, *, semantic_provider=None, fact_enricher=None) -> dict:
+    run = _execute(planning, responses, semantic_provider=semantic_provider, fact_enricher=fact_enricher)
+    poll = date_poll_summary(planning.get("questions", []), responses.get("participants", []))
+    return {**run, "date_poll": poll} if poll else run
+
+
+def _execute(planning: dict, responses: dict, *, semantic_provider=None, fact_enricher=None) -> dict:
     plan, reply = map_snapshots(planning, responses)
     refs = {key: planning[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
     refs["response_snapshot_id"] = responses["snapshot_id"]

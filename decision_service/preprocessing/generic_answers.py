@@ -156,6 +156,9 @@ def process_answers(responses: dict, roster: list[str], questions: list[dict], c
                 continue
             answer = answers[qid]
             value = answer.get("value")
+            if q.get("answer_format") == "date_poll":
+                # Dates are aggregated separately; they never score options.
+                continue
             evidence_text = value if isinstance(value, str) else json.dumps(value, sort_keys=True)
             def entry(parsed: object, source_type: str = "member_response", evidence: str | None = None) -> dict:
                 return {"participant_id": member_id, "question_id": qid, "criterion": q["criterion"],

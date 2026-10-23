@@ -192,5 +192,35 @@ class EarlyCloseTests(unittest.TestCase):
         self.assertEqual(execute(plan, replies)["status"], "blocked")
 
 
+class DatePollTests(unittest.TestCase):
+    poll = {"question_id": "when", "label": "Which dates work?", "role": "informational", "criterion": "context",
+            "relevance": 0, "required": True, "answer_format": "date_poll", "choices": ["2027-06-01", "2027-06-02", "2027-06-03"]}
+
+    def test_dates_are_summarised_for_counted_members_without_scoring_options(self):
+        answers = {"m1": [{"question_id": "cuisine", "value": "ramen"}, {"question_id": "when", "value": {"2027-06-01": "no", "2027-06-02": "yes", "2027-06-03": "maybe"}}],
+                   "m2": [{"question_id": "cuisine", "value": "ramen"}, {"question_id": "when", "value": {"2027-06-01": "yes", "2027-06-02": "yes", "2027-06-03": "yes"}}],
+                   "m3": [{"question_id": "when", "value": {"2027-06-01": "yes", "2027-06-02": "no", "2027-06-03": "no"}}]}
+        plan, replies = snapshots([soft("cuisine", "cuisine"), self.poll], answers, statuses={"m3": "incomplete"})
+        run = execute(plan, replies)
+        self.assertEqual(run["status"], "ranked", run.get("issues"))
+        self.assertEqual(winner(run), "a")
+        poll = run["date_poll"]
+        self.assertEqual(poll["respondents"], 2)  # m3 was not counted
+        self.assertEqual(poll["best_date"], "2027-06-02")
+        self.assertEqual(poll["dates"][0], {"date": "2027-06-01", "works": 1, "maybe": 0, "cannot": 1})
+        from decision_service.service.views import public_result
+        self.assertEqual(public_result({**run, "run_id": "run-1"})["date_poll"], poll)
+
+    def test_ties_prefer_fewer_cannot_then_the_earliest_date(self):
+        from decision_service.service.date_poll import date_poll_summary
+        members = [{"participant_id": "m1", "response_status": "complete", "answers": [{"question_id": "when", "value": {"2027-06-01": "maybe", "2027-06-02": "maybe", "2027-06-03": "yes"}}]},
+                   {"participant_id": "m2", "response_status": "complete", "answers": [{"question_id": "when", "value": {"2027-06-01": "maybe", "2027-06-02": "maybe", "2027-06-03": "no"}}]}]
+        self.assertEqual(date_poll_summary([self.poll], members)["best_date"], "2027-06-01")
+
+    def test_a_date_poll_cannot_rank_options(self):
+        plan, replies = snapshots([{**self.poll, "role": "soft", "criterion": "when"}], {"m1": [{"question_id": "when", "value": {"2027-06-01": "yes"}}]})
+        self.assertEqual(execute(plan, replies)["status"], "invalid_input")
+
+
 if __name__ == "__main__":
     unittest.main()
