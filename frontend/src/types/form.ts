@@ -1,7 +1,12 @@
 export type FormStatus = 'Draft' | 'Collecting' | 'Reviewing' | 'Confirmed' | 'Archived';
 
+// How much a preference counts for everyone, before members' own importance.
+export type WeightLevel = 'less' | 'normal' | 'more';
 export interface Question {
   id?: string;
+  weightLevel?: WeightLevel;
+  // The AI's suggestion when it drafted this question, kept to show the organiser.
+  suggestedWeight?: WeightLevel;
   criterion?: string;
   role?: 'soft' | 'hard' | 'informational';
   unit?: string;
@@ -66,7 +71,7 @@ export interface Overview { source: 'google_places' | 'web_search' | 'ai_general
   highlights?: string[]; rating?: number | null; rating_count?: number | null; price_level?: number | null; price_note?: string; when?: string; where?: string;
   address?: string; kind_label?: string; website?: string; maps_url?: string; place_id?: string | null; opening_hours?: string[];
   photos?: { name: string; attributions: { name: string; uri: string }[] }[]; sources?: { url: string; title?: string }[]; tagline?: string }
-export interface DraftedQuestion { title: string; help: string; type: 'written' | 'single' | 'multiple' | 'yes_no' | 'budget'; role: 'preference' | 'requirement'; criterion: string; choices: string[]; value_type?: Fact['valueType'] }
+export interface DraftedQuestion { title: string; help: string; type: 'written' | 'single' | 'multiple' | 'yes_no' | 'budget'; role: 'preference' | 'requirement'; criterion: string; choices: string[]; value_type?: Fact['valueType']; weight?: WeightLevel }
 export interface FactDefinition { criterion: string; valueType: Fact['valueType']; unit: string }
 export interface ResearchedFact { option: string; criterion: string; value: unknown; value_type: Fact['valueType']; unit: string | null; sources: { url: string; title?: string }[]; context: FactContext; retrieved_at?: string }
 export interface ResearchRun<T> { run_id: string; status: string; issues: { code: string }[]; research?: T }

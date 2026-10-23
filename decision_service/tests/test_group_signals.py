@@ -42,7 +42,20 @@ def winner(run):
     return run["result"]["ranked_candidates"][0]["option_id"]
 
 
+UUID_A, UUID_B = "2cae89dc-ebed-4fff-9b0d-7a5da13c15d4", "e36f044b-8e75-48a8-8ad7-795e16c00a07"
+
+
 class OptionRatingTests(unittest.TestCase):
+    def test_ratings_match_real_uuid_option_ids(self):
+        # Option IDs in the app are UUIDs; their identity facts are normalised like any label.
+        rate = {"question_id": "rate", "label": "Rate each option", "role": "soft", "criterion": "option_rating",
+                "relevance": 1, "required": True, "answer_format": "option_rating"}
+        options = [{"option_id": UUID_A, "title": "Park", "facts": []}, {"option_id": UUID_B, "title": "Cafe", "facts": []}]
+        run = execute(*snapshots([rate], {"m1": [{"question_id": "rate", "value": {UUID_A: 4, UUID_B: 1}}]}, options=options))
+        self.assertEqual(run["status"], "ranked", run.get("issues"))
+        ranked = {row["option_id"]: row["min_member_score"] for row in run["result"]["ranked_candidates"]}
+        self.assertEqual(ranked, {UUID_A: 1.0, UUID_B: .25})
+
     def test_direct_ratings_rank_the_options_members_prefer(self):
         rate = {"question_id": "rate", "label": "Rate each option", "role": "soft", "criterion": "option_rating",
                 "relevance": 1, "required": True, "answer_format": "option_rating"}
@@ -91,6 +104,22 @@ class ImportanceScaleTests(unittest.TestCase):
             execute(plan, replies)
 
 
+class QuestionWeightTests(unittest.TestCase):
+    def test_organiser_levels_set_base_weights_and_shared_details_split_one_share(self):
+        questions = [soft("cuisine", "cuisine", relevance=1), soft("vibe", "vibe", relevance=0.25),
+                     soft("vibe2", "vibe", relevance=0.25), soft("rate_ok", "price", relevance=0.5)]
+        options = [{"option_id": o, "title": o, "facts": [
+            {"criterion": c, "value": v, "value_type": "category", "status": "confirmed", "source": "s"}
+            for c, v in (("cuisine", "ramen"), ("vibe", "quiet"), ("price", "cheap"))]} for o in ("a", "b")]
+        answers = {"m1": [{"question_id": q, "value": v} for q, v in
+                          (("cuisine", "ramen"), ("vibe", "quiet"), ("vibe2", "quiet"), ("rate_ok", "cheap"))]}
+        run = execute(*snapshots(questions, answers, options=options))
+        weights = {q["question_id"]: q["weight"] for q in run["processing"]["preparation"]["scoring_model"]["questions"]}
+        # More : Normal : Less = 4 : 2 : 1, and two Less questions on "vibe" share one Less share.
+        self.assertAlmostEqual(weights["cuisine"] / weights["rate_ok"], 2)
+        self.assertAlmostEqual((weights["vibe"] + weights["vibe2"]) / weights["rate_ok"], 0.5)
+
+
 class FakeSimilarityProvider:
     model = "fake-similarity"
 
@@ -118,6 +147,18 @@ class SimilarityTests(unittest.TestCase):
         evidence = run["processing"]["semantic_evidence"]["similarity_assessments"]["cuisine"]
         self.assertIn({"preferred": "japanese", "actual": "ramen", "score": 1.0}, evidence)
         self.assertEqual(provider.calls, 1)
+
+    def test_breakdown_labels_ai_judgement_only_when_it_added_credit(self):
+        from decision_service.service.views import _attribute_breakdown
+        questions = [soft("cuisine", "cuisine")]
+        provider = FakeSimilarityProvider({("japanese", "ramen"): 1.0})
+        judged = execute(*snapshots(questions, {"m1": [{"question_id": "cuisine", "value": "japanese"}]}), semantic_provider=provider)
+        reason = next(r["reason"] for r in _attribute_breakdown(judged)["a"] if r["attribute_id"] == "cuisine")
+        self.assertIn("judged by AI", reason)
+        exact = execute(*snapshots(questions, {"m1": [{"question_id": "cuisine", "value": "ramen"}],
+                                               "m2": [{"question_id": "cuisine", "value": "italian"}]}), semantic_provider=FakeSimilarityProvider({}))
+        reason = next(r["reason"] for r in _attribute_breakdown(exact)["a"] if r["attribute_id"] == "cuisine")
+        self.assertNotIn("judged by AI", reason)
 
     def test_word_matching_still_applies_without_a_model(self):
         questions = [soft("cuisine", "cuisine")]

@@ -7,6 +7,7 @@ import re
 from datetime import date
 
 from .common import InputError, issue as _issue, require_in, require_list, require_object, require_text
+from .canonicalization import label_key
 from .generic_mapping import OPTION_RATING, interpretation_mapping, normalize_answer, token
 from .generic_evidence import answer_provenance, scoped_interpretation
 from .generic_interpretations import prepare_meaning
@@ -76,7 +77,8 @@ def _option_ratings(value: object, candidates: list[dict], path: str) -> dict[st
     for option_id, rating in ratings.items():
         if type(rating) is not int or not 0 <= rating <= 4:
             raise InputError("INVALID_ANSWER", f"{path}.{option_id}", "Ratings are whole numbers from 0 to 4")
-        scaled[token(option_id)] = rating / 4
+        # Same normalisation the option's identity fact receives (e.g. UUID hyphens).
+        scaled[label_key(option_id)] = rating / 4
     return scaled
 
 

@@ -1,6 +1,6 @@
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from './checkpoints';
 import { OPTION_RATING, decisionQuestion, factDefinitions, factStatus, factType, tagValues, validFact } from './optionFacts';
-import type { Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, Overview, ResearchRun, RsvpSummary } from '@/types/form';
+import type { WeightLevel, Form, PlanRow, Question, Session, Snapshot, Round, Draft, Review, Run, Selection, DecisionOption, Fact, PublishedFact, Overview, ResearchRun, RsvpSummary } from '@/types/form';
 
 // Same-origin proxies keep private service addresses and tokens off browser URLs.
 const planning = '/api/planning';
@@ -22,9 +22,14 @@ export async function request<T>(path: string, method = 'GET', body?: unknown, t
 }
 const roundPath = (id: string) => `${planning}/v1/rounds/${encodeURIComponent(id)}`;
 const ownPath = (id: string) => `${participation}/rounds/${encodeURIComponent(id)}/my-response`;
+// Less / Normal / More become relevance; Decision still splits one share between questions on the same detail.
+export const WEIGHT_RELEVANCE: Record<WeightLevel, number> = { less: 0.25, normal: 0.5, more: 1 };
+function weightMetadata(q: Question) {
+  return { weight_level: q.weightLevel || 'normal', ...(q.suggestedWeight ? { weight_suggested: q.suggestedWeight } : {}) };
+}
 export function questionDefinition(q: Question, index: number) {
   // Members rate each option directly; Decision compares the option's own identity.
-  if (q.type === 'Option rating') return { role: 'soft', criterion: OPTION_RATING, relevance: 1, answer_format: 'option_rating' };
+  if (q.type === 'Option rating') return { role: 'soft', criterion: OPTION_RATING, relevance: WEIGHT_RELEVANCE[q.weightLevel || 'normal'], answer_format: 'option_rating', ...weightMetadata(q) };
   const criterion = q.criterion?.trim() || `preference_${index + 1}`;
   const role = q.role || 'soft';
   const format = q.type === 'Multiple choice' ? 'multi_choice' : q.type === 'Number' ? 'number' : q.type === 'Boolean' ? 'boolean' :
@@ -32,7 +37,7 @@ export function questionDefinition(q: Question, index: number) {
   // Cost compares exact currency amounts and a requirement means "at most"; other numbers are plain numbers.
   const isCost = criterion === 'max_cost';
   const valueType = factType(q);
-  const decision: Record<string, unknown> = { role, criterion: role === 'informational' ? 'context' : criterion, relevance: role === 'soft' ? 1 : 0, answer_format: format };
+  const decision: Record<string, unknown> = { role, criterion: role === 'informational' ? 'context' : criterion, relevance: role === 'soft' ? WEIGHT_RELEVANCE[q.weightLevel || 'normal'] : 0, answer_format: format, ...(role === 'soft' ? weightMetadata(q) : {}) };
   if (role !== 'informational' && criterion !== 'preferences') {
     decision.mapping = { value_type: valueType, ...(q.unit ? { unit: q.unit } : {}),
       comparison_rule: role === 'hard' ? (valueType === 'tag_set' ? 'contains_all_v1' : isCost ? 'maximum_v1' : 'equals_v1') :
@@ -106,7 +111,7 @@ export const apiService = {
     const plan = await request<PlanRow & { time_window_start?: string; time_window_end?: string;
       rounds: Round[]; proposed_activities?: { id:string; title:string; description?:string; metadata?: { identity?:DecisionOption['identity']; facts?:PublishedFact[]; brief?:DecisionOption['brief'] } }[];
       questions?: { id:string; title:string; description?:string; is_required:boolean; sort_order:number; type:string;
-        options?: { options?:string[]; decision?: { role?:Question['role']; criterion?:string; answer_format?:string; mapping?: { value_type?:Fact['valueType']; unit?:string; scale?:number } } } }[] }>(`${planning}/v1/plans/details/${planId}`);
+        options?: { options?:string[]; decision?: { role?:Question['role']; criterion?:string; answer_format?:string; weight_level?:WeightLevel; weight_suggested?:WeightLevel; mapping?: { value_type?:Fact['valueType']; unit?:string; scale?:number } } } }[] }>(`${planning}/v1/plans/details/${planId}`);
     const round = [...(plan.rounds || [])].sort((a,b) => b.round_number-a.round_number)[0];
     if (!round || plan.state !== 'DRAFT') throw new Error('This plan is already published. Open its round instead.');
     const { state } = await request<{state: {currency?:string; decision_question?:string; location?:string; step?:number; visited?:number}}>(`${roundPath(round.id)}/draft`);
@@ -119,7 +124,7 @@ export const apiService = {
         brief:o.metadata?.brief,facts:(o.metadata?.facts || []).map(localFact)})),
       questions:[...(plan.questions || [])].sort((a,b)=>a.sort_order-b.sort_order).map(q => { const d=q.options?.decision;
         return {id:q.id,title:q.title,description:q.description || '',isRequired:q.is_required,options:q.options?.options || [],role:d?.role || 'soft',criterion:d?.criterion,
-          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration',option_rating:'Option rating'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
+          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,weightLevel:d?.weight_level || 'normal',suggestedWeight:d?.weight_suggested,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration',option_rating:'Option rating'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
   },
   // Creates or updates the unpublished plan, options, questions and draft round.
   async saveFormDraft(form: Form, userId: string, username: string): Promise<Form> {

@@ -237,7 +237,7 @@ def _attribute_breakdown(run: dict) -> dict[str, list[dict]]:
                                     utils.append(float(_utility(fact, ans, table)))
                                     if table and ans.get("utility_rule") in {"attribute_match_v1", "tag_overlap_v1"}:
                                         judged = judged or any(
-                                            _phrase_similarity(a, p) < 1 and (attr_id, p, a) in table
+                                            table.get((attr_id, p, a), 0.0) > _phrase_similarity(a, p)
                                             for a in (value if isinstance(value, list) else [value])
                                             for p in (ans.get("preferred_value") if isinstance(ans.get("preferred_value"), list) else [ans.get("preferred_value")]))
                                 except Exception:

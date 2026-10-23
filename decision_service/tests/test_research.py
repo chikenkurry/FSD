@@ -54,6 +54,14 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual([q["criterion"] for q in drafted], ["atmosphere", "max_cost"])
         self.assertEqual(drafted[1]["role"], "requirement")
 
+    def test_drafted_questions_carry_a_suggested_weight_defaulting_to_normal(self):
+        self.gemini.request.return_value = reply({"questions": [
+            {"title": "Which cuisine?", "type": "written", "role": "preference", "criterion": "cuisine", "choices": [], "weight": "more"},
+            {"title": "Indoors?", "type": "yes_no", "role": "preference", "criterion": "indoor", "choices": [], "weight": "huge"},
+            {"title": "Music?", "type": "written", "role": "preference", "criterion": "music", "choices": []}]})
+        drafted = Researcher(self.gemini, None).draft_questions({**self.body, "options": [{"title": "Odette", "summary": ""}]})["questions"]
+        self.assertEqual([q["weight"] for q in drafted], ["more", "normal", "normal"])
+
     def test_facts_collect_neutral_values_without_question_choices_or_private_context(self):
         self.gemini.collect.return_value = {"claims": [{"claim_id":"claim-a","option_id":"a","attribute_id":"atmosphere",
             "value_type":"category","value":"intimate","unit":None,"qualifier":"exact","source_text":"Odette is intimate.",

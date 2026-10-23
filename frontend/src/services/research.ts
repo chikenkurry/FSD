@@ -194,7 +194,8 @@ function brief(overview?: Overview | null): Brief | undefined {
 }
 
 function toQuestion(d: DraftedQuestion, currency: string): Question {
-  const base = { title: d.title, description: d.help, criterion: d.criterion, role: d.role === 'requirement' ? 'hard' : 'soft', valueType: d.value_type } as const;
+  const weight = d.weight || 'normal';
+  const base = { title: d.title, description: d.help, criterion: d.criterion, role: d.role === 'requirement' ? 'hard' : 'soft', valueType: d.value_type, weightLevel: weight, suggestedWeight: weight } as const;
   if (d.type === 'budget') return { ...base, role: 'hard', type: 'Number', unit: currency, options: [] };
   if (d.type === 'yes_no') return { ...base, type: 'Boolean', options: [] };
   if (d.type === 'written') return { ...base, type: 'Short answer', options: [] };

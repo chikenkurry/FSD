@@ -164,6 +164,16 @@
                       </div>
                       <p v-if="lockedToContext(question)" class="helper-text">Date answers are collected as context in this kind of form.</p>
                     </fieldset>
+                    <fieldset v-if="(question.role || 'soft') === 'soft'" class="weight-field">
+                      <legend>How much should this count?</legend>
+                      <div class="weight-scale">
+                        <label v-for="level in weightLevels" :key="level.value" :class="['weight-step', { on: (question.weightLevel || 'normal') === level.value }]">
+                          <input type="radio" :name="`weight-${keyOf(question)}`" :value="level.value" :checked="(question.weightLevel || 'normal') === level.value" @change="question.weightLevel = level.value" />
+                          <span>{{ level.label }}</span>
+                        </label>
+                      </div>
+                      <p class="helper-text">{{ question.suggestedWeight ? `AI suggested “${weightName(question.suggestedWeight)}” for this decision.` : 'Applies to everyone.' }} Members can still say how much it matters to them.</p>
+                    </fieldset>
                   </article>
                 </TransitionGroup>
                 <div class="question-actions">
@@ -198,7 +208,7 @@
                 <section class="review-block">
                   <div class="review-heading"><h3>Questions <span class="muted">{{ form.questions.length }}</span></h3><button type="button" class="btn-quiet btn-small" @click="goToStep(4)">Edit<span class="sr-only"> questions</span></button></div>
                   <ol class="review-list">
-                    <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role, question.type) }}</span></li>
+                    <li v-for="(question, index) in form.questions" :key="index"><span>{{ question.title }}</span><span class="muted">{{ roleLabel(question.role, question.type) }}<template v-if="(question.role || 'soft') === 'soft' && question.weightLevel && question.weightLevel !== 'normal'"> · counts {{ question.weightLevel }}</template></span></li>
                   </ol>
                 </section>
                 <section class="review-block deadline-block">
@@ -246,7 +256,7 @@ import OverviewCard from './OverviewCard.vue';
 import FactReview from './FactReview.vue';
 import { OPTION_RATING, factDefinitions, factSignature, factType, overviewSignature } from '@/services/optionFacts';
 import { useAuthStore } from '@/stores/auth';
-import type { DecisionOption, Form, OptionKind, Question } from '@/types/form';
+import type { DecisionOption, Form, OptionKind, Question, WeightLevel } from '@/types/form';
 import UiIcon from './UiIcon.vue';
 import { factLabel } from '@/services/facts';
 import { apiService, ApiError } from '@/services/api.ts';
@@ -402,6 +412,8 @@ function ensureCriterion(q: Question, index: number) {
   q.criterion = name;
 }
 
+const weightLevels: { value: WeightLevel; label: string }[] = [{ value: 'less', label: 'Less' }, { value: 'normal', label: 'Normal' }, { value: 'more', label: 'More' }];
+function weightName(level: WeightLevel) { return weightLevels.find(l => l.value === level)?.label || 'Normal'; }
 const hasRating = computed(() => form.questions.some(q => q.type === 'Option rating'));
 const nowLocal = computed(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); });
 function formatDeadline(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
@@ -666,6 +678,15 @@ const submitForm = async (): Promise<void> => {
 .role-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .role-option { align-items: flex-start; }
 .role-option.unavailable { opacity: .55; }
+.weight-field { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.weight-field legend { margin-bottom: 10px; }
+.weight-scale { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(84px, 1fr); padding: 3px; border-radius: 999px; background: var(--sky-50); border: 1px solid var(--line); }
+.weight-step { position: relative; margin: 0; cursor: pointer; }
+.weight-step input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.weight-step span { display: block; padding: 7px 16px; border-radius: 999px; font-size: .875rem; font-weight: 600; color: var(--ink-2); text-align: center; transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out); }
+.weight-step:hover span { color: var(--blue-ink); }
+.weight-step.on span { background: var(--blue); color: #fff; box-shadow: var(--shadow-sm); }
+.weight-step:has(:focus-visible) span { outline: 2px solid var(--blue); outline-offset: 2px; }
 .question-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
 .add-question { margin: 0; }
 
@@ -726,7 +747,8 @@ const submitForm = async (): Promise<void> => {
   .question-card { padding: 16px; }
   .option-inputs { grid-template-columns: minmax(0, 1fr); }
   .input-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .wizard-actions { flex-direction: column-reverse; } .wizard-actions button { width: 100%; }
+  .wizard-actions { gap: 8px; padding: 10px 0 12px; } .wizard-actions button { min-height: 46px; padding-inline: 18px; }
+  .wizard-actions button:last-child { flex: 1; justify-content: space-between; }
 }
 @media(max-width:380px) { .step-label { font-size: .6875rem; } .step-number { width: 28px; height: 28px; } .step-track { top: 17px; } }
 </style>
