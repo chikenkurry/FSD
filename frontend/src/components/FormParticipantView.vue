@@ -33,8 +33,24 @@
       <!-- One question per page -->
       <form v-else-if="page.kind === 'question'" :key="page.q.question_id" class="flow-page" @submit.prevent="next" novalidate>
         <fieldset :disabled="busy || closed">
-          <p :class="['role-tag', page.q.role || 'soft']">{{ page.q.answer_format === 'option_rating' ? 'Your ratings · options you love rank higher' : roleHint(page.q.role) }}</p>
-          <template v-if="page.q.answer_format === 'option_rating'">
+          <p :class="['role-tag', page.q.role || 'soft']">{{ page.q.answer_format === 'option_rating' ? 'Your ratings · options you love rank higher' : page.q.answer_format === 'date_poll' ? 'Helps pick the date · doesn’t change which option wins' : roleHint(page.q.role) }}</p>
+          <template v-if="page.q.answer_format === 'date_poll'">
+            <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
+              <legend><h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">{{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span></h2></legend>
+              <ul class="rating-list">
+                <li v-for="(day, di) in pollDates(page.q)" :key="day" class="rating-row" :style="{ '--i': di }">
+                  <span class="rating-option" :id="`poll-label-${day}`">{{ longDate(day) }}</span>
+                  <div class="rating-scale poll-scale" role="radiogroup" :aria-labelledby="`poll-label-${day}`">
+                    <label v-for="level in pollLevels" :key="level.value" :class="['rating-step', `poll-${level.value}`, { on: pollOf(page.q.question_id, day) === level.value }]">
+                      <input type="radio" :name="`poll-${page.q.question_id}-${day}`" :value="level.value" :checked="pollOf(page.q.question_id, day) === level.value" @change="mark(page.q.question_id, day, level.value)" />
+                      <span>{{ level.label }}</span>
+                    </label>
+                  </div>
+                </li>
+              </ul>
+            </fieldset>
+          </template>
+          <template v-else-if="page.q.answer_format === 'option_rating'">
             <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
               <legend><h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">{{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span></h2></legend>
               <ul class="rating-list">
@@ -169,7 +185,7 @@ import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from
 import { apiService } from '@/services/api';
 import { returnLink } from '@/services/returnLink';
 import { useAuthStore } from '@/stores/auth';
-import type { Snapshot, Draft, Answer, Choice, Importance, PublishedQuestion } from '@/types/form';
+import type { Snapshot, Draft, Answer, Choice, DateAnswer, Importance, PublishedQuestion } from '@/types/form';
 const props = withDefaults(defineProps<{ roundId: string; snapshot: Snapshot; title?: string; description?: string; guided?: boolean; deadline?: string | null }>(), { title: '', description: '', guided: false, deadline: null });
 const overdue = computed(() => !!props.deadline && Date.parse(props.deadline) <= Date.now());
 const dueText = computed(() => props.deadline ? (overdue.value ? 'The deadline has passed, but you can still answer until collection closes.'
@@ -193,6 +209,11 @@ const ratingLevels = [{ value: 0, label: 'Not for me' }, { value: 1, label: 'Meh
 const importanceLevels: { value: Importance; label: string }[] = [{ value: 'low', label: 'A little' }, { value: 'normal', label: 'Somewhat' }, { value: 'high', label: 'A lot' }];
 // Importance tilts a member's own weights; it applies to scored preferences on one detail.
 function weighable(q: PublishedQuestion) { return (q.role || 'soft') === 'soft' && !!q.criterion && !['preferences', 'context'].includes(q.criterion); }
+const pollLevels: { value: DateAnswer; label: string }[] = [{ value: 'yes', label: 'Works' }, { value: 'maybe', label: 'If needed' }, { value: 'no', label: 'Can’t' }];
+function pollDates(q: PublishedQuestion) { return (q.choices || []).map(c => choiceId(c)).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(); }
+function longDate(day: string) { return new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+function pollOf(qid: string, day: string) { const v = values[qid]; return v && typeof v === 'object' && !Array.isArray(v) ? (v as unknown as Record<string, DateAnswer>)[day] : undefined; }
+function mark(qid: string, day: string, answer: DateAnswer) { const v = values[qid]; values[qid] = { ...(v && typeof v === 'object' && !Array.isArray(v) ? v : {}), [day]: answer } as unknown as AnswerValue; }
 function ratingOf(qid: string, optionId: string) { const v = values[qid]; return v && typeof v === 'object' && !Array.isArray(v) ? v[optionId] : undefined; }
 function rate(qid: string, optionId: string, rating: number) { const v = values[qid]; values[qid] = { ...(v && typeof v === 'object' && !Array.isArray(v) ? v : {}), [optionId]: rating }; }
 const availableStart = ref(''); const availableEnd = ref(''); const privateNote = ref('');
@@ -248,6 +269,9 @@ function answerText(q: PublishedQuestion) {
   if (!answered(q)) return 'Not answered';
   const v = values[q.question_id];
   if (q.answer_format === 'date_intervals') { const d = dates[q.question_id]!; return `${d.start} to ${d.end}`; }
+  if (q.answer_format === 'date_poll') return pollLevels.map(level => {
+    const days = pollDates(q).filter(day => pollOf(q.question_id, day) === level.value).map(longDate);
+    return days.length ? `${level.label}: ${days.join(', ')}` : ''; }).filter(Boolean).join(' · ');
   if (q.answer_format === 'option_rating') return props.snapshot.options.filter(o => ratingOf(q.question_id, o.option_id) !== undefined)
     .map(o => `${o.title}: ${ratingLevels[ratingOf(q.question_id, o.option_id)!]?.label}`).join(' · ');
   const label = (id: unknown) => { const c = q.choices?.find(c => choiceId(c) === id); return c ? choiceLabel(c) : String(id); };
@@ -285,6 +309,7 @@ function problem() {
   if (p.q.answer_format === 'date_intervals' && d && (!!d.start !== !!d.end)) return 'Add both dates, or leave both empty.';
   if (p.q.answer_format === 'date_intervals' && d?.start && d.end && d.end < d.start) return 'The second date must be on or after the first.';
   if (p.q.answer_format === 'number' && values[p.q.question_id] !== '' && !Number.isFinite(Number(values[p.q.question_id]))) return 'Enter a number.';
+  if (p.q.answer_format === 'date_poll' && p.q.required && pollDates(p.q).some(day => !pollOf(p.q.question_id, day))) return 'Answer every date to continue.';
   if (p.q.answer_format === 'option_rating' && p.q.required && props.snapshot.options.some(o => ratingOf(p.q.question_id, o.option_id) === undefined)) return 'Rate every option to continue.';
   if (p.q.required && !answered(p.q)) return 'Answer this question to continue.';
   return '';
@@ -317,7 +342,7 @@ async function load() { await action('load', async () => {
     unsupportedEditor.value = true;
     throw new Error('This response has multiple availability windows. The form is read-only here to preserve them.');
   }
-  for (const q of props.snapshot.questions) { values[q.question_id] = q.answer_format === 'multi_choice' ? [] : q.answer_format === 'option_rating' ? {} : ''; dates[q.question_id] = { start: '', end: '' }; delete importances[q.question_id]; }
+  for (const q of props.snapshot.questions) { values[q.question_id] = q.answer_format === 'multi_choice' ? [] : ['option_rating', 'date_poll'].includes(q.answer_format || '') ? {} : ''; dates[q.question_id] = { start: '', end: '' }; delete importances[q.question_id]; }
   for (const answer of own.answers) {
     if (props.snapshot.questions.find(q => q.question_id === answer.question_id)?.answer_format === 'date_intervals') {
       const ranges = answer.value as { start_date: string; end_date: string }[];
@@ -411,6 +436,8 @@ onMounted(() => { void load(); });
 .rating-step:hover span, .importance-step:hover span { color: var(--blue-ink); }
 .rating-step.on span, .importance-step.on span { background: var(--blue); color: #fff; box-shadow: var(--shadow-sm); }
 .rating-step:has(:focus-visible) span, .importance-step:has(:focus-visible) span { outline: 2px solid var(--blue); outline-offset: 2px; }
+.poll-scale .poll-yes.on span { background: #1f7a4d; }
+.poll-scale .poll-no.on span { background: #8a3340; }
 .importance { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
 .importance > legend { font-size: .9375rem; margin-bottom: 10px; }
 .restrictions { margin-top: 8px; }

@@ -31,6 +31,7 @@
                 <span class="seal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg></span>
                 <div><h2 id="selection-heading">Confirmed selection</h2><p class="selected-title">{{ selectedTitle }}</p></div>
               </div>
+              <p v-if="eventWhen" class="event-when">{{ eventWhen }}</p>
               <p v-if="selectedSummary" class="selected-summary">{{ selectedSummary }}</p>
               <p class="selection-lede">The choice is confirmed. Let your group know whether you’ll be joining.</p>
               <dl v-if="rsvpSummary && rsvpSummary.total > 0" class="rsvp-summary" aria-label="Group attendance">
@@ -97,6 +98,22 @@
                 </ol>
               </div>
 
+              <section v-if="datePoll" class="date-poll-result" aria-labelledby="dates-heading">
+                <div class="date-poll-head">
+                  <h3 id="dates-heading">When works best</h3>
+                  <p>{{ datePoll.respondents }} {{ datePoll.respondents === 1 ? 'answer' : 'answers' }} counted<template v-if="datePoll.best_date"> · Best: <strong>{{ longDate(datePoll.best_date) }}</strong></template></p>
+                </div>
+                <ul class="date-rows">
+                  <li v-for="(row, di) in datePoll.dates" :key="row.date" :class="{ best: row.date === datePoll.best_date, chosen: row.date === eventDate }" :style="{ '--i': di }">
+                    <span class="date-label">{{ longDate(row.date) }}<span v-if="row.date === eventDate" class="date-tag">Chosen</span><span v-else-if="row.date === datePoll.best_date" class="date-tag">Best</span></span>
+                    <span class="date-bar" aria-hidden="true">
+                      <span class="works" :style="{ '--w': share(row.works) }"></span><span class="maybe" :style="{ '--w': share(row.maybe) }"></span><span class="cannot" :style="{ '--w': share(row.cannot) }"></span>
+                    </span>
+                    <span class="date-counts">{{ row.works }} works · {{ row.maybe }} if needed · {{ row.cannot }} can’t</span>
+                  </li>
+                </ul>
+              </section>
+
               <details v-if="run.supplemented_facts?.length" class="supplemented-facts"><summary>Evidence added during calculation</summary>
                 <p class="helper-text">These sourced details supplemented the published options for this result. They are saved with the calculation.</p>
                 <div v-for="fact in run.supplemented_facts" :key="`${fact.option_id}:${fact.attribute_id}`" class="supplement">
@@ -142,7 +159,20 @@
                         <div v-if="candidate.start_at"><dt>When</dt><dd>{{ new Date(candidate.start_at).toLocaleString() }}<template v-if="candidate.end_at"> – {{ new Date(candidate.end_at).toLocaleString() }}</template></dd></div>
                       </dl>
                       <p v-if="paretoIds.has(candidate.candidate_id)" class="tradeoff">Trade-off: {{ tradeoffs(candidate.candidate_id) }}</p>
-                      <button :class="{ 'btn-primary': candidate.rank === 1 }" v-if="organiser && !selection && plan.state === 'REVIEWING'" :disabled="busy" @click="confirm(candidate)">Confirm {{ candidate.title }}<UiIcon name="check" /></button>
+                      <button :class="{ 'btn-primary': candidate.rank === 1 }" v-if="organiser && !selection && plan.state === 'REVIEWING' && confirming !== candidate.candidate_id" :disabled="busy" @click="datePoll ? startConfirm(candidate) : confirm(candidate)">Confirm {{ candidate.title }}<UiIcon name="check" /></button>
+                      <Transition name="reveal">
+                        <form v-if="confirming === candidate.candidate_id" class="confirm-when" @submit.prevent="confirm(candidate)">
+                          <p class="confirm-when-title">When is {{ candidate.title }}?</p>
+                          <div class="confirm-when-fields">
+                            <label>Date<select v-model="confirmDate" required>
+                              <option v-for="row in datePoll!.dates" :key="row.date" :value="row.date">{{ longDate(row.date) }} · {{ row.works }} works{{ row.date === datePoll!.best_date ? ' (best)' : '' }}</option>
+                            </select></label>
+                            <label>Start time <span class="optional">(optional)</span><input v-model="confirmTime" type="time" /></label>
+                          </div>
+                          <p class="helper-text">Members are asked to RSVP and can add it to their calendar.</p>
+                          <div class="confirm-when-actions"><button class="btn-primary" :disabled="busy || !confirmDate">Confirm for {{ confirmDate ? longDate(confirmDate) : 'this date' }}<UiIcon name="check" /></button><button type="button" class="btn-quiet" @click="confirming = ''">Cancel</button></div>
+                        </form>
+                      </Transition>
                     </div>
                   </div>
 
@@ -276,6 +306,15 @@ const backgroundError=ref('');const historical=ref(false);let pollTimer:ReturnTy
 const rsvpStatus = ref(''); const savedRsvp = ref(''); const rsvpRevision = ref(0); const rsvpSummary = ref<RsvpSummary>(); let alive = true;
 const ownResponseBox = ref<HTMLElement>();
 const podiumKey = ref(0);
+const confirming = ref(''); const confirmDate = ref(''); const confirmTime = ref('');
+const datePoll = computed(() => run.value?.date_poll?.dates.length ? run.value.date_poll : undefined);
+const eventDate = computed(() => selection.value?.selected_details?.event_date || '');
+const eventWhen = computed(() => { const d = eventDate.value; if (!d) return ''; const t = selection.value?.selected_details?.event_time;
+  return t ? new Date(`${d}T${t}`).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' })
+    : new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); });
+function longDate(day: string) { return new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+function share(count: number) { return datePoll.value?.respondents ? count / datePoll.value.respondents : 0; }
+function startConfirm(candidate: Candidate) { confirming.value = candidate.candidate_id; confirmDate.value = datePoll.value?.best_date || datePoll.value?.dates[0]?.date || ''; confirmTime.value = ''; }
 const editingDeadline = ref(false); const deadlineDraft = ref(''); const reminded = ref(false);
 type RecheckRow = { option: string; title: string; criterion: string; before: string; after: string; status: 'same' | 'changed' | 'unconfirmed' | 'new'; source?: { url: string; title?: string } };
 const recheck = reactive<{ state: 'idle' | 'loading' | 'done' | 'failed'; rows: RecheckRow[]; message: string }>({ state: 'idle', rows: [], message: '' });
@@ -592,11 +631,13 @@ async function pollStatus(){
 }
 function visible(){if(!document.hidden && alive && snapshot.value){clearTimeout(pollTimer);void pollStatus();}}
 async function confirm(candidate: Candidate) {
-  if (!window.confirm(`Confirm “${candidate.title}” as the group’s choice? Members will be asked to RSVP.`)) return;
+  // With a date poll the inline date form is the confirmation step.
+  const when = datePoll.value && confirming.value === candidate.candidate_id ? { date: confirmDate.value, time: confirmTime.value || undefined } : undefined;
+  if (!when && !window.confirm(`Confirm “${candidate.title}” as the group’s choice? Members will be asked to RSVP.`)) return;
   await act(async () => {
-    const key=`confirmation:${props.roundId}:${run.value!.run_id}:${candidate.candidate_id}`;
+    const key=`confirmation:${props.roundId}:${run.value!.run_id}:${candidate.candidate_id}:${when?.date || ''}:${when?.time || ''}`;
     const operation=sessionStorage.getItem(key)||operationId();sessionStorage.setItem(key,operation);
-    selection.value=await apiService.confirm(props.roundId,run.value!.run_id,candidate.candidate_id,operation); await load();
+    selection.value=await apiService.confirm(props.roundId,run.value!.run_id,candidate.candidate_id,operation,when); confirming.value=''; await load();
   });
 }
 async function saveRsvp() { notice.value = ''; await act(async () => { await apiService.saveRsvp(props.roundId,selection.value!.selection_version,rsvpRevision.value,rsvpStatus.value); const own=await apiService.rsvp(props.roundId);rsvpRevision.value=own.revision;savedRsvp.value=own.status || rsvpStatus.value;rsvpSummary.value=own.summary;notice.value='RSVP saved.'; }); }
@@ -605,13 +646,21 @@ function downloadCalendar() {
   const candidate = candidates.value.find(c => c.candidate_id === selection.value?.candidate_id);
   const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const now = new Date();
-  const start = candidate?.start_at ? new Date(candidate.start_at) : new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 19, 0, 0);
-  const end = candidate?.end_at ? new Date(candidate.end_at) : new Date(start.getTime() + 7200000);
+  // Prefer the date the organiser confirmed, then the option's own time, then the plan's first day.
+  const chosen = selection.value.selected_details?.event_date || '';
+  const chosenTime = selection.value.selected_details?.event_time || '';
+  const planDay = plan.value.time_window_start?.slice(0, 10) || '';
+  const allDay = (chosen && !chosenTime) || (!chosen && !candidate?.start_at && !!planDay);
+  const day = chosen || planDay;
+  const start = chosen && chosenTime ? new Date(`${chosen}T${chosenTime}`) : candidate?.start_at ? new Date(candidate.start_at) : new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 19, 0, 0);
+  const end = chosen && chosenTime ? new Date(start.getTime() + 7200000) : candidate?.end_at ? new Date(candidate.end_at) : new Date(start.getTime() + 7200000);
+  const compact = (d: string) => d.replaceAll('-', '');
+  const next = (d: string) => { const n = new Date(`${d}T00:00:00Z`); n.setUTCDate(n.getUTCDate() + 1); return n.toISOString().slice(0, 10); };
   const clean = (v?: string) => (v || '').replace(/\r?\n/g, '\\n').replace(/[,;]/g, '\\$&');
   const lines = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//What2Do//Confirmed Plan//EN', 'BEGIN:VEVENT',
     `UID:${props.roundId}-v${selection.value.selection_version}@what2do`,
-    `DTSTAMP:${stamp(now)}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
+    `DTSTAMP:${stamp(now)}`, ...(allDay ? [`DTSTART;VALUE=DATE:${compact(day)}`, `DTEND;VALUE=DATE:${compact(next(day))}`] : [`DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`]),
     `SUMMARY:${clean(`${plan.value.title}: ${selectedTitle.value}`)}`,
     ...(selectedSummary.value ? [`DESCRIPTION:${clean(selectedSummary.value)}`] : []),
     ...(selectedOption.value?.brief?.where ? [`LOCATION:${clean(selectedOption.value.brief.where)}`] : []),
@@ -762,6 +811,26 @@ onUnmounted(()=>{clearInterval(clock);alive=false;clearTimeout(pollTimer);docume
 :is(.lead, .chosen) .board-bar > span { background: #fff; }
 :is(.lead, .chosen) .board-thumb { background: rgba(255, 255, 255, .16); color: #fff; }
 
+.date-poll-result { margin: 0 0 28px; padding: 22px 24px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.date-poll-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.date-poll-head h3 { margin: 0; }
+.date-poll-head p { margin: 0; color: var(--muted); font-size: .9375rem; }
+.date-rows { list-style: none; margin: 0; padding: 0; }
+.date-rows li { display: grid; grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 12px; animation: rise 420ms var(--ease-out) both; animation-delay: calc(min(var(--i), 8) * 50ms); }
+.date-rows li.best { background: var(--sky-50); }
+.date-rows li.chosen { background: var(--sky-100); }
+.date-label { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.date-tag { font-size: .75rem; font-weight: 700; color: var(--blue-ink); }
+.date-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--sky-100); }
+.date-bar > span { width: calc(var(--w) * 100%); transform-origin: left; animation: meter-fill 900ms var(--ease-out) both; }
+.date-bar .works { background: #1f9d5c; } .date-bar .maybe { background: #e2a93b; } .date-bar .cannot { background: #c4515f; }
+.date-counts { font-size: .875rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.confirm-when { margin-top: 8px; padding: 16px; border-radius: 14px; background: var(--sky-50); border: 1px solid var(--line); }
+.confirm-when-title { font-weight: 600; margin: 0 0 4px; }
+.confirm-when-fields { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 0 12px; }
+.confirm-when-fields label { margin: 10px 0 0; }
+.confirm-when-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.event-when { font-size: 1.125rem; font-weight: 600; color: var(--blue-ink); margin: 0 0 10px; }
 .supplemented-facts { overflow-wrap: anywhere; margin: 0 0 28px; }
 .supplement { padding: 12px 0; border-top: 1px solid var(--line); }
 .detail-heading { margin-top: 8px; }
@@ -885,6 +954,8 @@ onUnmounted(()=>{clearInterval(clock);alive=false;clearTimeout(pollTimer);docume
   .candidate-body, .attr-breakdown { padding: 18px; }
   .scores { grid-template-columns: minmax(0, 1fr); }
   .rsvp-options { grid-template-columns: minmax(0, 1fr); }
+  .date-rows li { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .confirm-when-fields { grid-template-columns: minmax(0, 1fr); }
   .rsvp-actions button { width: 100%; }
   .rsvp-summary { width: 100%; } .rsvp-summary > div { flex: 1; padding: 10px 14px; }
 }

@@ -29,6 +29,8 @@ function weightMetadata(q: Question) {
 }
 export function questionDefinition(q: Question, index: number) {
   // Members rate each option directly; Decision compares the option's own identity.
+  // "Which dates work?" picks when, separately from which option wins.
+  if (q.type === 'Date poll') return { role: 'informational', criterion: 'context', relevance: 0, answer_format: 'date_poll' };
   if (q.type === 'Option rating') return { role: 'soft', criterion: OPTION_RATING, relevance: WEIGHT_RELEVANCE[q.weightLevel || 'normal'], answer_format: 'option_rating', ...weightMetadata(q) };
   const criterion = q.criterion?.trim() || `preference_${index + 1}`;
   const role = q.role || 'soft';
@@ -58,6 +60,12 @@ function validateForm(form: Form, draft = false) {
   // Publishing validates the form structure. Missing evidence is supplemented
   // during Decision processing; it is not a per-question organiser checklist.
   if (form.questions.filter(q => q.type === 'Option rating').length > 1) throw new Error('Ask members to rate the options once.');
+  const polls = form.questions.filter(q => q.type === 'Date poll');
+  if (polls.length > 1) throw new Error('Use one date poll per form.');
+  for (const poll of polls) {
+    const dates = poll.options.map(d => d.trim()).filter(Boolean);
+    if (!draft && (!dates.length || new Set(dates).size !== dates.length || dates.some(d => !/^\d{4}-\d{2}-\d{2}$/.test(d)))) throw new Error('Give the date poll one or more different dates.');
+  }
   for (const q of form.questions.filter(q => q.role !== 'informational' && q.type !== 'Option rating')) {
     if (!draft && !/^[a-z][a-z0-9_]{0,59}$/.test(q.criterion || '') && q.title.trim()) throw new Error('Choose the option detail each question compares.');
     const definition = definitions.find(d => d.criterion === q.criterion);
@@ -124,7 +132,7 @@ export const apiService = {
         brief:o.metadata?.brief,facts:(o.metadata?.facts || []).map(localFact)})),
       questions:[...(plan.questions || [])].sort((a,b)=>a.sort_order-b.sort_order).map(q => { const d=q.options?.decision;
         return {id:q.id,title:q.title,description:q.description || '',isRequired:q.is_required,options:q.options?.options || [],role:d?.role || 'soft',criterion:d?.criterion,
-          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,weightLevel:d?.weight_level || 'normal',suggestedWeight:d?.weight_suggested,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration',option_rating:'Option rating'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
+          unit:d?.mapping?.unit,valueType:d?.mapping?.value_type,scale:d?.mapping?.scale,weightLevel:d?.weight_level || 'normal',suggestedWeight:d?.weight_suggested,type:({choice:'Single choice',multi_choice:'Multiple choice',number:'Number',boolean:'Boolean',date_intervals:'Duration',option_rating:'Option rating',date_poll:'Date poll'} as Record<string,Question['type']>)[d?.answer_format || ''] || 'Short answer'}; }) };
   },
   // Creates or updates the unpublished plan, options, questions and draft round.
   async saveFormDraft(form: Form, userId: string, username: string): Promise<Form> {
@@ -245,7 +253,8 @@ export const apiService = {
   recommend: (id: string) => request<Run>(`${roundPath(id)}/recommendations`, 'POST', { retry: true }),
   result: (id: string) => request<Run>(`${roundPath(id)}/recommendation`),
   selection: (id: string) => request<Selection>(`${roundPath(id)}/selection`),
-  confirm: (id: string, run: string, candidate: string, operation: string) => request<Selection>(`${roundPath(id)}/confirm`, 'POST', { operation_id: operation, run_id: run, candidate_id: candidate }),
+  confirm: (id: string, run: string, candidate: string, operation: string, when?: { date: string; time?: string }) => request<Selection>(`${roundPath(id)}/confirm`, 'POST',
+    { operation_id: operation, run_id: run, candidate_id: candidate, ...(when?.date ? { event_date: when.date, ...(when.time ? { event_time: when.time } : {}) } : {}) }),
   reopen: (id: string, operation: string) => request<Round>(`${roundPath(id)}/reopen`, 'POST', { operation_id: operation }),
   rsvp: (id: string) => request<{ revision: number; status: string | null; summary?: RsvpSummary }>(`${participation}/rounds/${id}/my-rsvp`),
   saveRsvp: (id: string, selectionVersion: number, expectedRevision: number, status: string) => request(`${participation}/rounds/${id}/my-rsvp`, 'PUT', { selectionVersion, expectedRevision, status }),

@@ -122,6 +122,7 @@
                         <option>Single choice</option><option>Multiple choice</option><option value="Boolean">Yes or no</option><option>Number</option>
                         <option>Short answer</option><option>Duration</option>
                         <option value="Option rating" :disabled="question.type !== 'Option rating' && hasRating">Rate each option</option>
+                        <option value="Date poll" :disabled="question.type !== 'Date poll' && hasDatePoll">Which dates work?</option>
                       </select></label>
                     </div>
                     <label>Help text <span class="optional">(optional)</span><input type="text" v-model="question.description" placeholder="Anything that helps people answer" /></label>
@@ -136,6 +137,18 @@
                         </div>
                       </TransitionGroup>
                       <button type="button" class="btn-add-option" @click="addOption(qIndex)"><UiIcon name="plus" />Add choice</button>
+                    </div>
+                    <div v-else-if="question.type === 'Date poll'" class="date-poll-edit">
+                      <p class="callout">Members say whether each date works, works if needed, or can’t work. This picks <strong>when</strong>; it doesn’t change which option wins. You choose the final date when you confirm.</p>
+                      <p class="choices-label">Dates to offer</p>
+                      <TransitionGroup name="list" tag="div">
+                        <div v-for="(_, dIndex) in question.options" :key="`${keyOf(question)}-d${dIndex}`" class="option-row">
+                          <input type="date" v-model="question.options[dIndex]" :aria-label="`Date option ${dIndex + 1}`" :aria-invalid="flag(4, !question.options[dIndex])" />
+                          <span class="date-day" aria-hidden="true">{{ weekday(question.options[dIndex] || "") }}</span>
+                          <button v-if="question.options.length > 1" type="button" class="btn-icon btn-quiet btn-danger" :aria-label="`Remove date ${dIndex + 1}`" @click="question.options.splice(dIndex, 1)"><UiIcon name="close" /></button>
+                        </div>
+                      </TransitionGroup>
+                      <button v-if="question.options.length < 14" type="button" class="btn-add-option" @click="addPollDate(question)"><UiIcon name="plus" />Add date</button>
                     </div>
                     <p v-else-if="question.type === 'Option rating'" class="callout">Members rate every option from “Not for me” to “Love it”. Their ratings count as a preference alongside your other questions, and options they love rank higher.</p>
                     <p v-else-if="question.type === 'Duration'" class="callout">Members enter a start and end date. Dates are collected as context only and don’t generate scheduled options.</p>
@@ -154,7 +167,7 @@
                         <label v-if="['number','decimal'].includes(factType(question)) && question.type !== 'Number'">Unit<input v-model="question.unit" placeholder="e.g. km, hours, SGD" /></label>
                       </template>
                     </details>
-                    <fieldset v-if="question.type !== 'Option rating'" class="role-field">
+                    <fieldset v-if="question.type !== 'Option rating' && question.type !== 'Date poll'" class="role-field">
                       <legend>How this answer is used</legend>
                       <div class="role-options">
                         <label v-for="r in roles" :key="r.value" class="choice-option role-option" :class="{ unavailable: lockedToContext(question) && r.value !== 'informational' }">
@@ -179,6 +192,7 @@
                 <div class="question-actions">
                   <button type="button" class="add-question" @click="addQuestion"><UiIcon name="plus" />Add question</button>
                   <button v-if="!hasRating" type="button" class="btn-quiet" @click="addRatingQuestion">Ask them to rate each option</button>
+                  <button v-if="!hasDatePoll" type="button" class="btn-quiet" @click="addDatePoll">Ask which dates work</button>
                   <button v-if="!form.questions.some(q => q.criterion === 'max_cost')" type="button" class="btn-quiet" @click="addBudgetQuestion">Add spending limit</button>
                   <button v-if="!form.questions.some(q => q.criterion === 'preferences')" type="button" class="btn-quiet" @click="addWrittenPreferences">Add general written preferences</button>
                 </div>
@@ -417,11 +431,27 @@ function weightName(level: WeightLevel) { return weightLevels.find(l => l.value 
 const hasRating = computed(() => form.questions.some(q => q.type === 'Option rating'));
 const nowLocal = computed(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); });
 function formatDeadline(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+const hasDatePoll = computed(() => form.questions.some(q => q.type === 'Date poll'));
+// Offer each day of the plan's window (up to a week) as a starting point.
+function windowDates() {
+  if (!form.startDateRange) return [];
+  const days: string[] = []; const end = form.endDateRange || form.startDateRange;
+  for (let d = new Date(`${form.startDateRange}T00:00:00Z`); d.toISOString().slice(0, 10) <= end && days.length < 7; d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
+  return days;
+}
+function addDatePoll() { form.questions.push({ title: 'Which dates work for you?', description: 'Mark every date you could make.', role: 'informational', type: 'Date poll', criterion: 'context', options: windowDates().length ? windowDates() : [''] }); }
+function addPollDate(q: Question) {
+  const last = [...q.options].filter(Boolean).sort().pop();
+  if (!last) { q.options.push(''); return; }
+  const next = new Date(`${last}T00:00:00Z`); next.setUTCDate(next.getUTCDate() + 1); q.options.push(next.toISOString().slice(0, 10));
+}
+function weekday(value: string) { return value ? new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }) : ''; }
 function addRatingQuestion() { form.questions.push({ title: 'How do you feel about each option?', description: 'Go with your gut. Rate every option.', role: 'soft', type: 'Option rating', criterion: OPTION_RATING, options: [] }); }
 function hasChoices(q: Question) { return ['Single choice', 'Multiple choice', 'Location', 'Budget'].includes(q.type); }
 function lockedToContext(q: Question) { return q.type === 'Duration'; }
 function typeChanged(q: Question) {
   if (q.type === 'Option rating') { q.role = 'soft'; q.criterion = OPTION_RATING; q.options = []; q.valueType = undefined; return; }
+  if (q.type === 'Date poll') { q.role = 'informational'; q.criterion = 'context'; q.options = windowDates().length ? windowDates() : ['']; q.valueType = undefined; return; }
   if (q.criterion === OPTION_RATING) q.criterion = '';
   if (lockedToContext(q)) q.role = 'informational';
   if (hasChoices(q) && !q.options.length) q.options.push('', '');
@@ -435,7 +465,7 @@ function typeChanged(q: Question) {
   if (q.criterion === 'max_cost') q.unit = form.currency || 'SGD';
 }
 function choicePlaceholder(i: number) { return `Choice ${i + 1}`; }
-function roleLabel(role?: string, type?: string) { if (type === 'Option rating') return 'Rating'; return roles.find(r => r.value === (role || 'soft'))?.label; }
+function roleLabel(role?: string, type?: string) { if (type === 'Option rating') return 'Rating'; if (type === 'Date poll') return 'Dates'; return roles.find(r => r.value === (role || 'soft'))?.label; }
 function formatDate(value: string) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
 
 // Category-specific wording when the organiser leaves the question blank.
@@ -467,6 +497,8 @@ function problem(step: number): string {
     if (form.questions.some(q => q.role !== 'informational' && q.criterion !== 'preferences' && !/^[a-z][a-z0-9_]{0,59}$/.test(q.criterion || ''))) return 'Choose an option detail for each scored question.';
     if (form.questions.some(q => !q.title.trim())) return 'Write each question, or remove the empty ones.';
     if (form.questions.some(q => hasChoices(q) && !q.options.some(o => o.trim()))) return 'Give each choice question at least one choice.';
+    const poll = form.questions.find(q => q.type === 'Date poll');
+    if (poll && (!poll.options.some(Boolean) || poll.options.some(d => !d) || new Set(poll.options).size !== poll.options.length)) return 'Give the date poll one or more different dates.';
     if (form.questions.some(q => q.type === 'Number' && q.role === 'soft' && !(Number(q.scale) > 0))) return 'Numeric preferences need a positive tolerance.';
   }
   return '';
@@ -577,7 +609,9 @@ const submitForm = async (): Promise<void> => {
   clearTimeout(autoSaveTimer);
   try {
     // Empty choice rows are a typing convenience, not answers.
-    for (const q of form.questions) if (hasChoices(q)) q.options = q.options.map(o => o.trim()).filter(Boolean); else q.options = [];
+    for (const q of form.questions) if (hasChoices(q)) q.options = q.options.map(o => o.trim()).filter(Boolean);
+      else if (q.type === 'Date poll') q.options = [...new Set(q.options.filter(Boolean))].sort();
+      else q.options = [];
     if (!form.decisionQuestion?.trim()) form.decisionQuestion = questionPlaceholder.value;
     await draftSave;
     const saved = await apiService.publishForm(form, auth.userID, auth.username);
@@ -708,6 +742,8 @@ const submitForm = async (): Promise<void> => {
 .review-list .muted { flex-shrink: 0; font-size: .875rem; }
 .callout.warning ul { margin: 0; padding-left: 20px; }
 .deadline-field { max-width: 320px; margin: 8px 0 0; }
+.date-poll-edit .option-row input { max-width: 220px; }
+.date-day { min-width: 3ch; color: var(--muted); font-weight: 600; font-size: .875rem; }
 .callout.warning li + li { margin-top: 4px; }
 
 /* Actions stay in reach while long steps scroll. */

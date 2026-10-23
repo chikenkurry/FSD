@@ -18,7 +18,7 @@ export interface Question {
   description: string;
   isRequired?: boolean;
   sortOrder?: number;
-  type: 'Multiple choice' | 'Short answer' | 'Single choice' | 'Duration' | 'Location' | 'Budget' | 'Number' | 'Boolean' | 'Option rating';
+  type: 'Multiple choice' | 'Short answer' | 'Single choice' | 'Duration' | 'Location' | 'Budget' | 'Number' | 'Boolean' | 'Option rating' | 'Date poll';
   options: string[]; // options list or JSON metadata string
   metadata?: {
     currency?: string;
@@ -96,5 +96,7 @@ export interface ReadinessMember { id?: string; user_id?: string; role?: string;
 export interface RsvpSummary { going: number; maybe: number; declined: number; total: number }
 export interface Candidate { candidate_id: string; title: string; rank: number; primary_objective_tie_size: number; group_score: number; minimum_member_score: number; average_member_score: number; start_at?: string; end_at?: string; estimated_cost_minor?: number | null; currency?: string; currency_minor_digits?: number; tradeoffs?: string[] }
 export interface AttributeBreakdownItem { attribute_id: string; role: 'soft' | 'hard' | 'context'; value: unknown; value_type: string; unit?: string | null; status: string; weight?: number | null; score?: number | null; matched_members?: number; total_members?: number; reason: string; source_text?: string; sources?: { url: string; title?: string }[]; supplemented?: boolean }
-export interface Run { run_id: string; status: string; issues: { code: string }[]; fact_requests?: { option_id: string; attribute_id: string }[]; supplemented_facts?: { option_id:string; attribute_id:string; value:unknown; value_type:string; unit?:string|null; source_text:string; sources:{url:string;title?:string}[]; retrieved_at?:string|null }[]; attribute_breakdown?: Record<string, AttributeBreakdownItem[]>; recommendation_view: { recommendation: Candidate | null; alternatives: Candidate[]; pareto_alternatives: Candidate[]; next_action: string | null; unavailable_candidates: { candidate_id: string; title: string; status: string }[]; not_counted_members?: number } }
-export interface Selection { run_id: string; candidate_id: string; selection_version: number }
+export interface Run { date_poll?: DatePoll; run_id: string; status: string; issues: { code: string }[]; fact_requests?: { option_id: string; attribute_id: string }[]; supplemented_facts?: { option_id:string; attribute_id:string; value:unknown; value_type:string; unit?:string|null; source_text:string; sources:{url:string;title?:string}[]; retrieved_at?:string|null }[]; attribute_breakdown?: Record<string, AttributeBreakdownItem[]>; recommendation_view: { recommendation: Candidate | null; alternatives: Candidate[]; pareto_alternatives: Candidate[]; next_action: string | null; unavailable_candidates: { candidate_id: string; title: string; status: string }[]; not_counted_members?: number } }
+export interface Selection { run_id: string; candidate_id: string; selection_version: number; selected_details?: { event_date?: string; event_time?: string; timezone?: string } }
+export interface DatePoll { question_id: string; respondents: number; best_date: string | null; dates: { date: string; works: number; maybe: number; cannot: number }[] }
+export type DateAnswer = 'yes' | 'maybe' | 'no';
