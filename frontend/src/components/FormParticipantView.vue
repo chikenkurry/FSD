@@ -146,6 +146,10 @@
         <span class="seal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg></span>
         <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">Your response is in</h2>
         <p class="lede">Thanks{{ name ? `, ${name}` : '' }}. Once the organiser closes collection, the recommendation will appear here.<template v-if="dueText && !overdue"> You can change your answers until then ({{ dueText.toLowerCase() }}).</template></p>
+        <div class="return-card">
+          <p><strong>Coming back later?</strong> This device remembers you. To check results from another phone or computer, keep your private return link.</p>
+          <button type="button" class="btn-small" @click="copyReturn"><UiIcon :name="returnCopied ? 'check' : 'link'" />{{ returnCopied ? 'Return link copied' : 'Copy my return link' }}</button>
+        </div>
         <div class="flow-actions centred">
           <button v-if="guided" class="btn-primary" @click="emit('refresh')"><UiIcon name="refresh" />Check for results</button>
           <button @click="go(pages.length - 1)">Edit my response</button>
@@ -163,6 +167,7 @@ import OptionCards from './OptionCards.vue';
 import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import { apiService } from '@/services/api';
+import { returnLink } from '@/services/returnLink';
 import { useAuthStore } from '@/stores/auth';
 import type { Snapshot, Draft, Answer, Choice, Importance, PublishedQuestion } from '@/types/form';
 const props = withDefaults(defineProps<{ roundId: string; snapshot: Snapshot; title?: string; description?: string; guided?: boolean; deadline?: string | null }>(), { title: '', description: '', guided: false, deadline: null });
@@ -172,6 +177,11 @@ const dueText = computed(() => props.deadline ? (overdue.value ? 'The deadline h
 const emit = defineEmits<{ (e: 'saved'): void; (e: 'refresh'): void }>();
 const auth = useAuthStore();
 const name = auth.username;
+const returnCopied = ref(false);
+async function copyReturn() {
+  try { await navigator.clipboard.writeText(returnLink(auth.userID, auth.token, props.roundId)); returnCopied.value = true; setTimeout(() => { returnCopied.value = false; }, 2400); }
+  catch { error.value = 'Clipboard unavailable. Open Session details to copy your return link.'; }
+}
 // Older rounds stored the plan title as the question; show nothing twice.
 const question = computed(() => props.snapshot.decision_question && props.snapshot.decision_question !== props.title ? props.snapshot.decision_question : props.title);
 type AnswerValue = string | number | boolean | string[] | Record<string, number>;
@@ -422,6 +432,9 @@ onMounted(() => { void load(); });
 .seal svg { width: 34px; height: 34px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; animation: draw 600ms 260ms var(--ease-out) both; }
 @keyframes draw { from { stroke-dashoffset: 20; } }
 @keyframes pop-in { from { opacity: 0; transform: scale(.6); } }
+.return-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 560px; margin: 24px auto 0; padding: 16px 18px; border-radius: 14px; background: var(--sky-50); text-align: left; }
+.return-card p { margin: 0; font-size: .9375rem; color: var(--ink-2); }
+.return-card button { flex-shrink: 0; }
 .done-options { margin-top: 32px; text-align: left; }
 .done-options[open] summary { margin-bottom: 12px; }
 @media(max-width:760px) {
@@ -432,6 +445,7 @@ onMounted(() => { void load(); });
   .flow-actions.split { flex-direction: column-reverse; align-items: stretch; }
   .flow-actions.split button, .flow-actions .btn-large { width: 100%; }
   .flow-actions.centred { flex-direction: column; align-items: stretch; }
+  .return-card { flex-direction: column; align-items: stretch; }
   .date-pair { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .rating-row { grid-template-columns: minmax(0, 1fr); }
   .rating-scale, .importance-scale { display: grid; width: 100%; }

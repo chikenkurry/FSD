@@ -1,6 +1,7 @@
 <template>
   <Transition name="view" mode="out-in">
-    <Login v-if="!auth.token" :invited="!!inviteToken" @navigate="afterLogin" />
+    <div v-if="resuming" class="resuming" role="status"><BrandMark /><p>Signing you back in…</p></div>
+    <Login v-else-if="!auth.token" :invited="!!inviteToken" @navigate="afterLogin" />
     <div v-else :class="['shell', { collapsed }]">
       <a class="skip-link" href="#main-content" @click.prevent="focusContent">Skip to content</a>
       <aside class="sidebar" aria-label="Application">
@@ -16,10 +17,13 @@
         <div class="sidebar-foot">
           <details ref="menu" class="session-menu" @keydown.esc="closeMenu">
             <summary data-tip="Session details"><span class="avatar" aria-hidden="true">{{ initial }}</span><span class="who"><span class="who-name">{{ auth.username }}</span><span class="who-hint">Session details</span></span></summary>
-            <div class="session-popover"><h2 class="popover-title">Your session</h2><p>Keep these private. They let you return to this session on another device.</p>
+            <div class="session-popover"><h2 class="popover-title">Your session</h2><p>Your return link signs you back in as yourself on any device. Keep it private, like a password.</p>
+              <button class="btn-primary btn-small return-copy" @click="copyReturnLink"><UiIcon :name="linkCopied ? 'check' : 'link'" />{{ linkCopied ? 'Return link copied' : 'Copy my return link' }}</button>
+              <details class="raw-session"><summary>Show session details</summary>
               <label>User ID<input readonly :value="auth.userID" /></label>
               <label>Session token<input readonly type="password" :value="auth.token" /></label>
               <div class="popover-actions"><button class="btn-small" @click="copySession"><UiIcon :name="copied ? 'check' : 'key'" />{{ copied ? 'Copied' : 'Copy session details' }}</button><span role="status">{{ copied ? 'Copied to clipboard' : '' }}</span></div>
+              </details>
             </div>
           </details>
           <button class="nav-item sign-out" data-tip="Sign out" @click="logout"><UiIcon name="logout" /><span class="nav-label">Sign out</span></button>
@@ -49,9 +53,11 @@ import FormCreator from '@/components/FormCreator.vue';
 import RoundWorkspace from '@/components/RoundWorkspace.vue';
 import { useAuthStore } from '@/stores/auth';
 import { apiService, ApiError } from '@/services/api';
+import { readReturnLink, returnLink } from '@/services/returnLink';
 import type { Form } from '@/types/form';
 const auth = useAuthStore(); const frame = ref(readCheckpoint<string>(checkpointKey(auth.userID, 'screen')) === 'creator' ? 'creator' : 'dashboard'); const roundId = ref(''); const inviteToken = ref(''); const error = ref(''); const copied = ref(false);
 const creatorPlanId=ref(''); const creatorKey = ref(0); const joining = ref(false);
+const resuming = ref(false); const linkCopied = ref(false);
 const initial = computed(() => auth.username.trim().charAt(0).toUpperCase() || '?');
 // The collapsed sidebar is a per-viewer convenience; storage may be unavailable.
 function storedCollapse() { try { return localStorage.getItem('w2d.sidebar') === 'collapsed'; } catch { return false; } }
@@ -63,6 +69,25 @@ function message(e: unknown) { return e instanceof Error ? e.message : String(e)
 function focusContent() { const main = document.getElementById('main-content'); main?.focus(); main?.scrollIntoView(); }
 function readLink() { const params = new URLSearchParams(location.hash.slice(1)); roundId.value = params.get('round') || ''; inviteToken.value = params.get('invite') || ''; creatorPlanId.value=params.get('draft') || ''; if(creatorPlanId.value)frame.value='creator'; }
 readLink();
+// A return link (#resume=…) signs the person back in, then the rest of the link opens normally.
+async function consumeReturnLink() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const link = readReturnLink(params.get('resume'));
+  if (!params.has('resume')) return;
+  params.delete('resume');
+  history.replaceState(null, '', params.toString() ? `/#${params}` : '/');
+  if (!link) { error.value = 'That return link is incomplete. Ask for a new one or sign in again.'; return; }
+  if (link.userId === auth.userID && link.token === auth.token) { readLink(); return; }
+  resuming.value = true;
+  try { const user = await apiService.resume(link.userId, link.token); auth.setSession({ ...user, session_token: link.token }); }
+  catch { error.value = 'That return link has expired. Join again from your invitation, or ask the organiser for a new one.'; }
+  finally { resuming.value = false; readLink(); }
+}
+void consumeReturnLink();
+async function copyReturnLink() {
+  try { await navigator.clipboard.writeText(returnLink(auth.userID, auth.token, roundId.value || undefined)); linkCopied.value = true; setTimeout(() => { linkCopied.value = false; }, 2400); }
+  catch { error.value = 'Clipboard unavailable. Use “Show session details” to copy them manually.'; }
+}
 function openRound(id: string) { error.value = ''; location.hash = new URLSearchParams({ round: id }).toString(); readLink(); }
 function dashboard() { error.value = ''; location.hash = ''; readLink(); frame.value = 'dashboard'; }
 function navigate(next:string){ if(next==='join'){joining.value=true;return;} if(next==='creator'){removeCheckpoint(checkpointKey(auth.userID,'creator'));creatorPlanId.value='';creatorKey.value++;location.hash='';readLink();frame.value='creator';}else dashboard(); }
@@ -86,8 +111,9 @@ async function copySession() { try { await navigator.clipboard.writeText(JSON.st
 async function logout() { try { await apiService.revoke(); auth.logout(); } catch(e) { if(e instanceof ApiError && e.status === 401) auth.logout(); else error.value = message(e); } }
 function closeMenu() { if (menu.value?.open) { menu.value.open = false; menu.value.querySelector('summary')?.focus(); } }
 function outside(event: PointerEvent) { if (menu.value?.open && !menu.value.contains(event.target as Node)) menu.value.open = false; }
-onMounted(() => { readLink(); window.addEventListener('hashchange', readLink); document.addEventListener('pointerdown', outside); });
-onUnmounted(() => { window.removeEventListener('hashchange', readLink); document.removeEventListener('pointerdown', outside); });
+function onHash() { if (new URLSearchParams(location.hash.slice(1)).has('resume')) void consumeReturnLink(); else readLink(); }
+onMounted(() => { readLink(); window.addEventListener('hashchange', onHash); document.addEventListener('pointerdown', outside); });
+onUnmounted(() => { window.removeEventListener('hashchange', onHash); document.removeEventListener('pointerdown', outside); });
 </script>
 <style scoped>
 .shell { --sidebar-w: 268px; display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100dvh; transition: grid-template-columns 360ms var(--ease-out); }
@@ -111,9 +137,9 @@ onUnmounted(() => { window.removeEventListener('hashchange', readLink); document
 
 .sidebar-foot { margin-top: auto; display: grid; gap: 4px; padding-top: 14px; border-top: 1px solid var(--line); }
 .session-menu { position: relative; border: 0; }
-.session-menu summary { min-height: 52px; padding: 8px 10px; gap: 12px; border-radius: 12px; color: var(--ink); }
-.session-menu summary::before { display: none; }
-.session-menu summary:hover, .session-menu[open] summary { background: var(--sky-50); color: var(--ink); }
+.session-menu > summary { min-height: 52px; padding: 8px 10px; gap: 12px; border-radius: 12px; color: var(--ink); }
+.session-menu > summary::before { display: none; }
+.session-menu > summary:hover, .session-menu[open] > summary { background: var(--sky-50); color: var(--ink); }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: var(--night); color: #fff; font-size: .875rem; font-weight: 700; }
 .who { display: grid; min-width: 0; line-height: 1.25; }
 .who-name { font-size: .9375rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
@@ -122,6 +148,10 @@ onUnmounted(() => { window.removeEventListener('hashchange', readLink); document
 .session-menu[open] .session-popover { animation: pop 300ms var(--ease-out); }
 @keyframes pop { from { opacity: 0; transform: translateX(-6px) scale(.98); } }
 .popover-title { font-size: 1.125rem; margin-bottom: 6px; }
+.return-copy { width: 100%; margin-bottom: 8px; }
+.raw-session { margin-top: 4px; }
+.resuming { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--muted); }
+.resuming .brand-mark { width: 44px; height: 44px; animation: pulse 1.2s ease-in-out infinite; }
 .session-popover p { font-size: .9375rem; color: var(--muted); }
 .session-popover label:first-of-type { margin-top: 0; }
 .session-popover label { margin: 14px 0; }
@@ -135,9 +165,9 @@ onUnmounted(() => { window.removeEventListener('hashchange', readLink); document
 .collapsed .sidebar-top { flex-direction: column; gap: 10px; }
 .collapsed .brand-name, .collapsed .nav-label, .collapsed .who { opacity: 0; transform: translateX(-6px); position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .collapsed .collapse-toggle .ui-icon { transform: scaleX(-1); }
-.collapsed .nav-item, .collapsed .session-menu summary { justify-content: center; padding-inline: 0; }
+.collapsed .nav-item, .collapsed .session-menu > summary { justify-content: center; padding-inline: 0; }
 .collapsed [data-tip]:hover::after { content: attr(data-tip); position: absolute; left: calc(100% + 12px); top: 50%; translate: 0 -50%; padding: 6px 10px; border-radius: 8px; background: var(--night); color: #fff; font-size: .8125rem; font-weight: 600; white-space: nowrap; pointer-events: none; animation: tip 200ms var(--ease-out); z-index: 40; }
-.collapsed .session-menu[open] summary::after { display: none; }
+.collapsed .session-menu[open] > summary::after { display: none; }
 @keyframes tip { from { opacity: 0; translate: -4px -50%; } }
 
 .main-col { min-width: 0; display: flex; flex-direction: column; }
@@ -160,7 +190,7 @@ onUnmounted(() => { window.removeEventListener('hashchange', readLink); document
   .sidebar-nav .nav-item[aria-current='page'] .nav-label { color: var(--blue-ink); }
   .sidebar-foot { margin: 0; padding: 0; border: 0; display: flex; align-items: center; gap: 2px; }
   .session-menu { position: static; }
-  .session-menu summary, .collapsed .session-menu summary { min-height: 44px; padding: 4px 8px; gap: 8px; justify-content: flex-start; }
+  .session-menu > summary, .collapsed .session-menu > summary { min-height: 44px; padding: 4px 8px; gap: 8px; justify-content: flex-start; }
   .who-name { display: none; }
   .who-hint { font-size: .875rem; font-weight: 600; color: var(--blue-ink); }
   .avatar { width: 30px; height: 30px; font-size: .8125rem; }
