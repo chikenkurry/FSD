@@ -32,7 +32,7 @@ async function guest(page: Page, name: string) {
   await expect(page.getByRole('button', { name: 'My forms', exact: true })).toBeVisible();
 }
 
-test('create, invite, privately review, submit, rank, confirm and RSVP', async ({ page, browser }, info) => {
+test('create, invite, privately review, submit, rank, confirm and RSVP', { tag: '@stack' }, async ({ page, browser }, info) => {
   const name = `Browser ${info.project.name} ${Date.now()}`;
   // Observe autosave from the start, including recovery before option research.
   let planCreates = 0;
@@ -230,7 +230,7 @@ test('create, invite, privately review, submit, rank, confirm and RSVP', async (
   await context.close();
 });
 
-test('public browser proxy never exposes internal APIs', async ({ request }) => {
+test('public browser proxy never exposes internal APIs', { tag: '@stack' }, async ({ request }) => {
   for (const service of ['planning', 'participation']) {
     const response = await request.get(`/api/${service}/internal/metrics`);
     expect(response.status()).toBe(404);
@@ -241,7 +241,7 @@ test('public browser proxy never exposes internal APIs', async ({ request }) => 
 });
 
 
-test('dashboard recovery, long content and session details fit the viewport', async ({ page }, info) => {
+test('dashboard recovery, long content and session details fit the viewport', { tag: '@stack' }, async ({ page }, info) => {
   const longTitle = 'A'.repeat(255);
   let attempts = 0;
   await page.route('**/v1/plans/member/*', route => {

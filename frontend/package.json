@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ui": "playwright test --grep-invert @stack",
+    "test:stack": "playwright test --grep @stack"
   },
   "dependencies": {
     "pinia": "^4.0.3",
