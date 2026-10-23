@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -103,5 +104,11 @@ func (s *roundStore) reopen(ctx context.Context, id uuid.UUID, operationID uuid.
 }
 
 func selectionMatches(s Selection, request confirmationRequest) bool {
-	return s.OperationID == request.OperationID && s.RunID == request.RunID && s.CandidateID == request.CandidateID
+	var details struct {
+		EventDate string `json:"event_date"`
+		EventTime string `json:"event_time"`
+	}
+	_ = json.Unmarshal(s.Details, &details)
+	return s.OperationID == request.OperationID && s.RunID == request.RunID && s.CandidateID == request.CandidateID &&
+		details.EventDate == request.EventDate && details.EventTime == request.EventTime
 }

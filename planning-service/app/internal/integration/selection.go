@@ -6,6 +6,8 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"planning-service/app/internal/model"
+	"regexp"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,6 +16,27 @@ type confirmationRequest struct {
 	OperationID uuid.UUID `json:"operation_id"`
 	RunID       string    `json:"run_id"`
 	CandidateID string    `json:"candidate_id"`
+	// Optional when the group voted on dates: the chosen day and local start time.
+	EventDate string `json:"event_date,omitempty"`
+	EventTime string `json:"event_time,omitempty"`
+}
+
+var (
+	eventDatePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	eventTimePattern = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
+)
+
+func validEventWhen(body confirmationRequest) bool {
+	if body.EventDate == "" {
+		return body.EventTime == ""
+	}
+	if !eventDatePattern.MatchString(body.EventDate) {
+		return false
+	}
+	if _, err := time.Parse("2006-01-02", body.EventDate); err != nil {
+		return false
+	}
+	return body.EventTime == "" || eventTimePattern.MatchString(body.EventTime)
 }
 
 func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +45,7 @@ func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body confirmationRequest
-	if decode(w, r, &body) != nil || body.OperationID == uuid.Nil || body.CandidateID == "" {
+	if decode(w, r, &body) != nil || body.OperationID == uuid.Nil || body.CandidateID == "" || !validEventWhen(body) {
 		fail(w, 400, "INVALID_INPUT")
 		return
 	}
@@ -71,6 +94,12 @@ func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, key := range []string{"currency", "currency_minor_digits", "cost_scope", "timezone", "execution_mode"} {
 		details[key] = definition[key]
+	}
+	if body.EventDate != "" {
+		details["event_date"] = body.EventDate
+		if body.EventTime != "" {
+			details["event_time"] = body.EventTime
+		}
 	}
 	selection, err := h.rounds.confirm(r.Context(), round, body, currentUser(r), encoded(details))
 	if err != nil {
