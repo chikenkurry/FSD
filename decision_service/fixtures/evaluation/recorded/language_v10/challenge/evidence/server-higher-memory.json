@@ -1,0 +1,13 @@
+{
+  "option_snapshot_id": "server-higher-memory-options",
+  "response_snapshot_id": "server-higher-memory-responses",
+  "processing_version": "sparse-v10",
+  "model": null,
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": false,
+  "canonicalization_declarations": {}
+}

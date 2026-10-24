@@ -1,0 +1,1001 @@
+{
+  "schema_version": "preprocessing-eval-v1",
+  "dataset_version": "language-followup-1",
+  "description": "New cross-domain synonym, distinction, comparative, and hard-limit examples authored before their first execution. Not independently reviewed or held out.",
+  "label_provenance": {
+    "author": "Codex",
+    "method": "Expected meanings written from new inputs before executing this set; no labels derived from outputs.",
+    "independent_review": "pending",
+    "reviewer": null
+  },
+  "cases": [
+    {
+      "case_id": "transport-bicycle-synonym",
+      "domain": "Which vehicle should we rent?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "transport-bicycle-synonym",
+        "option_revision": "1",
+        "option_snapshot_id": "transport-bicycle-synonym-options",
+        "decision_question": "Which vehicle should we rent?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "vehicle type preference?",
+            "role": "soft",
+            "criterion": "vehicle_type",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "vehicle_type",
+                "value_type": "category",
+                "value": "bike",
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "vehicle_type",
+                "value_type": "category",
+                "value": "bus",
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "transport-bicycle-synonym",
+        "option_revision": "1",
+        "response_snapshot_id": "transport-bicycle-synonym-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "Bicycle"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "vehicle_type",
+              "preferred_value": "bike",
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Ordinary contextual synonym should map to exactly one supplied target."
+    },
+    {
+      "case_id": "watch-film-synonym",
+      "domain": "Which movie should our club watch?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "watch-film-synonym",
+        "option_revision": "1",
+        "option_snapshot_id": "watch-film-synonym-options",
+        "decision_question": "Which movie should our club watch?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "format tags preference?",
+            "role": "soft",
+            "criterion": "format_tags",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "format_tags",
+                "value_type": "tag_set",
+                "value": [
+                  "movie"
+                ],
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "format_tags",
+                "value_type": "tag_set",
+                "value": [
+                  "series"
+                ],
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "watch-film-synonym",
+        "option_revision": "1",
+        "response_snapshot_id": "watch-film-synonym-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": [
+                  "Film"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "format_tags",
+              "preferred_value": [
+                "movie"
+              ],
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Ordinary contextual synonym should map to exactly one supplied target."
+    },
+    {
+      "case_id": "school-math-synonym",
+      "domain": "Which school subject should our group project cover?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "school-math-synonym",
+        "option_revision": "1",
+        "option_snapshot_id": "school-math-synonym-options",
+        "decision_question": "Which school subject should our group project cover?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "subject preference?",
+            "role": "soft",
+            "criterion": "subject",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "subject",
+                "value_type": "category",
+                "value": "mathematics",
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "subject",
+                "value_type": "category",
+                "value": "physics",
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "school-math-synonym",
+        "option_revision": "1",
+        "response_snapshot_id": "school-math-synonym-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "Math"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "subject",
+              "preferred_value": "mathematics",
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Ordinary contextual synonym should map to exactly one supplied target."
+    },
+    {
+      "case_id": "meal-vegan-distinct",
+      "domain": "Which meal should we serve?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "meal-vegan-distinct",
+        "option_revision": "1",
+        "option_snapshot_id": "meal-vegan-distinct-options",
+        "decision_question": "Which meal should we serve?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "diet tags preference?",
+            "role": "soft",
+            "criterion": "diet_tags",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "diet_tags",
+                "value_type": "tag_set",
+                "value": [
+                  "vegetarian"
+                ],
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "diet_tags",
+                "value_type": "tag_set",
+                "value": [
+                  "omnivore"
+                ],
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "meal-vegan-distinct",
+        "option_revision": "1",
+        "response_snapshot_id": "meal-vegan-distinct-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": [
+                  "vegan"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "diet_tags",
+              "preferred_value": [
+                "vegan"
+              ],
+              "source_type": "member_response"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "A narrower or opposite concept must remain distinct rather than becoming a supplied label."
+    },
+    {
+      "case_id": "outdoors-specific-activity",
+      "domain": "Which activity should we choose?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "outdoors-specific-activity",
+        "option_revision": "1",
+        "option_snapshot_id": "outdoors-specific-activity-options",
+        "decision_question": "Which activity should we choose?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "activity tags preference?",
+            "role": "soft",
+            "criterion": "activity_tags",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "activity_tags",
+                "value_type": "tag_set",
+                "value": [
+                  "outdoor activities"
+                ],
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "activity_tags",
+                "value_type": "tag_set",
+                "value": [
+                  "indoor activities"
+                ],
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "outdoors-specific-activity",
+        "option_revision": "1",
+        "response_snapshot_id": "outdoors-specific-activity-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": [
+                  "hiking"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "activity_tags",
+              "preferred_value": [
+                "hiking"
+              ],
+              "source_type": "member_response"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "A narrower or opposite concept must remain distinct rather than becoming a supplied label."
+    },
+    {
+      "case_id": "venue-opposite-atmosphere",
+      "domain": "Which venue should we use?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "venue-opposite-atmosphere",
+        "option_revision": "1",
+        "option_snapshot_id": "venue-opposite-atmosphere-options",
+        "decision_question": "Which venue should we use?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "atmosphere preference?",
+            "role": "soft",
+            "criterion": "atmosphere",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "atmosphere",
+                "value_type": "category",
+                "value": "quiet",
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "atmosphere",
+                "value_type": "category",
+                "value": "busy",
+                "status": "confirmed",
+                "source": "synthetic follow-up data"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "venue-opposite-atmosphere",
+        "option_revision": "1",
+        "response_snapshot_id": "venue-opposite-atmosphere-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "noisy"
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "atmosphere",
+              "preferred_value": "noisy",
+              "source_type": "member_response"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "A narrower or opposite concept must remain distinct rather than becoming a supplied label."
+    },
+    {
+      "case_id": "sensor-comparative-rate",
+      "domain": "Which sensor should we buy?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "sensor-comparative-rate",
+        "option_revision": "1",
+        "option_snapshot_id": "sensor-comparative-rate-options",
+        "decision_question": "Which sensor should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "sampling rate preference?",
+            "role": "soft",
+            "criterion": "sampling_rate",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "sampling_rate",
+                "value_type": "number",
+                "value": 20,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "Hz"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "sampling_rate",
+                "value_type": "number",
+                "value": 80,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "Hz"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "sensor-comparative-rate",
+        "option_revision": "1",
+        "response_snapshot_id": "sensor-comparative-rate-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "I prefer the higher sampling rate."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "value": [],
+          "op": "rows"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "sampling_rate",
+              "preferred_value": null,
+              "numeric_intent": "maximize",
+              "utility_rule": "numeric_maximize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Comparative preference declares a numeric direction, without a feasibility requirement."
+    },
+    {
+      "case_id": "queue-comparative-time",
+      "domain": "Which service counter should we use?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "queue-comparative-time",
+        "option_revision": "1",
+        "option_snapshot_id": "queue-comparative-time-options",
+        "decision_question": "Which service counter should we use?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "waiting time preference?",
+            "role": "soft",
+            "criterion": "waiting_time",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "waiting_time",
+                "value_type": "number",
+                "value": 5,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "minutes"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "waiting_time",
+                "value_type": "number",
+                "value": 20,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "minutes"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "queue-comparative-time",
+        "option_revision": "1",
+        "response_snapshot_id": "queue-comparative-time-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "Shorter waiting time would be better."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "value": [],
+          "op": "rows"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "waiting_time",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Comparative preference declares a numeric direction, without a feasibility requirement."
+    },
+    {
+      "case_id": "hardware-comparative-mass",
+      "domain": "Which portable unit should we buy?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "hardware-comparative-mass",
+        "option_revision": "1",
+        "option_snapshot_id": "hardware-comparative-mass-options",
+        "decision_question": "Which portable unit should we buy?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "mass preference?",
+            "role": "soft",
+            "criterion": "mass",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "mass",
+                "value_type": "number",
+                "value": 200,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "grams"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "mass",
+                "value_type": "number",
+                "value": 600,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "grams"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "hardware-comparative-mass",
+        "option_revision": "1",
+        "response_snapshot_id": "hardware-comparative-mass-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "I would rather pick a lighter model."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "value": "ready",
+          "op": "equals"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "value": [],
+          "op": "rows"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "value": [
+            {
+              "attribute_id": "mass",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Comparative preference declares a numeric direction, without a feasibility requirement."
+    },
+    {
+      "case_id": "course-genuine-minimum",
+      "domain": "Which course package should we select?",
+      "tags": [
+        "semantic",
+        "language-followup"
+      ],
+      "planning": {
+        "round_id": "course-genuine-minimum",
+        "option_revision": "1",
+        "option_snapshot_id": "course-genuine-minimum-options",
+        "decision_question": "Which course package should we select?",
+        "roster": [
+          "p1"
+        ],
+        "questions": [
+          {
+            "question_id": "preference",
+            "label": "credits preference?",
+            "role": "soft",
+            "criterion": "credits",
+            "relevance": 1
+          }
+        ],
+        "options": [
+          {
+            "option_id": "o0",
+            "title": "Option 0",
+            "facts": [
+              {
+                "criterion": "credits",
+                "value_type": "number",
+                "value": 10,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "credits"
+              }
+            ]
+          },
+          {
+            "option_id": "o1",
+            "title": "Option 1",
+            "facts": [
+              {
+                "criterion": "credits",
+                "value_type": "number",
+                "value": 20,
+                "status": "confirmed",
+                "source": "synthetic follow-up data",
+                "unit": "credits"
+              }
+            ]
+          }
+        ]
+      },
+      "responses": {
+        "round_id": "course-genuine-minimum",
+        "option_revision": "1",
+        "response_snapshot_id": "course-genuine-minimum-responses",
+        "participants": [
+          {
+            "participant_id": "p1",
+            "response_status": "complete",
+            "answers": [
+              {
+                "question_id": "preference",
+                "value": "I need at least 15 credits."
+              }
+            ]
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "value": "needs_clarification",
+          "op": "equals"
+        },
+        {
+          "dimension": "clarification",
+          "path": "/issues",
+          "value": [
+            {
+              "code": "CONFIRM_REQUIREMENT"
+            }
+          ],
+          "op": "contains_rows"
+        },
+        {
+          "dimension": "constraints",
+          "path": "/preparation/constraints",
+          "value": [
+            {
+              "attribute_id": "credits",
+              "required_value": 15,
+              "constraint_rule": "minimum_v1",
+              "confirmation_status": "needs_confirmation",
+              "source_type": "semantic_model"
+            }
+          ],
+          "op": "rows"
+        }
+      ],
+      "note": "Explicit requirement and inclusive numeric floor must not be softened by the comparative repair."
+    }
+  ]
+}

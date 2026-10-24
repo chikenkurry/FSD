@@ -1,0 +1,942 @@
+{
+  "schema_version": "preprocessing-eval-report-v1",
+  "dataset_version": "challenge-1",
+  "dataset_sha256": "8bbd0051d3b6714036e0c584f1f9cf4b24a65669f432a995b25239e17f3df977",
+  "evaluated_at": "2026-10-08T00:47:37.789278+00:00",
+  "label_provenance": {
+    "author": "Codex",
+    "method": "Expected meanings authored before executing this dataset; no labels copied from pipeline outputs. These examples accompany implementation work.",
+    "independent_review": "pending",
+    "reviewer": null
+  },
+  "mode": "replay",
+  "model": null,
+  "selected_tags": [],
+  "duration_seconds": 0.008,
+  "cases": {
+    "passed": 22,
+    "total": 24,
+    "accuracy": 0.9166666666666666
+  },
+  "assertions": {
+    "passed": 72,
+    "total": 78,
+    "accuracy": 0.9230769230769231,
+    "missing_paths": 0,
+    "value_mismatches": 6
+  },
+  "operational_errors": 0,
+  "by_dimension": {
+    "clarification": {
+      "passed": 7,
+      "total": 7,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "constraints": {
+      "passed": 11,
+      "total": 11,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "extraction": {
+      "passed": 10,
+      "total": 12,
+      "accuracy": 0.8333333333333334,
+      "missing_paths": 0,
+      "value_mismatches": 2
+    },
+    "status": {
+      "passed": 44,
+      "total": 48,
+      "accuracy": 0.9166666666666666,
+      "missing_paths": 0,
+      "value_mismatches": 4
+    }
+  },
+  "by_domain": {
+    "printer": {
+      "passed": 6,
+      "total": 9,
+      "accuracy": 0.6666666666666666,
+      "missing_paths": 0,
+      "value_mismatches": 3
+    },
+    "server": {
+      "passed": 3,
+      "total": 3,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "venue": {
+      "passed": 20,
+      "total": 20,
+      "accuracy": 1.0,
+      "missing_paths": 0,
+      "value_mismatches": 0
+    },
+    "warehouse": {
+      "passed": 43,
+      "total": 46,
+      "accuracy": 0.9347826086956522,
+      "missing_paths": 0,
+      "value_mismatches": 3
+    }
+  },
+  "results": [
+    {
+      "case_id": "warehouse-ideal-load",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "printer-minimum-output",
+      "domain": "printer",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.001,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "venue-upper-noise",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "server-higher-memory",
+      "domain": "server",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "printer-lower-noise",
+      "domain": "printer",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-load-range",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-ambiguous-number",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_NUMERIC_INTENT",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Specify an ideal target, minimum/maximum, range, or higher/lower direction; a bare number does not establish intent"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-ambiguous-unit-text",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_NUMERIC_INTENT",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Specify an ideal target, minimum/maximum, range, or higher/lower direction; a bare number does not establish intent"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-declared-target",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-declared-soft-minimum",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-declared-hard-minimum",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-tags-contradictory",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFLICTING_ANSWER",
+          "path": "responses.participants.p1.constraints.handling_tags",
+          "message": "Tags are both required and excluded: cooling; review questions: preference"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-tags-compatible",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 2,
+        "total": 2,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-distinct-required-sets",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "venue-compatible-caps",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "venue-compatible-floor-cap",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "venue-touching-inclusive",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "venue-touching-exclusive",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFLICTING_ANSWER",
+          "path": "responses.participants.p1.constraints.guest_capacity",
+          "message": "Numeric requirements have no overlapping values; review questions: preference, second"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "venue-impossible-floor-cap",
+      "domain": "venue",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFLICTING_ANSWER",
+          "path": "responses.participants.p1.constraints.guest_capacity",
+          "message": "Numeric requirements have no overlapping values; review questions: preference, second"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-compound-bounds",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "structured"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "provisional",
+      "error": null,
+      "issues": [
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": null,
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "printer-natural-quiet-direction",
+      "domain": "printer",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "passed": false,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_ANSWER",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Hard requirement needs explicit wording in its own clause"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 0,
+        "total": 3,
+        "accuracy": 0.0,
+        "missing_paths": 0,
+        "value_mismatches": 3
+      },
+      "failures": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "provisional",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "ready",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "missing_rows": [
+            {
+              "attribute_id": "noise_level",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "unexpected_rows": [],
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "noise_level",
+              "preferred_value": null,
+              "numeric_intent": "minimize",
+              "utility_rule": "numeric_minimize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "actual": []
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-natural-capacity-direction",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "passed": false,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "AMBIGUOUS_ANSWER",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Hard requirement needs explicit wording in its own clause"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 0,
+        "total": 3,
+        "accuracy": 0.0,
+        "missing_paths": 0,
+        "value_mismatches": 3
+      },
+      "failures": [
+        {
+          "dimension": "status",
+          "path": "/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "provisional",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "status",
+          "path": "/preparation/status",
+          "op": "equals",
+          "passed": false,
+          "expected": "ready",
+          "actual": "needs_clarification"
+        },
+        {
+          "dimension": "extraction",
+          "path": "/preparation/preferences",
+          "op": "rows",
+          "missing_rows": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": null,
+              "numeric_intent": "maximize",
+              "utility_rule": "numeric_maximize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "unexpected_rows": [],
+          "passed": false,
+          "expected": [
+            {
+              "attribute_id": "load_capacity",
+              "preferred_value": null,
+              "numeric_intent": "maximize",
+              "utility_rule": "numeric_maximize_v1",
+              "source_type": "semantic_model"
+            }
+          ],
+          "actual": []
+        }
+      ]
+    },
+    {
+      "case_id": "warehouse-natural-required-tag",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    },
+    {
+      "case_id": "warehouse-natural-excluded-tag",
+      "domain": "warehouse",
+      "tags": [
+        "challenge",
+        "semantic"
+      ],
+      "passed": true,
+      "duration_seconds": 0.0,
+      "result_status": "needs_clarification",
+      "error": null,
+      "issues": [
+        {
+          "code": "CONFIRM_REQUIREMENT",
+          "path": "responses.participants.p1.answers.preference",
+          "message": "Confirm the interpreted criterion, rule, value, and unit"
+        },
+        {
+          "code": "EXECUTION_ADAPTER_REQUIRED",
+          "path": "preparation",
+          "message": "Sparse meanings need a supported execution adapter before ranking"
+        }
+      ],
+      "model_calls": [],
+      "processing_version": "sparse-v7",
+      "evidence_model": "qwen3:4b-instruct",
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0,
+        "missing_paths": 0,
+        "value_mismatches": 0
+      },
+      "failures": []
+    }
+  ]
+}

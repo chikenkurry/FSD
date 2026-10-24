@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "watch-film-synonym-options",
+  "response_snapshot_id": "watch-film-synonym-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "f3b842b4a513f0c54782bcac27f455acd983681005a9faee7ff247d8f1b7a312": {
+      "reason": "The label 'film' refers to a single, standalone movie, as opposed to a series of episodes or films. Among the targets, 'movie' is a direct synonym for 'film' in common usage, as both refer to a single cinematic work. 'Series' refers to a sequence of related films or episodes, which is a broader and distinct concept. Therefore, 'movie' is the only target that preserves the intended meaning of a single film in the context of choosing a movie to watch. Replacing 'film' with 'movie' maintains the preference for a single, standalone movie, while 'series' would imply a sequence, which is not equivalent.",
+      "status": "equivalent",
+      "target": "movie"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

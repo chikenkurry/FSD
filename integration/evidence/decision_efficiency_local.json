@@ -1,0 +1,118 @@
+{
+  "measured_on": "2026-10-15",
+  "notes": "Local development measurements; synthetic inputs; no external providers. PostgreSQL runs are separate samples. Paired scoring alternates baseline/current functions in one host process.",
+  "baseline": {
+    "label": "baseline-c3b9163d",
+    "database": "postgresql",
+    "timing_iterations": 100,
+    "matching_iterations": 200,
+    "scoring": [
+      {
+        "members": 2,
+        "options": 2,
+        "matching_median_ms": 0.028,
+        "result_sha256": "3b3b2b4a25bcc645cc1324986ab1b2fc908cf46fe6644fbe80a9cd588769396d"
+      },
+      {
+        "members": 10,
+        "options": 4,
+        "matching_median_ms": 0.1722,
+        "result_sha256": "a1f6797801adde77a14e0fe8e0fd745fc1bea2386d5ff35b4a48114b4547bec0"
+      },
+      {
+        "members": 30,
+        "options": 8,
+        "matching_median_ms": 1.132,
+        "result_sha256": "fd93e752fa1a3d0b8424e86df0c07a74661468b2214b7d2c0fbfed34d1b0cfae"
+      }
+    ],
+    "completed_read_512k_input": {
+      "statements": 2,
+      "returned_fields_json_bytes": 542918,
+      "median_ms": 0.8149
+    },
+    "readiness_database_probe": {
+      "statements": 2,
+      "returned_fields_json_bytes": 63,
+      "median_ms": 0.919,
+      "historical_jobs": 10000
+    },
+    "idle_worker": {
+      "statements": 52,
+      "returned_fields_json_bytes": 423,
+      "seconds": 4,
+      "slots": 1
+    }
+  },
+  "optimised": {
+    "label": "optimised",
+    "database": "postgresql",
+    "timing_iterations": 100,
+    "matching_iterations": 200,
+    "scoring": [
+      {
+        "members": 2,
+        "options": 2,
+        "matching_median_ms": 0.0422,
+        "result_sha256": "3b3b2b4a25bcc645cc1324986ab1b2fc908cf46fe6644fbe80a9cd588769396d"
+      },
+      {
+        "members": 10,
+        "options": 4,
+        "matching_median_ms": 0.1774,
+        "result_sha256": "a1f6797801adde77a14e0fe8e0fd745fc1bea2386d5ff35b4a48114b4547bec0"
+      },
+      {
+        "members": 30,
+        "options": 8,
+        "matching_median_ms": 0.8135,
+        "result_sha256": "fd93e752fa1a3d0b8424e86df0c07a74661468b2214b7d2c0fbfed34d1b0cfae"
+      }
+    ],
+    "completed_read_512k_input": {
+      "statements": 1,
+      "returned_fields_json_bytes": 15985,
+      "median_ms": 0.3029
+    },
+    "readiness_database_probe": {
+      "statements": 1,
+      "returned_fields_json_bytes": 0,
+      "median_ms": 0.1199,
+      "historical_jobs": 10000
+    },
+    "idle_worker": {
+      "statements": 18,
+      "returned_fields_json_bytes": 200,
+      "seconds": 4,
+      "slots": 1
+    }
+  },
+  "paired_scoring": {
+    "environment": "macOS ARM64 host Python 3.12",
+    "iterations_per_variant": 1000,
+    "order": "alternating in same process",
+    "results": [
+      {
+        "members": 2,
+        "options": 2,
+        "baseline_ms": 0.0294,
+        "optimised_ms": 0.0287,
+        "identical_results": true
+      },
+      {
+        "members": 10,
+        "options": 4,
+        "baseline_ms": 0.1663,
+        "optimised_ms": 0.1456,
+        "identical_results": true
+      },
+      {
+        "members": 30,
+        "options": 8,
+        "baseline_ms": 0.9933,
+        "optimised_ms": 0.7069,
+        "identical_results": true
+      }
+    ]
+  }
+}

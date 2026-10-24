@@ -1,0 +1,52 @@
+name: Frontend checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run build-only
+  browser-ui:
+    # UI-only Playwright specs mock every API call, so they run against a plain
+    # production build. Full-stack journeys (@stack) need the Docker services
+    # and a local model; run them with scripts/regression.sh.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build-only
+      - name: Serve the build and run UI-only specs
+        env:
+          FRONTEND_URL: http://127.0.0.1:5197
+        run: |
+          npx vite preview --port 5197 --strictPort &
+          for i in $(seq 1 30); do curl -sf "$FRONTEND_URL/" >/dev/null && break; sleep 1; done
+          npm run test:ui -- --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-ui-results
+          path: frontend/test-results

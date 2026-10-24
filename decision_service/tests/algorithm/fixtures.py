@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.algorithm import (
+from decision_service.app.algorithm import (
     BudgetConstraint,
     Candidate,
     DecisionAlgorithmInput,

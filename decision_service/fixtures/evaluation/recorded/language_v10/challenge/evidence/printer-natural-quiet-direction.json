@@ -1,0 +1,30 @@
+{
+  "option_snapshot_id": "printer-natural-quiet-direction-options",
+  "response_snapshot_id": "printer-natural-quiet-direction-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preference": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "noise_level",
+            "evidence": "The less noise it makes, the better.",
+            "intent": "minimize",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "lower dB value (less noise)"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

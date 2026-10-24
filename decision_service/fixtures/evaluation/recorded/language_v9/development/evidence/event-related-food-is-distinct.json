@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "event-related-food-is-distinct-options",
+  "response_snapshot_id": "event-related-food-is-distinct-responses",
+  "processing_version": "sparse-v9",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "1affd210d0b0b4972a497b3c512785ba123b85ebf5867edb6ff28f7f7f6a1a2f": {
+      "reason": "The label 'vegan' refers to food that does not include any animal products, such as meat, dairy, or eggs. The target 'vegetarian' includes plant-based foods but may still contain animal products like dairy or eggs, which are not excluded in vegan diets. Therefore, 'vegetarian' is not equivalent to 'vegan' because it allows for animal-derived ingredients. 'Seafood' is an animal product and directly contradicts vegan principles. Thus, neither target is a meaningful synonym or equivalent to 'vegan' in this context. The label 'vegan' has a clear meaning, but no provided target matches it in scope or definition. As a result, there is no equivalent target.",
+      "status": "distinct",
+      "target": null
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

@@ -1,0 +1,11 @@
+{
+  "status": "ready",
+  "candidate_ids": ["cafe@2026-10-02T11:00:00Z", "dinner@2026-10-02T11:00:00Z"],
+  "question_weights": {"q_rating": 0.6, "q_environment": 0.4},
+  "p1_budget_minor": 3000,
+  "p1_required_attribute": "vegetarian_option",
+  "p1_preferred_attribute": "indoor",
+  "p2_budget_kind": "unlimited",
+  "p2_dinner_rating": 2,
+  "p2_environment_kind": "indifferent"
+}

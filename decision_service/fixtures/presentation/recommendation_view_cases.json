@@ -1,0 +1,86 @@
+{
+  "ranked_pareto": {
+    "run": {
+      "status": "ranked",
+      "result": {
+        "ranked_candidates": [
+          {"option_id": "balanced", "rank": 1, "group_score": 0.74, "min_member_score": 0.62, "average_member_score": 0.78, "fairness_penalty": 0.01},
+          {"option_id": "popular", "rank": 2, "group_score": 0.72, "min_member_score": 0.45, "average_member_score": 0.9, "fairness_penalty": 0.05},
+          {"option_id": "dominated", "rank": 3, "group_score": 0.4, "min_member_score": 0.3, "average_member_score": 0.4, "fairness_penalty": 0.1}
+        ],
+        "candidate_results": [],
+        "pareto_frontier": [{"option_id": "balanced"}, {"option_id": "popular"}]
+      },
+      "algorithm_input": {
+        "candidates": [
+          {"option_id": "balanced", "title": "Balanced option"},
+          {"option_id": "popular", "title": "Popular option"},
+          {"option_id": "dominated", "title": "Dominated option"}
+        ]
+      }
+    },
+    "expected": {
+      "recommendation_id": "balanced",
+      "alternative_ids": ["popular", "dominated"],
+      "pareto_ids": ["popular"],
+      "popular_tradeoffs": ["LOWER_MINIMUM_SATISFACTION", "HIGHER_AVERAGE_SATISFACTION"]
+    }
+  },
+  "blocked_missing_facts": {
+    "run": {
+      "status": "blocked",
+      "result": {
+        "ranked_candidates": [],
+        "candidate_results": [{"option_id": "option-a", "feasibility": "unresolved", "explanation_codes": ["MISSING_SOFT_OPTION_FACT"]}],
+        "pareto_frontier": []
+      },
+      "algorithm_input": {"candidates": [{"option_id": "option-a", "title": "Option A"}]},
+      "processing": {"preparation": {"fact_requests": [{"option_id": "option-a", "attribute_id": "accessibility"}]}}
+    },
+    "expected": {"next_action": "OPTION_FACTS_REQUIRED", "unavailable_status": "unresolved"}
+  },
+  "blocked_incomplete_responses": {
+    "run": {
+      "status": "blocked",
+      "result": {"ranked_candidates": [], "candidate_results": [], "pareto_frontier": []},
+      "algorithm_input": {"candidates": [{"option_id": "option-a", "title": "Option A"}]}
+    },
+    "expected": {"next_action": "RESPONSES_OR_CONFIRMATIONS_REQUIRED"}
+  },
+  "no_feasible_candidate": {
+    "run": {
+      "status": "no_feasible_candidate",
+      "result": {
+        "ranked_candidates": [],
+        "candidate_results": [{"option_id": "option-a", "feasibility": "infeasible", "explanation_codes": ["REQUIRED_ATTRIBUTE_NOT_MET"]}],
+        "pareto_frontier": []
+      },
+      "algorithm_input": {"candidates": [{"option_id": "option-a", "title": "Option A"}]}
+    },
+    "expected": {"next_action": "REVISE_OPTIONS_OR_REQUIREMENTS", "unavailable_status": "infeasible"}
+  },
+  "ranked_without_pareto_alternatives": {
+    "run": {
+      "status": "ranked",
+      "result": {
+        "ranked_candidates": [{"option_id": "only-choice", "rank": 1, "group_score": 0.8, "min_member_score": 0.8, "average_member_score": 0.8, "fairness_penalty": 0.0}],
+        "candidate_results": [],
+        "pareto_frontier": [{"option_id": "only-choice"}]
+      },
+      "algorithm_input": {"candidates": [{"option_id": "only-choice", "title": "Only choice"}]}
+    },
+    "expected": {"next_action": null}
+  },
+  "pending_recommendation": {
+    "run": {"status": "pending", "result": {}, "algorithm_input": {"candidates": []}},
+    "expected": {"next_action": "RECOMMENDATION_IN_PROGRESS"}
+  },
+  "setup_review_required": {
+    "run": {"status": "needs_information", "result": {}, "algorithm_input": {"candidates": []}},
+    "expected": {"next_action": "DECISION_SETUP_REVIEW_REQUIRED"}
+  },
+  "failed_recommendation": {
+    "run": {"status": "failed", "result": {}, "algorithm_input": {"candidates": []}},
+    "expected": {"next_action": "RECOMMENDATION_RETRY_REQUIRED"}
+  }
+}

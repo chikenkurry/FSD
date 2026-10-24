@@ -2,9 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
-	"errors"
 
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
@@ -14,25 +14,29 @@ import (
 
 // for incoming create request
 type CreatePlanRequest struct {
-	Title           string     `json:"title"`
-	Description     *string    `json:"description,omitempty"`
-	OrganiserID     uuid.UUID  `json:"organiser_id"`
-	TimeWindowStart *time.Time `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time `json:"time_window_end,omitempty"`
-	OrganiserName   string     `json:"organiser_name"`
+	Title           string             `json:"title"`
+	Description     *string            `json:"description,omitempty"`
+	Category        model.PlanCategory `json:"plan_category"`
+	State           model.PlanState    `json:"plan_state"`
+	OrganiserID     uuid.UUID          `json:"organiser_id"`
+	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
+	OrganiserName   string             `json:"organiser_name"`
 }
 
 // for responding
 type PlanResponse struct {
-	ID              uuid.UUID       `json:"id"`
-	Title           string          `json:"title"`
-	Description     *string         `json:"description,omitempty"`
-	Status          model.PlanState `json:"status"`
-	CreatedByUserID uuid.UUID       `json:"created_by_user_id"`
-	TimeWindowStart *time.Time      `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time      `json:"time_window_end,omitempty"`
-	CreatedAt       time.Time       `json:"created_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	ID              uuid.UUID          `json:"id"`
+	Title           string             `json:"title"`
+	Description     *string            `json:"description,omitempty"`
+	Category        model.PlanCategory `json:"plan_category"`
+	State           model.PlanState    `json:"state"`
+	CreatedByUserID uuid.UUID          `json:"created_by_user_id"`
+	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	OrganiserName   string             `json:"organiser_name,omitempty"`
 
 	// Relational details (included when loaded)
 	MembersCount            int `json:"members_count,omitempty"`
@@ -41,11 +45,12 @@ type PlanResponse struct {
 }
 
 type UpdatePlanRequest struct {
-	Title           *string          `json:"title,omitempty"`
-	Description     *string          `json:"description,omitempty"`
-	Status          *model.PlanState `json:"status,omitempty"`
-	TimeWindowStart *time.Time       `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time       `json:"time_window_end,omitempty"`
+	Category        *model.PlanCategory `json:"plan_category,omitempty"`
+	Title           *string             `json:"title,omitempty"`
+	Description     *string             `json:"description,omitempty"`
+	State           *model.PlanState    `json:"state,omitempty"`
+	TimeWindowStart *time.Time          `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time          `json:"time_window_end,omitempty"`
 }
 
 type PlanHandler struct {
@@ -53,18 +58,12 @@ type PlanHandler struct {
 }
 
 type JsonResponse struct {
-	Status  string `json:"status"`
+	State   string `json:"state"`
 	Message string `json:"message"`
 }
 
 func NewPlanHandler(repo *repository.PlanRepository) *PlanHandler {
 	return &PlanHandler{repo: repo}
-}
-
-func (h *PlanHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
-	result := JsonResponse{Status: "okay", Message: "service be alive"}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
 }
 
 // POST /v1/plans
@@ -80,10 +79,21 @@ func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !req.Category.IsValidCategory() {
+		WriteError(w, http.StatusBadRequest, "invalid category")
+		return
+	}
+
+	if !req.State.IsValidState() {
+		WriteError(w, http.StatusBadRequest, "invalid state")
+		return
+	}
+
 	plan := &model.Plan{
 		Title:           req.Title,
 		Description:     req.Description,
-		Status:          model.PlanStateDraft,
+		Category:        req.Category,
+		State:           model.PlanStateDraft,
 		CreatedByUserID: req.OrganiserID,
 		TimeWindowStart: req.TimeWindowStart,
 		TimeWindowEnd:   req.TimeWindowEnd,
@@ -102,7 +112,7 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Content-Type", "application/json")
 	id := r.PathValue("id")
 	if id == "" {
-		http.Error(w, "Plan id is required", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "Plan id is required")
 		return
 	}
 
@@ -110,30 +120,92 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if err.Error() == "plan not found" {
-			http.Error(w, "Plan not found", http.StatusNotFound)
+			WriteError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		http.Error(w, "Fail to retreieve plan", http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Fail to retreieve plan")
 		return
 	}
 
 	WriteJSONResponse(w, http.StatusOK, plan)
 }
 
-// GET /v1/plans/organiser/{id} - List plans for an organiser
-func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Request) {
-	organiserID := r.PathValue("id")
-	if organiserID == "" {
-		http.Error(w, "Organiser id is required", http.StatusBadRequest)
+// GET /v1/plans/details/{id}
+func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
 		return
 	}
 
-	plans, err := h.repo.ListByOrganiser(r.Context(), organiserID, 20, 0)
+	plan, err := h.repo.GetByIDWithDetails(r.Context(), id)
+
 	if err != nil {
-		http.Error(w, "Failed to list plans", http.StatusInternalServerError)
+		if err.Error() == "plan not found" {
+			WriteError(w, http.StatusNotFound, "Plan not found")
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, "Fail to retreieve plan")
 		return
 	}
-	WriteJSONResponse(w, http.StatusOK, plans)
+
+	// The persistence model stores JSONB bytes. Use the existing activity DTO so
+	// nested metadata is JSON too, rather than encoding those bytes as base64.
+	activities := make([]ProposedActivityResponse, len(plan.ProposedActivities))
+	for i := range plan.ProposedActivities {
+		activities[i] = toProposedActivityResponse(&plan.ProposedActivities[i])
+	}
+	WriteJSONResponse(w, http.StatusOK, struct {
+		*model.Plan
+		Activities []ProposedActivityResponse `json:"proposed_activities"`
+	}{plan, activities})
+}
+
+// GET /v1/plans/organiser/{id} - List plans for an organiser
+func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Request) {
+	h.listPlans(w, r, false)
+}
+
+func (h *PlanHandler) ListPlansByMember(w http.ResponseWriter, r *http.Request) {
+	h.listPlans(w, r, true)
+}
+
+func (h *PlanHandler) listPlans(w http.ResponseWriter, r *http.Request, joined bool) {
+	organiserID := r.PathValue("id")
+	if organiserID == "" {
+		WriteError(w, http.StatusBadRequest, "Organiser id is required")
+		return
+	}
+
+	var plans []model.Plan
+	var err error
+	if joined {
+		plans, err = h.repo.ListByMember(r.Context(), organiserID, 100, 0)
+	} else {
+		plans, err = h.repo.ListByOrganiser(r.Context(), organiserID, 20, 0)
+	}
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Failed to list plans")
+		return
+	}
+	responses := make([]PlanResponse, len(plans))
+	for i, p := range plans {
+		responses[i] = PlanResponse{
+			ID:              p.ID,
+			Title:           p.Title,
+			Category:        p.Category,
+			MembersCount:    len(p.Members),
+			Description:     p.Description,
+			State:           p.State,
+			CreatedByUserID: p.CreatedByUserID,
+			TimeWindowStart: p.TimeWindowStart,
+			TimeWindowEnd:   p.TimeWindowEnd,
+			CreatedAt:       p.CreatedAt,
+			UpdatedAt:       p.UpdatedAt,
+			OrganiserName:   p.CreatedBy.Username,
+		}
+	}
+	WriteJSONResponse(w, http.StatusOK, responses)
 }
 
 // PATCH /v1/plans/{id} - Update plan details or transition status
@@ -153,14 +225,25 @@ func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 
 	// Build dynamic updates map
 	updates := make(map[string]interface{})
+	if req.Category != nil {
+		if !req.Category.IsValidCategory() {
+			WriteError(w, http.StatusBadRequest, "invalid category")
+			return
+		}
+		updates["category"] = *req.Category
+	}
 	if req.Title != nil {
 		updates["title"] = *req.Title
 	}
 	if req.Description != nil {
 		updates["description"] = req.Description
 	}
-	if req.Status != nil {
-		updates["status"] = *req.Status
+	if req.State != nil {
+		if !req.State.IsValidState() {
+			WriteError(w, http.StatusBadRequest, "invalid state")
+			return
+		}
+		updates["state"] = *req.State
 	}
 	if req.TimeWindowStart != nil {
 		updates["time_window_start"] = req.TimeWindowStart
@@ -215,7 +298,7 @@ func toPlanResponse(p *model.Plan) PlanResponse {
 		ID:              p.ID,
 		Title:           p.Title,
 		Description:     p.Description,
-		Status:          p.Status,
+		State:           p.State,
 		CreatedByUserID: p.CreatedByUserID,
 		TimeWindowStart: p.TimeWindowStart,
 		TimeWindowEnd:   p.TimeWindowEnd,

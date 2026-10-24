@@ -1,0 +1,110 @@
+name: Backend checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  decision:
+    runs-on: ubuntu-latest
+    env:
+      DECISION_TEST_DATABASE_URL: postgresql://decision:decision@localhost:5432/decision
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: decision
+          POSTGRES_PASSWORD: decision
+          POSTGRES_DB: decision
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U decision"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r decision_service/requirements-test.txt
+      - run: python -m unittest discover -s decision_service/tests -t . -q
+      - run: python -m decision_service.evaluation --tag structured
+      - run: python -m integration.benchmark_decision_service --jobs 24 --output /tmp/decision-load.json
+      - run: python -m integration.benchmark_decision_efficiency --idle-seconds 1 --output /tmp/decision-efficiency.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decision-load-evidence
+          path: |
+            /tmp/decision-load.json
+            /tmp/decision-efficiency.json
+  planning:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: planning-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: planning-service/go.mod
+          cache-dependency-path: planning-service/go.sum
+      - run: go test ./...
+  participation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: participation-service-main
+    env:
+      DATABASE_URL: postgresql://participation:participation@localhost:5432/participation
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: participation
+          POSTGRES_PASSWORD: participation
+          POSTGRES_DB: participation
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U participation"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: participation-service-main/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run migrate:deploy
+      - run: npm run test:e2e
+      - run: npm run build
+  integration:
+    needs: [decision, planning, participation]
+    runs-on: ubuntu-latest
+    env:
+      # CI has no Ollama server or provider keys; research reports itself unconfigured.
+      SEMANTIC_PROVIDER: rules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: docker compose -f compose.integration.yaml up -d --build --wait --wait-timeout 240
+      - run: python integration/test_http_lifecycle.py
+      - run: npm run test:e2e
+        working-directory: frontend
+      - if: failure()
+        run: docker compose -f compose.integration.yaml logs --tail 100
+      - if: always()
+        run: docker compose -f compose.integration.yaml down

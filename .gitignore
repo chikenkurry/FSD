@@ -1,0 +1,27 @@
+node_modules/
+dist/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.pytest_cache/
+.coverage
+coverage/
+.venv/
+venv/
+.local-data/
+.env
+.env.*
+.env_*
+!.env.example
+!.env_example
+!.env.deploy.example
+.DS_Store
+
+participation-service-main/.engine-artifacts/*
+!participation-service-main/.engine-artifacts/.gitkeep
+
+# Local UI review captures and Impeccable runtime data
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/live/
+.impeccable/config.local.json

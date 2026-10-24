@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "outdoors-specific-activity-options",
+  "response_snapshot_id": "outdoors-specific-activity-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "59af24801a9c30bcde7b1222b6584012e28ef2426f69a53de500533a0872477c": {
+      "reason": "Hiking is a specific type of outdoor activity. Replacing 'hiking' with 'outdoor activities' preserves the intended preference of being engaged in an outdoor setting, as hiking inherently occurs outdoors. 'Indoor activities' is distinct and opposite in meaning, as hiking cannot occur indoors. Therefore, 'outdoor activities' is the equivalent target.",
+      "status": "unresolved",
+      "target": "outdoor activities"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

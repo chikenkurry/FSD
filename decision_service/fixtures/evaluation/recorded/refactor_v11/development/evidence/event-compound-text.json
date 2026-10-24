@@ -1,0 +1,49 @@
+{
+  "option_snapshot_id": "event-compound-text-options",
+  "response_snapshot_id": "event-compound-text-responses",
+  "processing_version": "sparse-v11",
+  "model": "recorded:qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preferences": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "quiet",
+            "evidence": "I prefer somewhere quiet",
+            "intent": "match",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "true"
+          },
+          {
+            "criterion": "max_cost",
+            "evidence": "I must spend under $50",
+            "intent": "less_than",
+            "must_have": true,
+            "polarity": "avoid",
+            "value": "50.00 USD"
+          },
+          {
+            "criterion": "step_free_access",
+            "evidence": "I need step-free access",
+            "intent": "match",
+            "must_have": true,
+            "polarity": "prefer",
+            "value": "true"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {},
+  "scenario_policy": {
+    "max_requests": 10000
+  }
+}

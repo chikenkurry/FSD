@@ -1,0 +1,691 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:what2do:api-v1",
+  "$defs": {
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "requestId"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "fieldErrors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "field",
+              "message"
+            ],
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "input_refs": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "round_id",
+        "option_revision",
+        "option_snapshot_id",
+        "response_snapshot_id"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string"
+        },
+        "round_id": {
+          "type": "string"
+        },
+        "option_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "option_snapshot_id": {
+          "type": "string"
+        },
+        "response_snapshot_id": {
+          "type": "string"
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "status",
+        "job_state",
+        "input_refs",
+        "issues",
+        "recommendation_view"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "failed",
+            "ranked",
+            "blocked",
+            "no_feasible_candidate",
+            "needs_information",
+            "needs_clarification",
+            "unsupported",
+            "invalid_input",
+            "ready",
+            "provisional",
+            "needs_review"
+          ]
+        },
+        "job_state": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "input_refs": {
+          "$ref": "#/$defs/input_refs"
+        },
+        "issues": {
+          "type": "array"
+        },
+        "execution_specification": {
+          "type": "object"
+        },
+        "result": {
+          "type": "object"
+        },
+        "collection": {
+          "type": "object"
+        },
+        "supplemented_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["option_id", "attribute_id", "value", "value_type", "unit", "source_text", "sources", "retrieved_at"],
+            "properties": {
+              "option_id": {"type": "string"},
+              "attribute_id": {"type": "string"},
+              "value": {"type": ["string", "number", "boolean", "array"]},
+              "value_type": {"enum": ["category", "number", "decimal", "boolean", "tag_set"]},
+              "unit": {"type": ["string", "null"]},
+              "source_text": {"type": "string"},
+              "retrieved_at": {"type": ["string", "null"]},
+              "sources": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["url"], "properties": {"url": {"type": "string"}, "title": {"type": "string"}}}}
+            }
+          }
+        },
+        "recommendation_view": {
+          "$ref": "#/$defs/recommendation_view"
+        },
+        "date_poll": {
+          "description": "Aggregate answers to a 'which dates work?' poll; counts only, never individual answers.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "respondents", "dates", "best_date"],
+          "properties": {
+            "question_id": {"type": "string"},
+            "respondents": {"type": "integer", "minimum": 0},
+            "best_date": {"type": ["string", "null"], "format": "date"},
+            "dates": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["date", "works", "maybe", "cannot"],
+              "properties": {"date": {"type": "string", "format": "date"}, "works": {"type": "integer", "minimum": 0}, "maybe": {"type": "integer", "minimum": 0}, "cannot": {"type": "integer", "minimum": 0}}}}
+          }
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "required": [
+        "round_id",
+        "plan_id",
+        "selection_version",
+        "run_id",
+        "candidate_id",
+        "option_snapshot_id",
+        "response_snapshot_id",
+        "selected_details",
+        "confirmed_by",
+        "confirmed_at"
+      ],
+      "properties": {
+        "selection_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_details": {
+          "type": "object"
+        },
+        "round_id": {
+          "type": "string"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "option_snapshot_id": {
+          "type": "string"
+        },
+        "response_snapshot_id": {
+          "type": "string"
+        },
+        "confirmed_by": {
+          "type": "string"
+        },
+        "confirmed_at": {
+          "type": "string"
+        }
+      }
+    },
+    "preview_request": {
+      "type": "object",
+      "required": [
+        "expected_revision"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retry": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rsvp_request": {
+      "type": "object",
+      "required": [
+        "selectionVersion",
+        "expectedRevision",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "selectionVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "GOING",
+            "MAYBE",
+            "DECLINED"
+          ]
+        }
+      }
+    },
+    "fact_request": {
+      "type": "object",
+      "required": [
+        "option_id",
+        "attribute_id",
+        "value_type"
+      ],
+      "properties": {
+        "option_id": {
+          "type": "string"
+        },
+        "attribute_id": {
+          "type": "string"
+        },
+        "value_type": {
+          "enum": [
+            "number",
+            "decimal",
+            "boolean",
+            "category",
+            "tag_set"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "accept_facts_request": {
+      "type": "object",
+      "required": [
+        "operation_id",
+        "collection_run_id",
+        "claim_ids",
+        "reviewed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "collection_run_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "claim_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "reviewed": {
+          "const": true
+        },
+        "replace_existing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "recommendation_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "rank",
+        "primary_rank",
+        "primary_objective_tie_size",
+        "group_score",
+        "minimum_member_score",
+        "average_member_score",
+        "fairness_penalty",
+        "is_recommended"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_option_id": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "estimated_cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "currency_minor_digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duration_days",
+            "earliest_start_date",
+            "latest_start_date"
+          ],
+          "properties": {
+            "duration_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "earliest_start_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "latest_start_date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_objective_tie_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "group_score": {
+          "type": "number"
+        },
+        "minimum_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "average_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fairness_penalty": {
+          "type": "number",
+          "minimum": 0
+        },
+        "is_recommended": {
+          "type": "boolean"
+        }
+      }
+    },
+    "pareto_alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "rank",
+        "primary_rank",
+        "primary_objective_tie_size",
+        "group_score",
+        "minimum_member_score",
+        "average_member_score",
+        "fairness_penalty",
+        "is_recommended",
+        "tradeoffs"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_option_id": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "estimated_cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "currency_minor_digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duration_days",
+            "earliest_start_date",
+            "latest_start_date"
+          ],
+          "properties": {
+            "duration_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "earliest_start_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "latest_start_date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "primary_objective_tie_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "group_score": {
+          "type": "number"
+        },
+        "minimum_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "average_member_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fairness_penalty": {
+          "type": "number",
+          "minimum": 0
+        },
+        "is_recommended": {
+          "type": "boolean"
+        },
+        "tradeoffs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "HIGHER_MINIMUM_SATISFACTION",
+              "LOWER_MINIMUM_SATISFACTION",
+              "HIGHER_AVERAGE_SATISFACTION",
+              "LOWER_AVERAGE_SATISFACTION",
+              "EQUIVALENT_GROUP_METRICS"
+            ]
+          }
+        }
+      }
+    },
+    "unavailable_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_option_id": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "estimated_cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "currency_minor_digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duration_days",
+            "earliest_start_date",
+            "latest_start_date"
+          ],
+          "properties": {
+            "duration_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "earliest_start_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "latest_start_date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "status": {
+          "enum": [
+            "infeasible",
+            "unresolved"
+          ]
+        }
+      }
+    },
+    "recommendation_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "recommendation",
+        "alternatives",
+        "pareto_alternatives",
+        "unavailable_candidates",
+        "next_action"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "recommendation-view-v1"
+        },
+        "status": {
+          "$ref": "#/$defs/run/properties/status"
+        },
+        "recommendation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/recommendation_candidate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/recommendation_candidate"
+          }
+        },
+        "pareto_alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pareto_alternative"
+          }
+        },
+        "unavailable_candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unavailable_candidate"
+          }
+        },
+        "next_action": {
+          "enum": [
+            null,
+            "OPTION_FACTS_REQUIRED",
+            "RESPONSES_OR_CONFIRMATIONS_REQUIRED",
+            "REVISE_OPTIONS_OR_REQUIREMENTS",
+            "RECOMMENDATION_IN_PROGRESS",
+            "DECISION_SETUP_REVIEW_REQUIRED",
+            "RECOMMENDATION_RETRY_REQUIRED"
+          ]
+        },
+        "not_counted_members": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

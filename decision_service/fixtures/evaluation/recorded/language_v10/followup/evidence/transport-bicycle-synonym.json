@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "transport-bicycle-synonym-options",
+  "response_snapshot_id": "transport-bicycle-synonym-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "4d00357c215be7f717be44aae88d0bb0d691ea9c5f1eb859b579ff86310de238": {
+      "reason": "The label 'bicycle' refers to a personal, two-wheeled vehicle typically used for transportation. Among the targets, 'bike' is a common synonym for bicycle in everyday language and is directly equivalent in meaning within the context of 'vehicle_type' as a category. 'Bus' is a much larger, public transport vehicle and is not equivalent to a bicycle in terms of size, use, or category. Therefore, 'bike' is the only target that preserves the intended concept of a personal, small vehicle in this decision.",
+      "status": "equivalent",
+      "target": "bike"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

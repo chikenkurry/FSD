@@ -1,0 +1,20 @@
+{
+  "option_snapshot_id": "trip-irrelevant-subject-options",
+  "response_snapshot_id": "trip-irrelevant-subject-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {
+    "subject": {
+      "criterion": "max_cost",
+      "reason": "The decision is about choosing a destination based on cost, and the options provide explicit values for max_cost per person. The question about favourite subject is irrelevant to the decision goal.",
+      "relevance": 0,
+      "role": "informational"
+    }
+  },
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

@@ -1,0 +1,30 @@
+{
+  "option_snapshot_id": "warehouse-natural-excluded-tag-options",
+  "response_snapshot_id": "warehouse-natural-excluded-tag-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preference": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "handling_tags",
+            "evidence": "Our shipments must not use cooling.",
+            "intent": "match",
+            "must_have": true,
+            "polarity": "avoid",
+            "value": "cooling"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

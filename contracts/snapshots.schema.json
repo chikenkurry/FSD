@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:what2do:service-snapshots",
+  "oneOf": [{"$ref": "#/$defs/planning"}, {"$ref": "#/$defs/responses"}],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1},
+    "fact": {
+      "type": "object", "required": ["criterion", "value", "status", "source"],
+      "properties": {
+        "criterion": {"$ref": "#/$defs/id"},
+        "value": {"type": ["string", "number", "boolean", "array", "null"]},
+        "status": {"enum": ["confirmed", "estimated", "unknown"]},
+        "source": {"type": "string", "minLength": 1},
+        "value_type": {"enum": ["number", "decimal", "boolean", "category", "tag_set"]},
+        "unit": {"type": ["string", "null"]}, "context": {"type": "object"}
+      }
+    },
+    "question": {
+      "type": "object", "required": ["question_id", "label", "required", "answer_format"],
+      "properties": {
+        "question_id": {"$ref": "#/$defs/id"}, "label": {"type": "string", "minLength": 1},
+        "required": {"type": "boolean"},
+        "answer_format": {"enum": ["text", "choice", "multi_choice", "number", "boolean", "date_intervals"]},
+        "choices": {"type": "array"}, "role": {"enum": ["hard", "soft", "informational", "importance"]},
+        "criterion": {"$ref": "#/$defs/id"},
+        "numeric_intent": {"enum": ["target", "minimum", "maximum", "less_than", "greater_than", "maximize", "minimize", "range"]}
+      }
+    },
+    "planning": {
+      "type": "object",
+      "required": ["schema_version", "plan_id", "round_id", "option_revision", "option_snapshot_id", "decision_question", "roster", "options", "questions", "currency", "currency_minor_digits", "cost_scope"],
+      "properties": {
+        "schema_version": {"const": "planning-snapshot-v1"},
+        "plan_id": {"$ref": "#/$defs/id"}, "round_id": {"$ref": "#/$defs/id"}, "option_snapshot_id": {"$ref": "#/$defs/id"},
+        "previous_round_id": {"$ref": "#/$defs/id"},
+        "interpretation_policy": {"enum": ["choice-labels-v1", "facts-v1"]},
+        "option_revision": {"type": "integer", "minimum": 1}, "decision_question": {"type": "string", "minLength": 1},
+        "roster": {"type": "array", "minItems": 1, "maxItems": 30, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "currency_minor_digits": {"type": "integer", "minimum": 0, "maximum": 9},
+        "cost_scope": {"type": "string", "minLength": 1}, "timezone": {"type": "string"},
+        "execution_mode": {"enum": ["options", "scheduled", "scenarios"]},
+        "options": {"type": "array", "minItems": 1, "maxItems": 8, "items": {
+          "type": "object", "required": ["option_id", "title", "facts"], "properties": {
+            "option_id": {"$ref": "#/$defs/id"}, "title": {"type": "string", "minLength": 1},
+            "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}}
+          }
+        }},
+        "questions": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/$defs/question"}},
+        "execution_context": {"type": "object"}
+      }
+    },
+    "answer": {
+      "type": "object", "required": ["question_id", "value"],
+      "properties": {"question_id": {"$ref": "#/$defs/id"}, "value": {}, "confirmed_requirement": {}, "confirmed_requirements": {"type": "array"}}
+    },
+    "responses": {
+      "type": "object",
+      "required": ["schema_version", "plan_id", "round_id", "option_revision", "option_snapshot_id", "snapshot_id", "currency", "minor_digits", "participants", "constraints", "preferences"],
+      "properties": {
+        "schema_version": {"const": "response-snapshot-v2"},
+        "plan_id": {"$ref": "#/$defs/id"}, "round_id": {"$ref": "#/$defs/id"}, "snapshot_id": {"$ref": "#/$defs/id"},
+        "option_snapshot_id": {"type": ["string", "null"]}, "option_revision": {"type": "integer", "minimum": 1},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}, "minor_digits": {"type": "integer", "minimum": 0, "maximum": 9},
+        "participants": {"type": "array", "items": {"type": "object", "required": ["participant_id", "response_status", "is_required_for_decision"], "properties": {
+          "participant_id": {"$ref": "#/$defs/id"}, "response_status": {"enum": ["complete", "incomplete", "stale"]},
+          "is_required_for_decision": {"type": "boolean"}, "answers": {"type": "array", "items": {"$ref": "#/$defs/answer"}}
+        }}},
+        "constraints": {"type": "array"}, "preferences": {"type": "array"}
+      }
+    }
+  }
+}

@@ -1,0 +1,136 @@
+name: what2do-integration
+x-decision-environment: &decision-environment
+  DECISION_DATABASE_URL: postgresql://decision:decision@decision-db:5432/decision
+  INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+  SEMANTIC_PROVIDER: ${SEMANTIC_PROVIDER:-ollama}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
+  SEMANTIC_MODEL_REVISION: ${SEMANTIC_MODEL_REVISION:-}
+  GEMINI_FACT_MODEL: ${GEMINI_FACT_MODEL:-gemini-3.8-flash}
+  GEMINI_FACT_MODEL_REVISION: ${GEMINI_FACT_MODEL_REVISION:-}
+  DECISION_JOB_TIMEOUT_SECONDS: ${DECISION_JOB_TIMEOUT_SECONDS:-180}
+  DECISION_LEASE_SECONDS: ${DECISION_LEASE_SECONDS:-300}
+  DECISION_DB_POOL_SIZE: ${DECISION_DB_POOL_SIZE:-8}
+x-decision-build: &decision-build
+  context: .
+  dockerfile: decision_service/Dockerfile
+x-decision-dependencies: &decision-dependencies
+  decision-db: {condition: service_healthy}
+  decision-migrate: {condition: service_completed_successfully}
+services:
+  frontend:
+    build: frontend
+    depends_on:
+      planning: {condition: service_healthy}
+      participation: {condition: service_healthy}
+      decision: {condition: service_healthy}
+    ports: ["${FRONTEND_BIND:-127.0.0.1}:15173:80"]
+  decision-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: decision
+      POSTGRES_PASSWORD: decision
+      POSTGRES_DB: decision
+    volumes: [decision-postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U decision -d decision"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  decision-migrate:
+    build: *decision-build
+    depends_on:
+      decision-db: {condition: service_healthy}
+    environment:
+      DECISION_DATABASE_URL: postgresql://decision:decision@decision-db:5432/decision
+    command: [python, -m, decision_service.service, --role, migrate, --import-sqlite, /legacy/runs.sqlite]
+    volumes: [decision-data:/legacy:ro]
+    healthcheck: {disable: true}
+  planning-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: planning
+      POSTGRES_PASSWORD: planning
+      POSTGRES_DB: planning
+    volumes: [planning-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U planning -d planning"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  participation-db:
+    image: postgres:16
+    ports: ["127.0.0.1:15432:5432"]
+    environment:
+      POSTGRES_USER: participation
+      POSTGRES_PASSWORD: participation
+      POSTGRES_DB: participation
+    volumes: [participation-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U participation -d participation"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  planning:
+    build: planning-service
+    depends_on:
+      planning-db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://planning:planning@planning-db:5432/planning?sslmode=disable
+      PARTICIPATION_BASE_URL: http://participation:3000
+      DECISION_BASE_URL: http://decision:8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+    ports: ["127.0.0.1:18080:8080"]
+  participation:
+    build: participation-service-main
+    depends_on:
+      participation-db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://participation:participation@participation-db:5432/participation
+      NODE_ENV: production
+      AUTH_MODE: planning
+      PLANNING_BASE_URL: http://planning:8080
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+    ports: ["127.0.0.1:13002:3000"]
+  decision:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, api]
+    environment:
+      <<: *decision-environment
+      PLANNING_BASE_URL: http://planning:8080
+      PARTICIPATION_BASE_URL: http://participation:3000
+      # Serves live place cards and photos; Places content is never stored.
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+  decision-worker:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, worker, --kinds, 'recommendation,fact_collection']
+    environment:
+      <<: *decision-environment
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      DECISION_WORKERS: ${DECISION_WORKERS:-2}
+  # Organiser research (overviews, drafted questions, option facts) runs on its own pool
+  # so a slow web search never delays recommendations or previews.
+  decision-research:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, worker, --kinds, research]
+    environment:
+      <<: *decision-environment
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+      DECISION_WORKERS: ${DECISION_RESEARCH_WORKERS:-6}
+  decision-preview:
+    build: *decision-build
+    depends_on: *decision-dependencies
+    command: [python, -m, decision_service.service, --role, worker, --kinds, preview]
+    environment:
+      <<: *decision-environment
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      DECISION_WORKERS: ${DECISION_PREVIEW_WORKERS:-1}
+volumes:
+  planning-data:
+  participation-data:
+  decision-data:
+  decision-postgres-data:

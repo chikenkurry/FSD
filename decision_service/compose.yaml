@@ -1,0 +1,28 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+
+  preprocessing-demo:
+    profiles: [demo]
+    build:
+      context: ..
+      dockerfile: decision_service/Dockerfile
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    command:
+      - python
+      - -m
+      - decision_service.preprocessing
+      - --semantic-provider
+      - ollama
+      - --planning
+      - decision_service/fixtures/preprocessing/planning_auto_weights.json
+      - --responses
+      - decision_service/fixtures/preprocessing/response_snapshot.json
+
+volumes:
+  ollama_models:

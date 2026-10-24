@@ -1,0 +1,41 @@
+{
+  "option_snapshot_id": "project-compound-directions-options",
+  "response_snapshot_id": "project-compound-directions-responses",
+  "processing_version": "sparse-v11",
+  "model": "recorded:qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {
+    "p1": {
+      "preferences": {
+        "importance_relations": [],
+        "interpretations": [
+          {
+            "criterion": "impact",
+            "evidence": "greater impact",
+            "intent": "maximize",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "greater impact"
+          },
+          {
+            "criterion": "duration_weeks",
+            "evidence": "shorter timeline",
+            "intent": "minimize",
+            "must_have": false,
+            "polarity": "prefer",
+            "value": "shorter timeline"
+          }
+        ],
+        "status": "resolved"
+      }
+    }
+  },
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {},
+  "scenario_policy": {
+    "max_requests": 10000
+  }
+}

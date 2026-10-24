@@ -1,0 +1,75 @@
+# Proof-of-concept deployment settings layered over compose.integration.yaml.
+# Application images are tagged with the Git revision by scripts/deploy.ps1.
+x-deploy-logging: &deploy-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-deploy-labels: &deploy-labels
+  com.what2do.deployment: poc
+  com.what2do.revision: ${DEPLOY_IMAGE_TAG:-manual}
+
+services:
+  frontend:
+    image: what2do/frontend:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  planning:
+    image: what2do/planning:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  participation:
+    image: what2do/participation:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  decision:
+    image: what2do/decision:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  decision-worker:
+    image: what2do/decision:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  decision-research:
+    image: what2do/decision:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  decision-preview:
+    image: what2do/decision:${DEPLOY_IMAGE_TAG:-manual}
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  decision-migrate:
+    image: what2do/decision:${DEPLOY_IMAGE_TAG:-manual}
+    restart: "no"
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  planning-db:
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  participation-db:
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels
+
+  decision-db:
+    restart: unless-stopped
+    logging: *deploy-logging
+    labels: *deploy-labels

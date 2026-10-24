@@ -1,0 +1,81 @@
+{
+  "workload": "Synthetic fixture recommendations over HTTP with stub snapshot services and real preprocessing/ranking; optional simulated provider wait; preview crash recovery; no external model calls",
+  "load": [
+    {
+      "worker_processes": 1,
+      "slots_per_process": 1,
+      "jobs": 48,
+      "concurrent_clients": 16,
+      "simulated_io_ms": 0,
+      "elapsed_seconds": 0.628,
+      "jobs_per_second": 76.42,
+      "admission_seconds_p95": 0.05,
+      "end_to_end_seconds_p95": 0.297,
+      "duplicate_requests": 32,
+      "duplicate_run_ids": 1,
+      "errors": 0,
+      "metrics": {
+        "jobs": {
+          "completed": 49
+        },
+        "pending_by_kind": {
+          "preview": 0,
+          "recommendation": 0,
+          "fact_collection": 0
+        },
+        "oldest_pending_seconds": 0,
+        "sample_size": 49,
+        "queue_wait_seconds_p95": 0.26,
+        "last_attempt_seconds_p95": 0.002,
+        "sample_retry_attempts": 0,
+        "cache_entries": 0,
+        "worker_processes": 1,
+        "pending_without_worker": 0,
+        "pending_implementations": [],
+        "worker_slots": 1
+      }
+    },
+    {
+      "worker_processes": 2,
+      "slots_per_process": 1,
+      "jobs": 48,
+      "concurrent_clients": 16,
+      "simulated_io_ms": 0,
+      "elapsed_seconds": 0.803,
+      "jobs_per_second": 59.761,
+      "admission_seconds_p95": 0.039,
+      "end_to_end_seconds_p95": 0.278,
+      "duplicate_requests": 32,
+      "duplicate_run_ids": 1,
+      "errors": 0,
+      "metrics": {
+        "jobs": {
+          "completed": 49
+        },
+        "pending_by_kind": {
+          "preview": 0,
+          "recommendation": 0,
+          "fact_collection": 0
+        },
+        "oldest_pending_seconds": 0,
+        "sample_size": 49,
+        "queue_wait_seconds_p95": 0.242,
+        "last_attempt_seconds_p95": 0.003,
+        "sample_retry_attempts": 0,
+        "cache_entries": 0,
+        "worker_processes": 2,
+        "pending_without_worker": 0,
+        "pending_implementations": [],
+        "worker_slots": 2
+      }
+    }
+  ],
+  "recovery": {
+    "signal": "SIGKILL",
+    "lease_seconds": 5,
+    "recovery_seconds": 5.07,
+    "attempts": 2,
+    "same_run_id": true,
+    "stale_completion_rejected": true
+  }
+}

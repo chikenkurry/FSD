@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "warehouse-tags-compatible-options",
+  "response_snapshot_id": "warehouse-tags-compatible-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "f4026518be74bc1aa51528e19420f625f0f65257b6684cc506f141d7e9fe2d1b": {
+      "reason": "The label 'fragile' refers to items that require careful handling to avoid damage. Among the targets, 'cooling' relates to temperature control, which is not directly equivalent to fragile handling. 'stackable' refers to physical arrangement, not handling sensitivity. Neither 'cooling' nor 'stackable' captures the concept of fragile items requiring gentle handling. Therefore, no target is equivalent to 'fragile' in the context of handling tags. The intended meaning\u2014sensitivity to physical impact\u2014is not matched by either option.",
+      "status": "distinct",
+      "target": null
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

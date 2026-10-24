@@ -1,0 +1,20 @@
+{
+  "option_snapshot_id": "purchase-runtime-paraphrase-options-intent-v2",
+  "response_snapshot_id": "purchase-runtime-paraphrase-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {
+    "runtime": {
+      "criterion": "battery_life",
+      "reason": "The question 'How long should it run unplugged?' directly relates to battery life, which is a measured attribute in the context. Battery life is expressed in hours and is explicitly provided for both options. This is a soft preference as it reflects user expectation for runtime without power, and the criterion 'battery_life' is already defined in the context.",
+      "relevance": 0.75,
+      "role": "soft"
+    }
+  },
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {},
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

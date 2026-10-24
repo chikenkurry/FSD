@@ -1,0 +1,52 @@
+{
+  "option_snapshot_id": "options-semantic-1",
+  "response_snapshot_id": "responses-semantic-1",
+  "processing_version": "semantic-v6",
+  "model": "reviewed-fixture-v1",
+  "question_assessments": {
+    "q_travel": {
+      "criterion": "travel convenience",
+      "relevance": 0.75,
+      "reason": "Options describe different travel times"
+    },
+    "q_access": {
+      "criterion": "step-free access",
+      "relevance": 0.9,
+      "reason": "Options describe a ramp and stairs"
+    }
+  },
+  "answer_assessments": {
+    "p1": {
+      "q_travel": {
+        "status": "resolved",
+        "criterion": "travel convenience",
+        "value": "walkable",
+        "meaning": "Prefers a walkable venue",
+        "evidence": "Walkable"
+      },
+      "q_access": {
+        "status": "resolved",
+        "criterion": "step-free access",
+        "value": "ramp_required",
+        "meaning": "Requires a ramp",
+        "evidence": "I need a ramp"
+      }
+    },
+    "p2": {
+      "q_travel": {
+        "status": "resolved",
+        "criterion": "travel convenience",
+        "value": "walkable",
+        "meaning": "Prefers a walkable venue",
+        "evidence": "Walkable"
+      },
+      "q_access": {
+        "status": "resolved",
+        "criterion": "step-free access",
+        "value": "ramp_required",
+        "meaning": "Requires a ramp",
+        "evidence": "I need a ramp"
+      }
+    }
+  }
+}

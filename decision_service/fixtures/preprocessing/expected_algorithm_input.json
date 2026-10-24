@@ -1,0 +1,392 @@
+{
+  "context": {
+    "schema_version": "activity-v2",
+    "activity_ids": [
+      "cafe",
+      "dinner"
+    ],
+    "round_id": "round-1",
+    "option_snapshot_id": "options-1",
+    "response_snapshot_id": "responses-1",
+    "timezone": "Asia/Singapore",
+    "algorithm_version": "baseline-v2",
+    "policy_version": "goal-option-relevance-v2",
+    "processing_version": "semantic-v6",
+    "semantic_model": null,
+    "semantic_artifact_id": null
+  },
+  "candidates": [
+    {
+      "candidate_id": "cafe@2026-10-02T11:00:00Z",
+      "activity_id": "cafe",
+      "option_revision": "1",
+      "title": "Board-game caf\u00e9",
+      "description": "",
+      "start_at": "2026-10-02T11:00:00Z",
+      "end_at": "2026-10-02T13:00:00Z",
+      "duration_minutes": 120,
+      "estimated_cost_minor": 2500,
+      "currency": "SGD",
+      "facts": [
+        {
+          "attribute_id": "vegetarian_option",
+          "value": "yes",
+          "value_type": "category",
+          "unit": null,
+          "status": "confirmed",
+          "source": "planning_service"
+        },
+        {
+          "attribute_id": "indoor",
+          "value": "yes",
+          "value_type": "category",
+          "unit": null,
+          "status": "confirmed",
+          "source": "planning_service"
+        },
+        {
+          "attribute_id": "estimated_cost",
+          "value": 2500,
+          "value_type": "integer",
+          "unit": "SGD_minor",
+          "status": "confirmed",
+          "source": "planning_service"
+        }
+      ]
+    },
+    {
+      "candidate_id": "dinner@2026-10-02T11:00:00Z",
+      "activity_id": "dinner",
+      "option_revision": "1",
+      "title": "Dinner",
+      "description": "",
+      "start_at": "2026-10-02T11:00:00Z",
+      "end_at": "2026-10-02T13:00:00Z",
+      "duration_minutes": 120,
+      "estimated_cost_minor": 3500,
+      "currency": "SGD",
+      "facts": [
+        {
+          "attribute_id": "vegetarian_option",
+          "value": null,
+          "value_type": "category",
+          "unit": null,
+          "status": "unknown",
+          "source": "planning_service"
+        },
+        {
+          "attribute_id": "indoor",
+          "value": "yes",
+          "value_type": "category",
+          "unit": null,
+          "status": "confirmed",
+          "source": "planning_service"
+        },
+        {
+          "attribute_id": "estimated_cost",
+          "value": 3500,
+          "value_type": "integer",
+          "unit": "SGD_minor",
+          "status": "confirmed",
+          "source": "planning_service"
+        }
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "attribute_id": "estimated_cost",
+      "value_type": "integer",
+      "unit": "SGD_minor"
+    },
+    {
+      "attribute_id": "indoor",
+      "value_type": "category",
+      "unit": null
+    },
+    {
+      "attribute_id": "quiet",
+      "value_type": "category",
+      "unit": null
+    },
+    {
+      "attribute_id": "step_free_access",
+      "value_type": "category",
+      "unit": null
+    },
+    {
+      "attribute_id": "vegetarian_option",
+      "value_type": "category",
+      "unit": null
+    }
+  ],
+  "participants": [
+    {
+      "participant_id": "p1",
+      "response_status": "complete",
+      "is_required_for_decision": true
+    },
+    {
+      "participant_id": "p2",
+      "response_status": "complete",
+      "is_required_for_decision": true
+    }
+  ],
+  "constraints": [
+    {
+      "participant_id": "p1",
+      "availability": {
+        "available_intervals": [
+          {
+            "start_at": "2026-10-02T10:30:00Z",
+            "end_at": "2026-10-02T13:00:00Z"
+          }
+        ]
+      },
+      "budget": {
+        "kind": "limited",
+        "max_cost_minor": 3000,
+        "currency": "SGD"
+      },
+      "required_attributes": [
+        {
+          "attribute_id": "vegetarian_option",
+          "required_value": "yes",
+          "source_question_id": "q_requirement",
+          "source_answer_id": "p1-a4",
+          "source_type": "member_response",
+          "evidence": "I must have a vegetarian option.",
+          "participant_id": "p1",
+          "confirmation_status": "confirmed",
+          "status": "confirmed"
+        }
+      ],
+      "candidate_flags": [],
+      "answer_sources": [
+        {
+          "source_question_id": "q_availability",
+          "source_answer_id": "p1-a1",
+          "source_type": "member_response",
+          "evidence": "[{\"end_at\": \"2026-10-02T21:00:00+08:00\", \"start_at\": \"2026-10-02T18:30:00+08:00\"}]"
+        },
+        {
+          "source_question_id": "q_budget",
+          "source_answer_id": "p1-a2",
+          "source_type": "member_response",
+          "evidence": "{\"currency\": \"SGD\", \"kind\": \"limited\", \"max_cost_minor\": 3000}"
+        },
+        {
+          "source_question_id": "q_requirement",
+          "source_answer_id": "p1-a4",
+          "source_type": "member_response",
+          "evidence": "I must have a vegetarian option."
+        }
+      ]
+    },
+    {
+      "participant_id": "p2",
+      "availability": {
+        "available_intervals": [
+          {
+            "start_at": "2026-10-02T11:00:00Z",
+            "end_at": "2026-10-02T13:30:00Z"
+          }
+        ]
+      },
+      "budget": {
+        "kind": "unlimited"
+      },
+      "required_attributes": [],
+      "candidate_flags": [],
+      "answer_sources": [
+        {
+          "source_question_id": "q_availability",
+          "source_answer_id": "p2-a1",
+          "source_type": "member_response",
+          "evidence": "[{\"end_at\": \"2026-10-02T21:30:00+08:00\", \"start_at\": \"2026-10-02T19:00:00+08:00\"}]"
+        },
+        {
+          "source_question_id": "q_budget",
+          "source_answer_id": "p2-a2",
+          "source_type": "member_response",
+          "evidence": "{\"kind\": \"unlimited\"}"
+        }
+      ]
+    }
+  ],
+  "preferences": [
+    {
+      "participant_id": "p1",
+      "activity_id": "cafe",
+      "rating": 4,
+      "kind": "rating",
+      "source_question_id": "q_rating",
+      "source_answer_id": "p1-a3",
+      "source_type": "member_response",
+      "evidence": "{\"cafe\": 4, \"dinner\": 3}",
+      "scope": "activity",
+      "utility_rule": "rating_v1",
+      "status": "confirmed"
+    },
+    {
+      "participant_id": "p1",
+      "activity_id": "dinner",
+      "rating": 3,
+      "kind": "rating",
+      "source_question_id": "q_rating",
+      "source_answer_id": "p1-a3",
+      "source_type": "member_response",
+      "evidence": "{\"cafe\": 4, \"dinner\": 3}",
+      "scope": "activity",
+      "utility_rule": "rating_v1",
+      "status": "confirmed"
+    },
+    {
+      "participant_id": "p1",
+      "kind": "attribute_preference",
+      "attribute_id": "indoor",
+      "preferred_value": "yes",
+      "utility_rule": "attribute_match_v1",
+      "source_question_id": "q_environment",
+      "source_answer_id": "p1-a5",
+      "source_type": "member_response",
+      "evidence": "I prefer an indoor venue.",
+      "scope": "all",
+      "status": "confirmed"
+    },
+    {
+      "participant_id": "p2",
+      "activity_id": "cafe",
+      "rating": 3,
+      "kind": "rating",
+      "source_question_id": "q_rating",
+      "source_answer_id": "p2-a3",
+      "source_type": "member_response",
+      "evidence": "{\"cafe\": 3, \"dinner\": \"no_preference\"}",
+      "scope": "activity",
+      "utility_rule": "rating_v1",
+      "status": "confirmed"
+    },
+    {
+      "participant_id": "p2",
+      "activity_id": "dinner",
+      "kind": "indifferent",
+      "utility_rule": "neutral_v1",
+      "source_question_id": "q_rating",
+      "source_answer_id": "p2-a3",
+      "source_type": "member_response",
+      "evidence": "{\"cafe\": 3, \"dinner\": \"no_preference\"}",
+      "scope": "activity",
+      "status": "explicitly_indifferent"
+    },
+    {
+      "participant_id": "p2",
+      "kind": "indifferent",
+      "utility_rule": "neutral_v1",
+      "source_question_id": "q_environment",
+      "source_answer_id": "p2-a4",
+      "source_type": "member_response",
+      "evidence": "No preference",
+      "scope": "all",
+      "status": "explicitly_indifferent"
+    }
+  ],
+  "scoring_model": {
+    "questions": [
+      {
+        "question_id": "q_availability",
+        "label": "When are you free?",
+        "kind": "availability",
+        "weight": null,
+        "weight_source": null,
+        "relevance": null,
+        "aggregation": "direct",
+        "utility_rule": null,
+        "missing_value_policy": null,
+        "is_hard_constraint": true,
+        "criteria": []
+      },
+      {
+        "question_id": "q_budget",
+        "label": "Maximum spend in SGD?",
+        "kind": "budget",
+        "weight": null,
+        "weight_source": null,
+        "relevance": null,
+        "aggregation": "direct",
+        "utility_rule": null,
+        "missing_value_policy": null,
+        "is_hard_constraint": true,
+        "criteria": []
+      },
+      {
+        "question_id": "q_rating",
+        "label": "Rate each activity",
+        "kind": "activity_rating",
+        "weight": 0.6,
+        "weight_source": "leader",
+        "relevance": 1.0,
+        "aggregation": "direct",
+        "utility_rule": "rating_v1",
+        "missing_value_policy": "unresolved",
+        "is_hard_constraint": false,
+        "criteria": []
+      },
+      {
+        "question_id": "q_requirement",
+        "label": "Any essential venue requirements?",
+        "kind": "open_requirement",
+        "weight": null,
+        "weight_source": null,
+        "relevance": null,
+        "aggregation": "direct",
+        "utility_rule": null,
+        "missing_value_policy": null,
+        "is_hard_constraint": true,
+        "criteria": [
+          "vegetarian_option",
+          "step_free_access"
+        ]
+      },
+      {
+        "question_id": "q_environment",
+        "label": "What sort of venue would you prefer?",
+        "kind": "open_preference",
+        "weight": 0.4,
+        "weight_source": "leader",
+        "relevance": 0.125,
+        "aggregation": "average",
+        "utility_rule": "attribute_match_v1",
+        "missing_value_policy": "unresolved",
+        "is_hard_constraint": false,
+        "criteria": [
+          "indoor",
+          "quiet"
+        ]
+      }
+    ],
+    "group_objective": {
+      "mode": "maximin_then_average",
+      "minimum_score_weight": 0.6,
+      "average_score_weight": 0.4,
+      "fairness_weight": 0.0
+    },
+    "ranking_policy": {
+      "feasibility_policy": "all_required_participants",
+      "sort_order": [
+        "highest_min_member_score",
+        "highest_average_member_score",
+        "lowest_estimated_cost",
+        "earliest_start",
+        "stable_candidate_id"
+      ]
+    },
+    "missing_value_policy": {
+      "missing_budget": "incomplete",
+      "missing_rating": "incomplete",
+      "missing_required_attribute": "unresolved",
+      "missing_availability": "unavailable",
+      "no_preference": "neutral"
+    }
+  }
+}

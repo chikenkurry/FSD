@@ -1,0 +1,19 @@
+{
+  "option_snapshot_id": "purchase-model-criterion-synonym-options-intent-v2",
+  "response_snapshot_id": "purchase-model-criterion-synonym-responses",
+  "processing_version": "sparse-v10",
+  "model": "qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "189d7e4b1ffd429d1c44711c9e873302573d6adf5fef8972286ba5aa3486ccf7": {
+      "reason": "The label 'unplugged_runtime' refers to how long a device can operate without being plugged in, which is directly measured by battery life in hours. The target 'battery_life' with unit 'hours' captures this concept in a practical, common usage context. Although 'unplugged_runtime' is a more specific phrasing, in everyday language, 'battery life' is the standard term used to describe runtime without power. Replacing 'unplugged_runtime' with 'battery_life' preserves the intended preference\u2014how long a device lasts on its own power\u2014without introducing ambiguity or a broader/narrower conceptual difference. Thus, they are equivalent in this decision.",
+      "status": "equivalent",
+      "target": "battery_life"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {}
+}

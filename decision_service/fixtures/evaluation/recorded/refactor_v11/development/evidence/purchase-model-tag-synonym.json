@@ -1,0 +1,22 @@
+{
+  "option_snapshot_id": "purchase-model-tag-synonym-options",
+  "response_snapshot_id": "purchase-model-tag-synonym-responses",
+  "processing_version": "sparse-v11",
+  "model": "recorded:qwen3:4b-instruct",
+  "question_assessments": {},
+  "answer_assessments": {},
+  "option_suggestions": {},
+  "date_assessments": {},
+  "canonical_assessments": {
+    "182a2d61db6b361e52b7032e1739325ed434188c0a436f03b77df3ab59fb7c7f": {
+      "reason": "The label 'programming' refers to the activity of writing code, which is most closely aligned with 'coding' in the context of device usage. 'Design' and 'presentations' are distinct activities\u2014design involves creating visual or structural elements, and presentations involve delivering content\u2014neither of which is equivalent to programming. Therefore, 'coding' is the only target that shares a practical, common-sense meaning with 'programming' in the context of device usage. Replacing 'programming' with 'coding' preserves the intended preference of using a device for code creation.",
+      "status": "equivalent",
+      "target": "coding"
+    }
+  },
+  "canonicalization_enabled": true,
+  "canonicalization_declarations": {},
+  "scenario_policy": {
+    "max_requests": 10000
+  }
+}
