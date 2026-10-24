@@ -163,6 +163,8 @@ the [integration guide](integration/README.md#run-and-check).
 
 ## Service documentation
 
+- [CI/CD proof of concept](docs/CI_CD.md)
+- [On-demand laptop deployment](docs/DEPLOYMENT.md)
 - [Integration guide and API lifecycle](integration/README.md)
 - [Facts, semantics and deterministic ranking](decision_service/docs/FACTS_AND_SEMANTICS.md)
 - [AI option research, Google Places and sourced option facts](integration/OPTION_RESEARCH.md)

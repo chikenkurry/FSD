@@ -1,0 +1,66 @@
+name: Deploy proof of concept
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Reuse images already built on the runner
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: what2do-poc-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # This label is assigned when registering the temporary laptop runner.
+    runs-on: [self-hosted, Windows, X64, what2do-deploy]
+    timeout-minutes: 45
+    steps:
+      - name: Require the main branch
+        if: github.ref != 'refs/heads/main'
+        shell: pwsh
+        run: throw 'Proof-of-concept deployments are allowed only from main.'
+
+      - uses: actions/checkout@v4
+
+      - name: Prepare deployment environment
+        shell: pwsh
+        env:
+          INTERNAL_API_TOKEN: ${{ secrets.INTERNAL_API_TOKEN }}
+        run: |
+          if (-not $env:INTERNAL_API_TOKEN -or $env:INTERNAL_API_TOKEN.Length -lt 16) {
+            throw 'Configure the INTERNAL_API_TOKEN repository secret with at least 16 characters.'
+          }
+          Copy-Item .env.deploy.example .env.deploy
+
+      - name: Deploy and verify
+        shell: pwsh
+        env:
+          INTERNAL_API_TOKEN: ${{ secrets.INTERNAL_API_TOKEN }}
+        run: |
+          $arguments = @{ EnvironmentFile = '.env.deploy' }
+          if ('${{ inputs.skip_build }}' -eq 'true') { $arguments.SkipBuild = $true }
+          ./scripts/deploy.ps1 @arguments
+
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-evidence-${{ github.run_number }}
+          path: .local-data/deploy/evidence/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Capture logs after failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $env:DEPLOY_IMAGE_TAG = 'diagnostic'
+          docker compose -p what2do-poc --env-file .env.deploy `
+            -f compose.integration.yaml -f compose.deploy.yaml logs --no-color --tail 200
