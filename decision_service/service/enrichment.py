@@ -77,10 +77,7 @@ class FactEnricher:
         if self.store is None:
             return self.collector.collect(inputs)
         with self.locks[int(key[:8], 16) % len(self.locks)]:
-            result = self.store.cache_get(key)
-            if result is None:
-                result = self.store.cache_put(key, self.collector.collect(inputs))
-            return deepcopy(result)
+            return deepcopy(self.store.cache_get_or_produce(key, lambda: self.collector.collect(inputs)))
 
     def enrich(self, planning, responses, *, extra_requests=None):
         enriched = deepcopy(planning)

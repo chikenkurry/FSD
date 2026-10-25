@@ -229,6 +229,18 @@ class PostgresStoreTests(unittest.TestCase):
         self.assertEqual(self.store.get(ids[2])['job_state'],'running')
         self.assertFalse(self.store.complete(original[0],execute(self.plan,self.responses)))
 
+    def test_pending_get_uses_the_projection_instead_of_frozen_inputs(self):
+        from decision_service.tests.sql_metrics import SQLCounter
+        queued = self.store.enqueue(self.plan, self.responses, self.spec)
+        with self.store.connect() as db:
+            db.execute('UPDATE jobs SET inputs=? WHERE id=?', ('x' * 500_000, queued['run_id']))
+        with SQLCounter(self.store) as count:
+            row = self.store.get(queued['run_id'])
+        self.assertEqual(row['status'], 'pending')
+        self.assertEqual(row['input_refs']['plan_id'], self.plan['plan_id'])
+        self.assertEqual(count.statements, 1)
+        self.assertLess(count.returned_bytes, 100_000)
+
     def test_completed_get_does_not_return_frozen_inputs_and_uses_one_statement(self):
         from decision_service.tests.sql_metrics import SQLCounter
         artifact = self.store.save(execute(self.plan,self.responses),self.plan,self.responses)

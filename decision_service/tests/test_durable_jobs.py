@@ -126,6 +126,60 @@ class DurableJobTests(unittest.TestCase):
                 workers.close()
         self.assertEqual(RunStore(self.store.path).get(run["run_id"])["status"], "ranked")
 
+    def test_pending_status_does_not_pull_frozen_inputs(self):
+        from decision_service.tests.sql_metrics import SQLCounter
+        queued = self.store.enqueue(self.plan, self.responses, self.spec)
+        with self.store.connect() as db:
+            db.execute("UPDATE jobs SET inputs=? WHERE id=?", ("x" * 500_000, queued["run_id"]))
+        with SQLCounter(self.store) as count:
+            row = self.store.get(queued["run_id"])
+        self.assertEqual(row["status"], "pending")
+        self.assertEqual(row["input_refs"]["response_snapshot_id"], self.responses["snapshot_id"])
+        self.assertEqual(count.statements, 1)
+        self.assertLess(count.returned_bytes, 100_000)
+
+    def test_legacy_pending_job_without_projection_still_reads(self):
+        queued = self.store.enqueue(self.plan, self.responses, self.spec)
+        with self.store.connect() as db:
+            db.execute("UPDATE jobs SET input_summary=NULL WHERE id=?", (queued["run_id"],))
+        self.assertEqual(self.store.get(queued["run_id"])["status"], "pending")
+
+    def test_expired_cache_is_replaced_and_one_filler_calls_the_provider(self):
+        self.assertEqual(self.store.cache_put("k", {"value": 1}), {"value": 1})
+        self.assertEqual(self.store.cache_put("k", {"value": 9}), {"value": 1})
+        with self.store.connect() as db:
+            db.execute("UPDATE semantic_cache SET created_at=0 WHERE key='k'")
+        self.assertIsNone(self.store.cache_get("k"))
+        self.assertEqual(self.store.cache_put("k", {"value": 2}), {"value": 2})
+
+        calls = []
+        started = threading.Event()
+        release = threading.Event()
+
+        def produce():
+            calls.append("fill")
+            started.set()
+            self.assertTrue(release.wait(2))
+            return {"value": 1}
+
+        holder = threading.Thread(target=lambda: self.store.cache_get_or_produce("shared", produce))
+        holder.start()
+        self.assertTrue(started.wait(2))
+        other = RunStore(self.store.path)
+        box = {}
+
+        def wait():
+            box["value"] = other.cache_get_or_produce("shared", lambda: calls.append("duplicate") or {"value": 9})
+
+        waiter = threading.Thread(target=wait)
+        waiter.start()
+        self.assertFalse(waiter.join(0.2))
+        release.set()
+        holder.join(2)
+        waiter.join(2)
+        self.assertEqual(calls, ["fill"])
+        self.assertEqual(box["value"], {"value": 1})
+
     def test_semantic_calls_are_coalesced_and_private_cache_returns_copies(self):
         class Provider:
             model = "fixture-model"

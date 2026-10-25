@@ -56,13 +56,15 @@ class CachedSemanticProvider:
             started = time.monotonic()
             key = hashlib.sha256(canonical({"specification": self.specification, "method": method,
                                             "args": args, "kwargs": kwargs}).encode()).hexdigest()
+            called = False
+            def produce():
+                nonlocal called
+                called = True
+                return function(*args, **kwargs)
             with self.locks[int(key[:8], 16) % len(self.locks)]:
-                payload = self.store.cache_get(key)
-                hit = payload is not None
-                if payload is None:
-                    payload = self.store.cache_put(key, function(*args, **kwargs))
-                logging.info("semantic_call method=%s cache_hit=%s elapsed_ms=%d",method,hit,(time.monotonic()-started)*1000)
-                return deepcopy(payload)
+                payload = self.store.cache_get_or_produce(key, produce)
+            logging.info("semantic_call method=%s cache_hit=%s elapsed_ms=%d", method, not called, (time.monotonic()-started)*1000)
+            return deepcopy(payload)
         return cached
 
 

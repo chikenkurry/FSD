@@ -150,9 +150,10 @@ class PostgresRunStore(RunStore):
                         # Identifiers are fixed by the known legacy schema below.
                         allowed = {
                             'runs': {'id','fingerprint','payload'},
-                            'semantic_cache': {'key','payload'},
+                            'semantic_cache': {'key','payload','created_at'},
                             'jobs': {'id','fingerprint','inputs','specification','state','attempts','available_at',
-                                     'lease_until','lease_token','error_code','created_at','completed_at','started_at'},
+                                     'lease_until','lease_token','error_code','created_at','completed_at','started_at',
+                                     'input_summary'},
                         }
                         if not set(columns) <= allowed[table]:
                             raise ValueError('Unknown legacy columns')
@@ -163,5 +164,6 @@ class PostgresRunStore(RunStore):
                                 raise ValueError('Legacy import conflicts with existing Decision data')
                         count += 1
                     summary[table] = count
+                db.execute("UPDATE semantic_cache SET created_at=? WHERE created_at IS NULL", (self._now(db),))
                 db.execute("INSERT INTO import_markers VALUES ('legacy-sqlite-v1', ?)", (canonical(summary),))
                 return summary

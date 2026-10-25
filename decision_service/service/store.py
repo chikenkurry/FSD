@@ -24,6 +24,34 @@ class QueueFull(Exception):
     pass
 
 
+# Accepted provider replies stay reusable for one research-freshness window.
+# A crashed filler's claim can be taken over after this wait.
+CACHE_TTL_SECONDS = 6 * 60 * 60
+CACHE_CLAIM_SECONDS = 60
+
+
+def cache_ttl_seconds() -> int:
+    raw = int(os.environ.get("DECISION_CACHE_TTL_SECONDS", str(CACHE_TTL_SECONDS)))
+    if not 60 <= raw <= 7 * 24 * 60 * 60:
+        raise ValueError("DECISION_CACHE_TTL_SECONDS must be between 60 and 604800")
+    return raw
+
+
+def input_projection(planning: dict, responses: dict) -> dict:
+    """Fields a status read needs. Workers still load the full snapshot when claimed."""
+    return {
+        "input_refs": {
+            "plan_id": planning["plan_id"],
+            "round_id": planning["round_id"],
+            "option_revision": planning["option_revision"],
+            "option_snapshot_id": planning["option_snapshot_id"],
+            "response_snapshot_id": responses["snapshot_id"],
+        },
+        "response_revision": responses.get("response_revision"),
+        "participant_ids": [participant["participant_id"] for participant in responses.get("participants", [])],
+    }
+
+
 class RunStore:
     postgres = False
 
@@ -43,10 +71,18 @@ class RunStore:
                 lease_until REAL, lease_token TEXT, error_code TEXT,
                 created_at REAL NOT NULL, completed_at REAL)""")
             db.execute("CREATE INDEX IF NOT EXISTS jobs_ready ON jobs(state, available_at, lease_until)")
-            db.execute("CREATE TABLE IF NOT EXISTS semantic_cache (key TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+            db.execute("CREATE TABLE IF NOT EXISTS semantic_cache (key TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at REAL)")
             columns = {row['name'] for row in db.execute('PRAGMA table_info(jobs)')}
             if 'started_at' not in columns:
                 db.execute('ALTER TABLE jobs ADD COLUMN started_at REAL')
+            if 'input_summary' not in columns:
+                db.execute('ALTER TABLE jobs ADD COLUMN input_summary TEXT')
+            cache_columns = {row['name'] for row in db.execute('PRAGMA table_info(semantic_cache)')}
+            if 'created_at' not in cache_columns:
+                db.execute('ALTER TABLE semantic_cache ADD COLUMN created_at REAL')
+            db.execute('UPDATE semantic_cache SET created_at=? WHERE created_at IS NULL', (time.time(),))
+            db.execute('CREATE INDEX IF NOT EXISTS semantic_cache_created ON semantic_cache(created_at)')
+            db.execute('CREATE TABLE IF NOT EXISTS cache_claims (key TEXT PRIMARY KEY, claimed_at REAL NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS worker_presence (id TEXT PRIMARY KEY, specifications TEXT NOT NULL, slots INTEGER NOT NULL, last_seen REAL NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS import_markers (source TEXT PRIMARY KEY, summary TEXT NOT NULL)')
             db.execute("CREATE INDEX IF NOT EXISTS jobs_expired_leases ON jobs(lease_until) WHERE state='running'")
@@ -81,8 +117,8 @@ class RunStore:
                 return self._get(db, existing["id"])
             if db.execute("SELECT count(*) AS total FROM jobs WHERE state IN ('queued','running')").fetchone()['total'] >= 128:
                 raise QueueFull("Job capacity reached")
-            db.execute("INSERT INTO jobs (id, fingerprint, inputs, specification, available_at, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
-                       (str(uuid4()), fingerprint, canonical(inputs), canonical(specification), now, now))
+            db.execute("INSERT INTO jobs (id, fingerprint, inputs, specification, available_at, created_at, input_summary) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+                       (str(uuid4()), fingerprint, canonical(inputs), canonical(specification), now, now, canonical(input_projection(planning, responses))))
             row = db.execute("SELECT id FROM jobs WHERE fingerprint = ?", (fingerprint,)).fetchone()
         return self.get(row["id"])
 
@@ -165,10 +201,13 @@ class RunStore:
         # One statement sees a consistent completion snapshot. CASE avoids
         # transferring frozen inputs when an artifact already exists. Starting
         # from the requested ID also supports historical runs without job rows.
+        # Status reads use the small projection. Frozen inputs move only for a
+        # legacy job that was stored before that column existed.
         row = db.execute("""
             SELECT runs.payload AS artifact, jobs.state, jobs.specification,
                    jobs.error_code,
-                   CASE WHEN runs.id IS NULL THEN jobs.inputs END AS inputs
+                   CASE WHEN runs.id IS NULL THEN jobs.input_summary END AS input_summary,
+                   CASE WHEN runs.id IS NULL AND jobs.input_summary IS NULL THEN jobs.inputs END AS inputs
             FROM (SELECT ? AS id) AS requested
             LEFT JOIN runs ON runs.id = requested.id
             LEFT JOIN jobs ON jobs.id = requested.id
@@ -177,15 +216,23 @@ class RunStore:
             return json.loads(row['artifact'])
         if row['state'] is None:
             return None
-        inputs = json.loads(row["inputs"])
-        plan, response = inputs["planning"], inputs["responses"]
-        refs = {key: plan[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
-        refs["response_snapshot_id"] = response["snapshot_id"]
+        if row["input_summary"] is not None:
+            summary = json.loads(row["input_summary"])
+            refs = summary["input_refs"]
+            member_states = {participant_id: "draft" for participant_id in summary["participant_ids"]}
+            response_revision = summary.get("response_revision")
+        else:
+            inputs = json.loads(row["inputs"])
+            plan, response = inputs["planning"], inputs["responses"]
+            refs = {key: plan[key] for key in ("plan_id", "round_id", "option_revision", "option_snapshot_id")}
+            refs["response_snapshot_id"] = response["snapshot_id"]
+            member_states = {p["participant_id"]: "draft" for p in response.get("participants", [])}
+            response_revision = response.get("response_revision")
         return {"run_id": run_id, "status": "failed" if row["state"] == "failed" else "pending",
                 "job_state": row["state"], "input_refs": refs,
                 "execution_specification": json.loads(row["specification"]),
-                "member_states": {p["participant_id"]: "draft" for p in response.get("participants", [])},
-                "response_revision": response.get("response_revision"),
+                "member_states": member_states,
+                "response_revision": response_revision,
                 "issues": [{"code": row["error_code"]}] if row["error_code"] else []}
 
     def save(self, run: dict, planning: dict, responses: dict) -> dict:
@@ -200,13 +247,62 @@ class RunStore:
 
     def cache_get(self, key: str) -> dict | None:
         with self.connect() as db:
-            row = db.execute("SELECT payload FROM semantic_cache WHERE key=?", (key,)).fetchone()
+            row = db.execute("SELECT payload FROM semantic_cache WHERE key=? AND created_at >= ?",
+                             (key, self._now(db) - cache_ttl_seconds())).fetchone()
             return json.loads(row["payload"]) if row else None
 
     def cache_put(self, key: str, payload: dict) -> dict:
+        """Keep the first unexpired value. Drop expired replies so the table stays bounded."""
         with self.connect() as db:
-            db.execute("INSERT INTO semantic_cache VALUES (?, ?) ON CONFLICT DO NOTHING", (key, canonical(payload)))
+            now = self._now(db)
+            cutoff = now - cache_ttl_seconds()
+            db.execute("DELETE FROM semantic_cache WHERE created_at IS NULL OR created_at < ?", (cutoff,))
+            db.execute("DELETE FROM cache_claims WHERE claimed_at < ?", (now - CACHE_CLAIM_SECONDS,))
+            db.execute("INSERT INTO semantic_cache (key, payload, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+                       (key, canonical(payload), now))
             return json.loads(db.execute("SELECT payload FROM semantic_cache WHERE key=?", (key,)).fetchone()["payload"])
+
+    def cache_get_or_produce(self, key: str, produce):
+        """One worker calls the provider; others wait for that stored reply."""
+        found = self.cache_get(key)
+        if found is not None:
+            return found
+        if self._claim_cache_fill(key):
+            try:
+                found = self.cache_get(key)
+                if found is None:
+                    found = self.cache_put(key, produce())
+                return found
+            finally:
+                self._release_cache_claim(key)
+        deadline = time.monotonic() + CACHE_CLAIM_SECONDS
+        while time.monotonic() < deadline:
+            found = self.cache_get(key)
+            if found is not None:
+                return found
+            time.sleep(0.05)
+        if self._claim_cache_fill(key, steal=True):
+            try:
+                found = self.cache_get(key)
+                if found is None:
+                    found = self.cache_put(key, produce())
+                return found
+            finally:
+                self._release_cache_claim(key)
+        return self.cache_put(key, produce())
+
+    def _claim_cache_fill(self, key: str, *, steal: bool = False) -> bool:
+        with self.connect() as db:
+            now = self._now(db)
+            if not steal:
+                return db.execute("INSERT INTO cache_claims (key, claimed_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                                  (key, now)).rowcount == 1
+            return db.execute("UPDATE cache_claims SET claimed_at=? WHERE key=? AND claimed_at < ?",
+                              (now, key, now - CACHE_CLAIM_SECONDS)).rowcount == 1
+
+    def _release_cache_claim(self, key: str) -> None:
+        with self.connect() as db:
+            db.execute("DELETE FROM cache_claims WHERE key=?", (key,))
 
     def ping(self) -> None:
         """Constant-size readiness probe, independent of historical job count."""
