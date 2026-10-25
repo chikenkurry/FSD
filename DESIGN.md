@@ -1,5 +1,5 @@
 ---
-name: "What to do?"
+name: "What2Do"
 description: "A shared workspace for considered group decisions."
 colors:
   ink: "#0f1d3a"
@@ -85,7 +85,7 @@ components:
   nav-current: { backgroundColor: "{colors.sky-100}", textColor: "{colors.blue-ink}" }
 ---
 
-# Design System: What to do?
+# Design System: What2Do
 
 ## Overview
 

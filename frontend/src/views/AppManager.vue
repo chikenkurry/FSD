@@ -6,7 +6,7 @@
       <a class="skip-link" href="#main-content" @click.prevent="focusContent">Skip to content</a>
       <aside class="sidebar" aria-label="Application">
         <div class="sidebar-top">
-          <button class="brand home-brand" aria-label="What to do? Home" @click="dashboard"><BrandMark /><span class="brand-name">What to do?</span></button>
+          <button class="brand home-brand" aria-label="What2Do Home" @click="dashboard"><BrandMark /><span class="brand-name">What2Do</span></button>
           <button class="btn-quiet btn-icon collapse-toggle" :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'" :aria-expanded="!collapsed" @click="toggleSidebar"><UiIcon name="sidebar" /></button>
         </div>
         <nav class="sidebar-nav" aria-label="Main navigation">

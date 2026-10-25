@@ -1,7 +1,7 @@
 <template>
   <div v-if="invited" class="invite-page">
     <aside class="invite-side">
-      <span class="brand on-dark"><BrandMark />What to do?</span>
+      <span class="brand on-dark"><BrandMark />What2Do</span>
       <div class="invite-side-body">
         <p class="invite-side-title">Someone wants your view on a group decision.</p>
         <ol class="mini-route">
@@ -33,7 +33,7 @@
 
   <div v-else ref="page" class="landing">
     <header class="landing-bar">
-      <span class="brand"><BrandMark />What to do?</span>
+      <span class="brand"><BrandMark />What2Do</span>
       <nav class="landing-links" aria-label="Page">
         <a href="#how" @click.prevent="scrollTo('how')">How it works</a>
         <button class="btn-small" @click="openResume">Resume a session</button>
@@ -115,7 +115,7 @@
         </div>
       </section>
     </main>
-    <footer class="landing-foot"><span class="brand"><BrandMark />What to do?</span><span>Clear options. Considered decisions.</span></footer>
+    <footer class="landing-foot"><span class="brand"><BrandMark />What2Do</span><span>Clear options. Considered decisions.</span></footer>
   </div>
 </template>
 <script setup lang="ts">
