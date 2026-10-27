@@ -1,9 +1,10 @@
 import { FieldError } from '../common/api-exception';
+import { IdSet } from '../common/ids';
 import { ActivityAnswerDto, AvailabilityIntervalDto, BudgetDto, SaveDraftDto } from './save-draft.dto';
 import { QuestionDefinitionDto } from './question-answer';
 import { validateQuestionAnswers } from './question-answer-rules';
 
-export const SLOT_MINUTES = 30;
+const SLOT_MINUTES = 30;
 const SLOT_MS = SLOT_MINUTES * 60_000;
 
 /** Cross-field checks run after DTO validation and retain field error order. */
@@ -81,23 +82,22 @@ function validateBudget(budget: BudgetDto): FieldError[] {
 
 function validateActivityAnswers(answers: ActivityAnswerDto[], activityIds: string[]): FieldError[] {
   const errors: FieldError[] = [];
-  const allowed = new Set(activityIds.map((id) => id.toLowerCase()));
-  const seen = new Set<string>();
+  const allowed = new IdSet(activityIds);
+  const seen = new IdSet();
   answers.forEach((answer, index) => {
-    const id = answer.activityId.toLowerCase();
-    if (!allowed.has(id)) {
+    if (!allowed.has(answer.activityId)) {
       errors.push({
         field: `activityAnswers.${index}.activityId`,
         message: 'activityId is not part of this round',
       });
     }
-    if (seen.has(id)) {
+    if (seen.has(answer.activityId)) {
       errors.push({
         field: `activityAnswers.${index}.activityId`,
         message: 'activityId appears more than once',
       });
     }
-    seen.add(id);
+    seen.add(answer.activityId);
 
     if (answer.kind === 'RATING' && (answer.rating == null || !Number.isInteger(answer.rating))) {
       errors.push({

@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { Errors } from '../common/api-exception';
-import { isUuid } from '../common/validation';
+import { Errors, orNotFound } from '../common/api-exception';
+import { hasDuplicateIds, sameIds } from '../common/ids';
+import { assertUuid } from '../common/validation';
 import { ResponseSnapshotV2, toDecisionSnapshot } from '../responses/decision-snapshot';
 import { ResponseRepository } from '../responses/response.repository';
 import { FreezeRoundDto } from './freeze-round.dto';
+import { findRoundOrThrow } from './find-round';
 import { hashFreezePayload } from './freeze-hash';
 import { ProvisionRoundDto } from './provision-round.dto';
 import { hashProvisionPayload } from './provision-hash';
@@ -54,10 +56,9 @@ export class RoundsService {
     if (dto.rosterPolicy === 'close' && !dto.optionSnapshotId) {
       throw Errors.invalidInput([{ field: 'optionSnapshotId', message: 'A close-roster round needs an immutable form identity' }]);
     }
-    const ids = (dto.memberIds ?? []).map(id => id.toLowerCase());
-    const qids = (dto.questions ?? []).map(q => q.questionId.toLowerCase());
-    if (new Set(ids).size !== ids.length || new Set(qids).size !== qids.length
-        || new Set(dto.activityIds.map(id => id.toLowerCase())).size !== dto.activityIds.length) {
+    if (hasDuplicateIds(dto.memberIds ?? [])
+        || hasDuplicateIds((dto.questions ?? []).map(q => q.questionId))
+        || hasDuplicateIds(dto.activityIds)) {
       throw Errors.invalidInput([{ field: 'provision', message: 'Identifiers must be unique' }]);
     }
     const hash = hashProvisionPayload(dto);
@@ -112,7 +113,7 @@ export class RoundsService {
    */
   async freeze(dto: FreezeRoundDto): Promise<FreezeResult> {
     const hash = hashFreezePayload(dto);
-    const result = await this.responses.withRoundFreezeLock(dto.roundId, async (unit) => {
+    const outcome = await this.responses.withRoundFreezeLock(dto.roundId, async (unit) => {
       const rejection = await unit.rejectedFreeze(dto.operationId);
       if (rejection) {
         if (rejection !== hash) throw Errors.operationConflict('Rejected close command payload changed');
@@ -136,11 +137,11 @@ export class RoundsService {
         };
       }
 
-      if (unit.round.rosterPolicy !== 'close' && unit.round.memberIds?.length && JSON.stringify([...unit.round.memberIds].map(id => id.toLowerCase()).sort())
-          !== JSON.stringify([...dto.memberIds].map(id => id.toLowerCase()).sort())) {
+      if (unit.round.rosterPolicy !== 'close' && unit.round.memberIds?.length
+          && !sameIds(unit.round.memberIds, dto.memberIds)) {
         throw Errors.operationConflict('Freeze roster must match the published roster');
       }
-      if (new Set(dto.memberIds.map(id => id.toLowerCase())).size !== dto.memberIds.length) {
+      if (hasDuplicateIds(dto.memberIds)) {
         throw Errors.invalidInput([{ field: 'memberIds', message: 'Members must be unique' }]);
       }
       if (dto.optionRevision !== undefined && dto.optionRevision !== unit.round.optionRevision) {
@@ -194,27 +195,21 @@ export class RoundsService {
       };
     });
 
-    if (!result) throw Errors.notFound('This round is not open for responses');
+    const result = orNotFound(outcome, 'This round is not open for responses');
     if ('incomplete' in result) throw Errors.responsesIncomplete();
     return result;
   }
 
   async getSnapshot(roundId: string): Promise<ResponseSnapshotV2> {
-    if (!isUuid(roundId)) {
-      throw Errors.invalidInput([{ field: 'roundId', message: 'roundId must be a UUID' }]);
-    }
-    const round = await this.rounds.findById(roundId);
-    if (!round) throw Errors.notFound('Round not found');
+    assertUuid(roundId, 'roundId');
+    const round = await findRoundOrThrow(this.rounds, roundId);
     if (!round.snapshot) throw Errors.notFound('No response snapshot; freeze the round first');
     return round.snapshot;
   }
 
   async progress(roundId: string): Promise<ProgressResult> {
-    if (!isUuid(roundId)) {
-      throw Errors.invalidInput([{ field: 'roundId', message: 'roundId must be a UUID' }]);
-    }
-    const round = await this.rounds.findById(roundId);
-    if (!round) throw Errors.notFound('Round not found');
+    assertUuid(roundId, 'roundId');
+    const round = await findRoundOrThrow(this.rounds, roundId);
     const stored = await this.responses.listByRound(roundId);
     const responses = stored
       .map((r) => ({ memberId: r.memberId, status: r.status,

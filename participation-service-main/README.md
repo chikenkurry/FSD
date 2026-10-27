@@ -69,6 +69,27 @@ npm test              # unit tests, no database needed
 npm run test:e2e      # needs the migrated local database; deletes only rows of its own random plan
 ```
 
+### Dead code
+ 
+```bash
+npm run deadcode        # Knip: unused files, exports, types and dependencies (tests count as users)
+npm run deadcode:prod   # Knip in production mode: also lists code only tests use
+npm run deadcode:ts     # tsc with noUnusedLocals and noUnusedParameters (tsconfig.deadcode.json)
+```
+ 
+Configuration is in `knip.json` (entry points are `src/main.ts`, spec files and e2e specs; `src/testing/` is
+ignored). Knip cannot see Nest wiring, so check that every provider is registered in a `@Module` and treat
+controller methods and decorator-only usage as likely false positives. Unused routes, Prisma models and
+migrations are not detected.
+
+## Docker
+ 
+The image builds with `npm run build`, runs as the `node` user and starts with
+`npx prisma migrate deploy && node dist/main.js`, so migrations are applied on every start
+(`migrate deploy` takes a Postgres advisory lock, so replicas starting together apply each migration once).
+The healthcheck calls `/health/ready`. For offline builds, verified Prisma engine files can be placed in
+`.engine-artifacts/` (ignored by Git).
+
 ## Endpoints
 Public routes go through the gateway; `/internal/*` and `/docs*` must not.
 
@@ -198,7 +219,7 @@ confirmed_requirements?, reviewed_revision? }`. `importance` is `low`, `normal` 
 `POST .../my-response/copy` with `{ sourceRoundId }` creates a revision-1 draft from the caller's response in
 an earlier round of the same plan (the target's `optionRevision` must be higher). It keeps availability, private
 note, activity answers for activities still in the round, and `question_id`/`value` of answers for questions still
-published (importance and confirmations are dropped). The budget is kept only if currency and `minorDigits` match,
+published (importance and confirmations are dropped). Activity and question IDs are matched ignoring case. The budget is kept only if currency and `minorDigits` match,
 otherwise it becomes `UNANSWERED`. The copy records the source's option revision, so the member must save against
 the current revision before submitting. It never overwrites an existing draft (`409 OPERATION_CONFLICT`).
  
@@ -242,6 +263,7 @@ are `503`). The write is revision-checked and idempotent for an exact retry. An 
 - **Freeze**: same `operationId` and request (roster order and UUID case do not matter) returns
   `alreadyFrozen: true` with the same `snapshotId`; anything different for a frozen round is `409 OPERATION_CONFLICT`.
 - **Member writes**: protected by `revision`, not by operation ids.
+
 ## Errors
  
 Every error is `ApiErrorV1`: `{ code, message, retryable, requestId, fieldErrors? }`.
@@ -258,13 +280,13 @@ Dependencies point inward: controllers call services, services call repository *
  
 | Folder | Responsibility |
 | --- | --- |
-| `src/rounds` | Internal controller, `RoundsService` (provision, freeze, snapshot, progress), DTOs, payload hashes, `RoundRepository` port |
+| `src/rounds` | Internal controller, `RoundsService` (provision, freeze, snapshot, progress), DTOs, payload hashes, `RoundRepository` port, `findRoundOrThrow` |
 | `src/responses` | Member and internal-preview controllers, `ResponsesService` (read, save, submit, copy, preview), DTOs, pure rules (`response-rules.ts`, `question-answer-rules.ts`, `response-completeness.ts`), snapshot mapping (`decision-snapshot.ts`), `ResponseRepository` port |
 | `src/rsvps` | RSVP controller and service (uses Prisma directly and calls Planning for the selection) |
 | `src/prisma` | The persistence adapter: `PrismaService` and the Prisma implementations of the repository ports |
 | `src/auth` | `SessionAuthoriser` port with dev and Planning implementations, `MemberSessionGuard`, `InternalTokenGuard` |
 | `src/health` | Liveness and readiness |
-| `src/common`, `src/config` | Error format and filter, request id, validation helpers, environment configuration |
+| `src/common`, `src/config` | Error format and filter (`orNotFound`), request id, validation helpers (`assertUuid`), case-insensitive identifier helpers (`ids.ts`), environment configuration |
 | `src/testing` | In-memory repository fakes and fixtures for unit tests (excluded from the build) |
  
 Testing layers: pure rules and services are unit tested against the in-memory fakes (no database);

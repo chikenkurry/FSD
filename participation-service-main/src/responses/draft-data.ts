@@ -1,3 +1,4 @@
+import { normaliseId } from '../common/ids';
 import { DraftData } from './response.repository';
 import { SaveDraftDto } from './save-draft.dto';
 
@@ -8,7 +9,7 @@ export function toDraftData(dto: SaveDraftDto): DraftData {
     budgetKind: dto.budget.kind,
     budgetCapMinor: dto.budget.kind === 'CAP' ? (dto.budget.capMinor ?? null) : null,
     privateNote: dto.privateNote ?? null,
-    answers: structuredClone(dto.answers ?? []).map(a => ({...a, question_id:a.question_id.toLowerCase()})),
+    answers: structuredClone(dto.answers ?? []).map(a => ({...a, question_id: normaliseId(a.question_id)})),
     availability: dto.availability.map((a) => ({
       startAt: new Date(a.startAt),
       endAt: new Date(a.endAt),

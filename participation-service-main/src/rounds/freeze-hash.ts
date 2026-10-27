@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
+import { canonicalIds, normaliseId } from '../common/ids';
 
-export interface FreezePayload {
+interface FreezePayload {
   requireComplete?: boolean;
   countRespondedOnly?: boolean;
   roundId: string;
@@ -17,10 +18,10 @@ export function hashFreezePayload(payload: FreezePayload): string {
   const canonical = JSON.stringify({
     ...(payload.requireComplete ? { requireComplete: true } : {}),
     ...(payload.countRespondedOnly ? { countRespondedOnly: true } : {}),
-    ...(payload.optionSnapshotId ? { optionSnapshotId: payload.optionSnapshotId.toLowerCase() } : {}),
+    ...(payload.optionSnapshotId ? { optionSnapshotId: normaliseId(payload.optionSnapshotId) } : {}),
     ...(payload.optionRevision !== undefined ? { optionRevision: payload.optionRevision } : {}),
-    roundId: payload.roundId.toLowerCase(),
-    memberIds: payload.memberIds.map((id) => id.toLowerCase()).sort(),
+    roundId: normaliseId(payload.roundId),
+    memberIds: canonicalIds(payload.memberIds),
   });
   return createHash('sha256').update(canonical).digest('hex');
 }

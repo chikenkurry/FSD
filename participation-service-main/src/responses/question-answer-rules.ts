@@ -1,7 +1,8 @@
 import { FieldError } from '../common/api-exception';
+import { IdSet, normaliseId } from '../common/ids';
 import { QuestionAnswerDto, QuestionDefinitionDto } from './question-answer';
 
-export function validJson(value: unknown): boolean {
+function validJson(value: unknown): boolean {
   try {
     const text = JSON.stringify(value);
     return text !== undefined && text.length <= 16_000;
@@ -14,10 +15,10 @@ export function answeredRequiredQuestions(
   answers: QuestionAnswerDto[],
   questions: QuestionDefinitionDto[],
 ): boolean {
-  const present = new Set(
-    answers.filter(answer => isAnswered(answer.value)).map(answer => answer.question_id.toLowerCase()),
+  const present = new IdSet(
+    answers.filter(answer => isAnswered(answer.value)).map(answer => answer.question_id),
   );
-  return questions.every(q => !q.required || present.has(q.questionId.toLowerCase()));
+  return questions.every(q => !q.required || present.has(q.questionId));
 }
 
 function isAnswered(value: unknown): boolean {
@@ -33,16 +34,15 @@ export function validateQuestionAnswers(
   definitions: QuestionDefinitionDto[],
 ): FieldError[] {
   const errors: FieldError[] = [];
-  const questions = new Map(definitions.map(q => [q.questionId.toLowerCase(), q]));
-  const answered = new Set<string>();
+  const questions = new Map(definitions.map(q => [normaliseId(q.questionId), q]));
+  const answered = new IdSet();
   for (const [index, answer] of answers.entries()) {
-    const id = answer.question_id.toLowerCase();
-    const definition = questions.get(id);
-    if (!definition || answered.has(id) || !validJson(answer.value)) {
+    const definition = questions.get(normaliseId(answer.question_id));
+    if (!definition || answered.has(answer.question_id) || !validJson(answer.value)) {
       errors.push({ field: `answers.${index}`, message: 'Unknown, duplicate or invalid question answer' });
       continue;
     }
-    answered.add(id);
+    answered.add(answer.question_id);
     const value = answer.value;
     if (!matchesQuestionValue(value, definition)) {
       errors.push({

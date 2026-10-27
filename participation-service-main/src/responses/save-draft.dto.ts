@@ -19,10 +19,10 @@ import {
 import { QuestionAnswerDto } from './question-answer';
 import { ANSWER_KINDS, AnswerKindValue, BUDGET_KINDS, BudgetKindValue } from './response.types';
 
-export const MAX_INTERVALS = 500;
-export const MAX_ACTIVITIES = 8;
+const MAX_INTERVALS = 500;
+const MAX_ACTIVITIES = 8;
 /** Maximum cap in the round's declared minor units; safely fits PostgreSQL Int. */
-export const MAX_BUDGET_MINOR = 100_000_000;
+const MAX_BUDGET_MINOR = 100_000_000;
 /** Must carry an explicit offset so an instant is never guessed from server time. */
 const HAS_OFFSET = /(Z|[+-]\d{2}:\d{2})$/;
 

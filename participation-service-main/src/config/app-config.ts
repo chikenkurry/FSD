@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-export type AuthMode = 'dev' | 'planning';
+type AuthMode = 'dev' | 'planning';
 
 /** Reads and validates environment configuration once at startup, so bad config fails fast. */
 @Injectable()

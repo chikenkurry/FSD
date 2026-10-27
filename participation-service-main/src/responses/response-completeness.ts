@@ -1,9 +1,10 @@
+import { IdSet } from '../common/ids';
 import type { ResponseRecord } from './response.repository';
 import type { BudgetKindValue } from './response.types';
 import type { QuestionAnswerDto, QuestionDefinitionDto } from './question-answer';
 import { answeredRequiredQuestions } from './question-answer-rules';
 
-export type DecisionResponseStatus = 'complete' | 'incomplete' | 'stale';
+type DecisionResponseStatus = 'complete' | 'incomplete' | 'stale';
 
 export function decisionStatus(
   response: ResponseRecord | undefined,
@@ -25,8 +26,8 @@ export function isComplete(
 ): boolean {
   if (questions.length > 0) return answeredRequiredQuestions(response.answers ?? [], questions);
   if (response.budgetKind === 'UNANSWERED') return false;
-  const answered = new Set(response.activityAnswers.map((a) => a.activityId.toLowerCase()));
-  return activityIds.every((id) => answered.has(id.toLowerCase()));
+  const answered = new IdSet(response.activityAnswers.map((a) => a.activityId));
+  return activityIds.every((id) => answered.has(id));
 }
 
 export function completenessErrors(
@@ -37,9 +38,9 @@ export function completenessErrors(
   if (response.budgetKind === 'UNANSWERED') {
     errors.push({ field: 'budget', message: 'Budget must be a cap or explicit unlimited before submit' });
   }
-  const answered = new Set(response.activityAnswers.map((a) => a.activityId.toLowerCase()));
+  const answered = new IdSet(response.activityAnswers.map((a) => a.activityId));
   activityIds.forEach((id, index) => {
-    if (!answered.has(id.toLowerCase())) {
+    if (!answered.has(id)) {
       errors.push({
         field: `activityAnswers.${index}`,
         message: `Activity ${id} has no answer`,
