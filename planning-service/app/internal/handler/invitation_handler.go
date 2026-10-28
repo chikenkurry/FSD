@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -39,7 +40,7 @@ func NewInvitationHandler(repo *repository.InvitationRepository, baseURL string)
 	return &InvitationHandler{repo: repo, baseURL: baseURL}
 }
 
-// POST /v1/plans/{plan_id}/invitations - Organiser generates an invite link
+// POST /v1/plans/{plan_id}/invites - Organiser generates an invite link
 func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	planIDStr := r.PathValue("plan_id")
 	planID, err := uuid.Parse(planIDStr)
@@ -90,19 +91,22 @@ func (h *InvitationHandler) AcceptInvitation(w http.ResponseWriter, r *http.Requ
 
 	member, err := h.repo.AcceptInvitation(r.Context(), token, req.UserID, req.DisplayName)
 	if err != nil {
-		if errors.Is(err, repository.ErrInvitationNotFound) {
+		switch {
+		case errors.Is(err, repository.ErrInvitationNotFound):
 			WriteError(w, http.StatusNotFound, "Invitation link not found")
-			return
-		}
-		if errors.Is(err, repository.ErrJoiningClosed) {
+		case errors.Is(err, repository.ErrJoiningClosed):
 			WriteError(w, http.StatusConflict, "Joining is closed for this round")
-			return
-		}
-		if errors.Is(err, repository.ErrInvitationExpired) || errors.Is(err, repository.ErrInvitationInvalid) {
+		case errors.Is(err, repository.ErrMemberExists):
+			WriteError(w, http.StatusConflict, "User is already a member of this plan")
+		case errors.Is(err, repository.ErrRosterFull):
+			WriteError(w, http.StatusConflict, "This plan has reached its member limit")
+		case errors.Is(err, repository.ErrInvitationExpired), errors.Is(err, repository.ErrInvitationInvalid):
 			WriteError(w, http.StatusGone, "Invitation link is expired or invalid")
-			return
+		default:
+			// Database or other unexpected failure: log it, but don't expose it.
+			log.Printf("accept_invitation_failed error=%v", err)
+			WriteError(w, http.StatusInternalServerError, "Failed to join the plan")
 		}
-		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

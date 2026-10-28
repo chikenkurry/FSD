@@ -14,14 +14,15 @@ import (
 
 // for incoming create request
 type CreatePlanRequest struct {
-	Title           string             `json:"title"`
-	Description     *string            `json:"description,omitempty"`
-	Category        model.PlanCategory `json:"plan_category"`
-	State           model.PlanState    `json:"plan_state"`
-	OrganiserID     uuid.UUID          `json:"organiser_id"`
-	TimeWindowStart *time.Time         `json:"time_window_start,omitempty"`
-	TimeWindowEnd   *time.Time         `json:"time_window_end,omitempty"`
-	OrganiserName   string             `json:"organiser_name"`
+	Title       string             `json:"title"`
+	Description *string            `json:"description,omitempty"`
+	Category    model.PlanCategory `json:"plan_category"`
+	// Optional. New plans always start in DRAFT; the round lifecycle moves them on.
+	State           model.PlanState `json:"plan_state,omitempty"`
+	OrganiserID     uuid.UUID       `json:"organiser_id"`
+	TimeWindowStart *time.Time      `json:"time_window_start,omitempty"`
+	TimeWindowEnd   *time.Time      `json:"time_window_end,omitempty"`
+	OrganiserName   string          `json:"organiser_name"`
 }
 
 // for responding
@@ -84,8 +85,10 @@ func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !req.State.IsValidState() {
-		WriteError(w, http.StatusBadRequest, "invalid state")
+	// The plan is always created as DRAFT, so only accept a state that agrees
+	// with that rather than silently discarding a different one.
+	if req.State != "" && req.State != model.PlanStateDraft {
+		WriteError(w, http.StatusBadRequest, "new plans always start in DRAFT")
 		return
 	}
 
@@ -109,7 +112,6 @@ func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 
 // GET /v1/plans/{id}
 func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Set("Content-Type", "application/json")
 	id := r.PathValue("id")
 	if id == "" {
 		WriteError(w, http.StatusBadRequest, "Plan id is required")
@@ -119,11 +121,11 @@ func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
 	plan, err := h.repo.GetPlanById(r.Context(), id)
 
 	if err != nil {
-		if err.Error() == "plan not found" {
+		if errors.Is(err, repository.ErrPlanNotFound) {
 			WriteError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Fail to retreieve plan")
+		WriteError(w, http.StatusInternalServerError, "Failed to retrieve plan")
 		return
 	}
 
@@ -141,11 +143,11 @@ func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request)
 	plan, err := h.repo.GetByIDWithDetails(r.Context(), id)
 
 	if err != nil {
-		if err.Error() == "plan not found" {
+		if errors.Is(err, repository.ErrPlanNotFound) {
 			WriteError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Fail to retreieve plan")
+		WriteError(w, http.StatusInternalServerError, "Failed to retrieve plan")
 		return
 	}
 
@@ -166,44 +168,33 @@ func (h *PlanHandler) ListPlansByOrganiser(w http.ResponseWriter, r *http.Reques
 	h.listPlans(w, r, false)
 }
 
+// GET /v1/plans/member/{id} - List plans a user is a member of
 func (h *PlanHandler) ListPlansByMember(w http.ResponseWriter, r *http.Request) {
 	h.listPlans(w, r, true)
 }
 
 func (h *PlanHandler) listPlans(w http.ResponseWriter, r *http.Request, joined bool) {
-	organiserID := r.PathValue("id")
-	if organiserID == "" {
-		WriteError(w, http.StatusBadRequest, "Organiser id is required")
+	userID := r.PathValue("id")
+	if userID == "" {
+		WriteError(w, http.StatusBadRequest, "User id is required")
 		return
 	}
 
 	var plans []model.Plan
 	var err error
 	if joined {
-		plans, err = h.repo.ListByMember(r.Context(), organiserID, 100, 0)
+		plans, err = h.repo.ListByMember(r.Context(), userID, 100, 0)
 	} else {
-		plans, err = h.repo.ListByOrganiser(r.Context(), organiserID, 20, 0)
+		plans, err = h.repo.ListByOrganiser(r.Context(), userID, 20, 0)
 	}
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "Failed to list plans")
 		return
 	}
 	responses := make([]PlanResponse, len(plans))
-	for i, p := range plans {
-		responses[i] = PlanResponse{
-			ID:              p.ID,
-			Title:           p.Title,
-			Category:        p.Category,
-			MembersCount:    len(p.Members),
-			Description:     p.Description,
-			State:           p.State,
-			CreatedByUserID: p.CreatedByUserID,
-			TimeWindowStart: p.TimeWindowStart,
-			TimeWindowEnd:   p.TimeWindowEnd,
-			CreatedAt:       p.CreatedAt,
-			UpdatedAt:       p.UpdatedAt,
-			OrganiserName:   p.CreatedBy.Username,
-		}
+	for i := range plans {
+		responses[i] = toPlanResponse(&plans[i])
+		responses[i].MembersCount = len(plans[i].Members)
 	}
 	WriteJSONResponse(w, http.StatusOK, responses)
 }
@@ -293,16 +284,20 @@ func (h *PlanHandler) DeletePlan(w http.ResponseWriter, r *http.Request) {
 
 // helper funcs
 
+// toPlanResponse maps every stored plan field. OrganiserName is filled only when
+// CreatedBy has been preloaded (the list endpoints); it is omitted otherwise.
 func toPlanResponse(p *model.Plan) PlanResponse {
 	return PlanResponse{
 		ID:              p.ID,
 		Title:           p.Title,
 		Description:     p.Description,
+		Category:        p.Category,
 		State:           p.State,
 		CreatedByUserID: p.CreatedByUserID,
 		TimeWindowStart: p.TimeWindowStart,
 		TimeWindowEnd:   p.TimeWindowEnd,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
+		OrganiserName:   p.CreatedBy.Username,
 	}
 }

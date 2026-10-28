@@ -53,26 +53,26 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	question := &model.Question{
-		PlanID: req.PlanID,
-		Title: req.Title,
-		Type: req.Type,
+		PlanID:      req.PlanID,
+		Title:       req.Title,
+		Type:        req.Type,
 		Description: req.Description,
-		IsRequired: req.IsRequired,
-		SortOrder: req.SortOrder,
-		Options: req.Options,
+		IsRequired:  req.IsRequired,
+		SortOrder:   req.SortOrder,
+		Options:     req.Options,
 	}
 	if err := h.repo.Create(r.Context(), question); err != nil {
-		WriteError(w, http.StatusInternalServerError, "Fail to create question")
+		WriteError(w, http.StatusInternalServerError, "Failed to create question")
 		return
 	}
 	WriteJSONResponse(w, http.StatusCreated, question)
 }
 
 // GET /v1/plans/question/{plan_id}
-func (h *QuestionHandler)GetQuestionByPlanId(w http.ResponseWriter, r *http.Request) {
+func (h *QuestionHandler) GetQuestionByPlanId(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("plan_id")
 	planID, err := uuid.Parse(id)
-	if err != nil{
+	if err != nil {
 		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
 		return
 	}
@@ -90,6 +90,7 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 	questionID, err := uuid.Parse(id)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "Invalid Question UUID format")
+		return
 	}
 
 	var req UpdateQuestionRequest
@@ -101,19 +102,19 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 	// Build dynamic updates map
 	updates := make(map[string]interface{})
 	if req.Title != nil {
-		updates["title"] = req.Title
+		updates["title"] = *req.Title
 	}
 	if req.Description != nil {
 		updates["description"] = req.Description
 	}
 	if req.Type != nil {
-		updates["type"] = req.Type
+		updates["type"] = *req.Type
 	}
 	if req.IsRequired != nil {
-		updates["is_required"] = req.IsRequired
+		updates["is_required"] = *req.IsRequired
 	}
 	if req.SortOrder != nil {
-		updates["sort_order"] = req.SortOrder
+		updates["sort_order"] = *req.SortOrder
 	}
 	if req.Options != nil {
 		updates["options"] = req.Options
@@ -127,7 +128,7 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 	updatedQuestion, err := h.repo.Update(r.Context(), questionID, updates)
 	if err != nil {
 		if errors.Is(err, repository.ErrQuestionNotFound) {
-			WriteError(w, http.StatusNotFound, "question not found")
+			WriteError(w, http.StatusNotFound, "Question not found")
 			return
 		}
 		WriteError(w, http.StatusInternalServerError, "Failed to update question")
@@ -137,12 +138,13 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 	WriteJSONResponse(w, http.StatusOK, updatedQuestion)
 }
 
-// Delete /v1/question/{question_id}
+// DELETE /v1/question/{question_id}
 func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("question_id")
 	questionID, err := uuid.Parse(id)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "Invalid Question UUID format")
+		return
 	}
 
 	if err := h.repo.Delete(r.Context(), questionID); err != nil {

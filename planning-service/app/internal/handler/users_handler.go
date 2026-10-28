@@ -202,6 +202,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	WriteJSONResponse(w, http.StatusOK, UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
+		Email:    user.Email,
 	})
 }
 
