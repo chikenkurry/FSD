@@ -80,6 +80,8 @@ services:
       PARTICIPATION_BASE_URL: http://participation:3000
       DECISION_BASE_URL: http://decision:8000
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
+      # Frontend origin used in invitation links returned by the API.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:15173}
     ports: ["127.0.0.1:18080:8080"]
   participation:
     build: participation-service-main

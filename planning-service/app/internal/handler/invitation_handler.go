@@ -3,8 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"planning-service/app/internal/repository"
@@ -26,20 +27,26 @@ type AcceptInvitationRequest struct {
 
 type InvitationLinkResponse struct {
 	Token     string    `json:"token"`
-	ShareURL  string    `json:"share_url"`
+	ShareURL  string    `json:"share_url,omitempty"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type InvitationHandler struct {
-	repo    *repository.InvitationRepository
-	baseURL string // e.g. "https://app.yourdomain.com/join"
+	repo   *repository.InvitationRepository
+	appURL string // public frontend origin, e.g. "https://what2do.example.com"
 }
 
-func NewInvitationHandler(repo *repository.InvitationRepository, baseURL string) *InvitationHandler {
-	return &InvitationHandler{repo: repo, baseURL: baseURL}
+func NewInvitationHandler(repo *repository.InvitationRepository, appURL string) *InvitationHandler {
+	return &InvitationHandler{repo: repo, appURL: appURL}
 }
 
-// POST /v1/plans/{plan_id}/invitations - Organiser generates an invite link
+// invitationLink matches the link the frontend shares: /#round=<id>&invite=<token>.
+func invitationLink(appURL string, round uuid.UUID, token string) string {
+	params := url.Values{"round": {round.String()}, "invite": {token}}
+	return strings.TrimRight(appURL, "/") + "/#" + params.Encode()
+}
+
+// POST /v1/plans/{plan_id}/invites - Organiser generates an invite link
 func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	planIDStr := r.PathValue("plan_id")
 	planID, err := uuid.Parse(planIDStr)
@@ -65,7 +72,11 @@ func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	shareURL := fmt.Sprintf("%s?token=%s", h.baseURL, invitation.Token)
+	// A plan without a round has no form to open yet, so the link is omitted.
+	shareURL := ""
+	if round, err := h.repo.LatestRoundID(r.Context(), planID); err == nil {
+		shareURL = invitationLink(h.appURL, round, invitation.Token)
+	}
 
 	WriteJSONResponse(w, http.StatusCreated, InvitationLinkResponse{
 		Token:     invitation.Token,

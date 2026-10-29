@@ -13,6 +13,8 @@ type Config struct {
 	ParticipationBaseURL string
 	InternalAPIToken     string
 	DecisionBaseURL      string
+	// PublicAppURL is the frontend origin used in invitation links.
+	PublicAppURL string
 }
 
 func Load() (*Config, error) {
@@ -20,14 +22,16 @@ func Load() (*Config, error) {
 		log.Println("Notice: No .env file found, using system environment variables")
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL != "" {
-		return &Config{
-			DatabaseDSN:          dbURL,
-			ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
-			InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
-			DecisionBaseURL:      getEnv("DECISION_BASE_URL", "http://localhost:8000"),
-		}, nil
+	cfg := &Config{
+		ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
+		InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
+		DecisionBaseURL:      getEnv("DECISION_BASE_URL", "http://localhost:8000"),
+		PublicAppURL:         getEnv("PUBLIC_APP_URL", "http://localhost:15173"),
+	}
+
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		cfg.DatabaseDSN = dbURL
+		return cfg, nil
 	}
 
 	// alternatively, assemble DSN from individual variables
@@ -43,17 +47,11 @@ func Load() (*Config, error) {
 	}
 
 	// Format as GORM-compatible Key-Value DSN
-	dsn := fmt.Sprintf(
+	cfg.DatabaseDSN = fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		host, port, user, password, dbname, sslmode,
 	)
-
-	return &Config{
-		DatabaseDSN:          dsn,
-		ParticipationBaseURL: getEnv("PARTICIPATION_BASE_URL", "http://localhost:3000"),
-		InternalAPIToken:     getEnv("INTERNAL_API_TOKEN", ""),
-		DecisionBaseURL:      getEnv("DECISION_BASE_URL", "http://localhost:8000"),
-	}, nil
+	return cfg, nil
 }
 
 // Helper to provide default fallback values
