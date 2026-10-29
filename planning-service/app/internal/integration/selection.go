@@ -5,6 +5,7 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"net/http"
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"regexp"
 	"time"
@@ -111,13 +112,12 @@ func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
 
 // Compatibility route reads the authoritative selection rather than the retired write table.
 func (h *Handler) GetPlanSelection(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("plan_id"))
-	if err != nil {
-		fail(w, 400, "INVALID_INPUT")
+	id, ok := httpapi.PathUUID(w, r, "plan_id", "INVALID_INPUT")
+	if !ok {
 		return
 	}
 	var selection Selection
-	err = h.db.WithContext(r.Context()).Where("plan_id = ?", id).Order("version DESC").First(&selection).Error
+	err := h.db.WithContext(r.Context()).Where("plan_id = ?", id).Order("version DESC").First(&selection).Error
 	if err == nil {
 		respond(w, 200, selection)
 		return

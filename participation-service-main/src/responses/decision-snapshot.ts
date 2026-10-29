@@ -1,10 +1,8 @@
+import { normaliseId } from '../common/ids';
 import type { ResponseRecord } from './response.repository';
 import type { AnswerKindValue, BudgetKindValue } from './response.types';
 import { QuestionAnswerDto, QuestionDefinitionDto } from './question-answer';
 import { decisionStatus } from './response-completeness';
-
-export { decisionStatus, isComplete, completenessErrors } from './response-completeness';
-export type { DecisionResponseStatus } from './response-completeness';
 
 /**
  * Immutable snapshot Decision reads after freeze. Field names match
@@ -71,7 +69,7 @@ export function toDecisionSnapshot(args: {
   optionSnapshotId?: string | null;
   countRespondedOnly?: boolean;
 }): ResponseSnapshotV2 {
-  const byMember = new Map(args.responses.map((r) => [r.memberId.toLowerCase(), r]));
+  const byMember = new Map(args.responses.map((r) => [normaliseId(r.memberId), r]));
   const memberIds = [...args.memberIds].sort((a, b) => a.localeCompare(b));
 
   const participants: SnapshotParticipant[] = [];
@@ -79,7 +77,7 @@ export function toDecisionSnapshot(args: {
   const preferences: SnapshotPreference[] = [];
 
   for (const memberId of memberIds) {
-    const response = byMember.get(memberId.toLowerCase());
+    const response = byMember.get(normaliseId(memberId));
     const status = decisionStatus(response, args.optionRevision, args.activityIds, args.questions);
     participants.push({
       participant_id: memberId,

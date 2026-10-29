@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
@@ -45,26 +45,23 @@ func NewPlanMemberHandler(repo *repository.PlanMemberRepository) *PlanMemberHand
 
 // POST /v1/plans/{plan_id}/members - Add a user to a plan
 func (h *PlanMemberHandler) AddMember(w http.ResponseWriter, r *http.Request) {
-	planIDStr := r.PathValue("plan_id")
-	planID, err := uuid.Parse(planIDStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	var req AddPlanMemberRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	if req.UserID == uuid.Nil {
-		WriteError(w, http.StatusBadRequest, "user_id is required")
+		httpapi.StatusError(w, http.StatusBadRequest, "user_id is required")
 		return
 	}
 
 	if req.DisplayName == "" {
-		WriteError(w, http.StatusBadRequest, "display_name is required")
+		httpapi.StatusError(w, http.StatusBadRequest, "display_name is required")
 		return
 	}
 
@@ -82,28 +79,26 @@ func (h *PlanMemberHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.AddMember(r.Context(), member); err != nil {
 		if errors.Is(err, repository.ErrMemberExists) {
-			WriteError(w, http.StatusConflict, "User is already a member of this plan")
+			httpapi.StatusError(w, http.StatusConflict, "User is already a member of this plan")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to add member to plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to add member to plan")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, toMemberResponse(member))
+	httpapi.JSON(w, http.StatusCreated, toMemberResponse(member))
 }
 
 // GET /v1/plan_members/{plan_id}
-func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
-	idString := r.PathValue("plan_id")
-	planID, err := uuid.Parse(idString)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request)  {
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	members, err := h.repo.ListByPlanID(r.Context(), planID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to list plan members")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to list plan members")
 		return
 	}
 
@@ -112,7 +107,7 @@ func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request) 
 		responses[i] = toMemberResponse(&m)
 	}
 
-	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
+	httpapi.JSON(w, http.StatusOK, map[string]interface{}{
 		"data":  responses,
 		"total": len(responses),
 	})
@@ -120,16 +115,13 @@ func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request) 
 
 // PATCH /v1/members/{id} - Update a member's role or display name
 func (h *PlanMemberHandler) UpdateMember(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	memberID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Member UUID format")
+	memberID, ok := httpapi.PathUUID(w, r, "id", "Invalid Member UUID format")
+	if !ok {
 		return
 	}
 
 	var req UpdatePlanMemberRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
@@ -142,52 +134,50 @@ func (h *PlanMemberHandler) UpdateMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(updates) == 0 {
-		WriteError(w, http.StatusBadRequest, "No fields provided to update")
+		httpapi.StatusError(w, http.StatusBadRequest, "No fields provided to update")
 		return
 	}
 
 	updatedMember, err := h.repo.UpdateMember(r.Context(), memberID, updates)
 	if err != nil {
 		if errors.Is(err, repository.ErrMemberNotFound) {
-			WriteError(w, http.StatusNotFound, "Member not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Member not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to update member")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to update member")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, toMemberResponse(updatedMember))
+	httpapi.JSON(w, http.StatusOK, toMemberResponse(updatedMember))
 }
 
 // DELETE /v1/members/{id} - Remove a member by membership ID
 func (h *PlanMemberHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	memberID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Member UUID format")
+	memberID, ok := httpapi.PathUUID(w, r, "id", "Invalid Member UUID format")
+	if !ok {
 		return
 	}
 
 	existing, err := h.repo.GetMemberByID(r.Context(), memberID)
 	if err != nil {
 		if errors.Is(err, repository.ErrMemberNotFound) {
-			WriteError(w, http.StatusNotFound, "Member not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Member not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to remove member")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to remove member")
 		return
 	}
 	if existing.Role == model.MemberRoleOrganiser {
-		WriteError(w, http.StatusConflict, "Cannot remove the plan organiser")
+		httpapi.StatusError(w, http.StatusConflict, "Cannot remove the plan organiser")
 		return
 	}
 
 	if err := h.repo.RemoveMember(r.Context(), memberID); err != nil {
 		if errors.Is(err, repository.ErrMemberNotFound) {
-			WriteError(w, http.StatusNotFound, "Member not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Member not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to remove member")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to remove member")
 		return
 	}
 
@@ -196,26 +186,21 @@ func (h *PlanMemberHandler) RemoveMember(w http.ResponseWriter, r *http.Request)
 
 // DELETE /v1/plans/{plan_id}/members/{user_id} - Leave or remove a user from a plan directly
 func (h *PlanMemberHandler) RemoveMemberByPlanAndUser(w http.ResponseWriter, r *http.Request) {
-	planIDStr := r.PathValue("plan_id")
-	planID, err := uuid.Parse(planIDStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
-
-	userIDStr := r.PathValue("user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid User UUID format")
+	userID, ok := httpapi.PathUUID(w, r, "user_id", "Invalid User UUID format")
+	if !ok {
 		return
 	}
 
 	if err := h.repo.RemoveMemberByPlanAndUser(r.Context(), planID, userID); err != nil {
 		if errors.Is(err, repository.ErrMemberNotFound) {
-			WriteError(w, http.StatusNotFound, "Member record not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Member record not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to remove member from plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to remove member from plan")
 		return
 	}
 

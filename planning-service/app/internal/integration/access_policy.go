@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"planning-service/app/internal/httpapi"
 
 	"github.com/google/uuid"
 )
@@ -15,7 +16,7 @@ func validateMutationBody(w http.ResponseWriter, r *http.Request, parts []string
 		return uuid.Nil, false
 	}
 	var bodyPlanID uuid.UUID
-	payload, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 2_000_000))
+	payload, err := io.ReadAll(http.MaxBytesReader(w, r.Body, httpapi.MaxBodyBytes))
 	if err != nil {
 		fail(w, 413, "INVALID_INPUT")
 		return uuid.Nil, false

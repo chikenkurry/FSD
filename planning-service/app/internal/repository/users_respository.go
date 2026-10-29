@@ -81,31 +81,15 @@ func (r *UserRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID)
 	return &user, nil
 }
 
-// List fetches users with pagination
-func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]model.User, int64, error) {
-	var users []model.User
-	var total int64
 
-	db := database.ContextDB(ctx, r.db).Model(&model.User{})
 
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	err := db.Order("username ASC").
-		Limit(limit).
-		Offset(offset).
-		Find(&users).Error
-
-	return users, total, err
-}
-
-// Update updates a user's username
+// Update replaces a user's username and email. An empty email clears it
+// (email is optional; see migration 004).
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	result := database.ContextDB(ctx, r.db).
-		Model(user).
+		Model(&model.User{}).
 		Where("id = ?", user.ID).
-		Update("username", user.Username)
+		Updates(map[string]interface{}{"username": user.Username, "email": user.Email})
 
 	if result.Error != nil {
 		return result.Error

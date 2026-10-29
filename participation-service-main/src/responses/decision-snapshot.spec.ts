@@ -1,6 +1,7 @@
 import { ACTIVITY_A, ACTIVITY_B, MEMBER_1, MEMBER_2, PLAN_ID, ROUND_ID } from '../testing/fixtures';
 import { ResponseRecord } from './response.repository';
-import { isComplete, toDecisionSnapshot } from './decision-snapshot';
+import { toDecisionSnapshot } from './decision-snapshot';
+import { isComplete } from './response-completeness';
 
 function aStored(overrides: Partial<ResponseRecord> = {}): ResponseRecord {
   return {

@@ -1,13 +1,14 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/repository"
 
 	"github.com/google/uuid"
@@ -48,16 +49,13 @@ func invitationLink(appURL string, round uuid.UUID, token string) string {
 
 // POST /v1/plans/{plan_id}/invites - Organiser generates an invite link
 func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
-	planIDStr := r.PathValue("plan_id")
-	planID, err := uuid.Parse(planIDStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	var req CreateInvitationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
@@ -68,7 +66,7 @@ func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Requ
 
 	invitation, err := h.repo.Create(r.Context(), planID, req.CreatedBy, time.Duration(ttlHours)*time.Hour, req.MaxUses)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to create invitation link")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to create invitation link")
 		return
 	}
 
@@ -78,7 +76,7 @@ func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Requ
 		shareURL = invitationLink(h.appURL, round, invitation.Token)
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, InvitationLinkResponse{
+	httpapi.JSON(w, http.StatusCreated, InvitationLinkResponse{
 		Token:     invitation.Token,
 		ShareURL:  shareURL,
 		ExpiresAt: invitation.ExpiresAt,
@@ -89,35 +87,37 @@ func (h *InvitationHandler) CreateInvitation(w http.ResponseWriter, r *http.Requ
 func (h *InvitationHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	if token == "" {
-		WriteError(w, http.StatusBadRequest, "Token is required")
+		httpapi.StatusError(w, http.StatusBadRequest, "Token is required")
 		return
 	}
 
 	var req AcceptInvitationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	member, err := h.repo.AcceptInvitation(r.Context(), token, req.UserID, req.DisplayName)
 	if err != nil {
-		if errors.Is(err, repository.ErrInvitationNotFound) {
-			WriteError(w, http.StatusNotFound, "Invitation link not found")
-			return
+		switch {
+		case errors.Is(err, repository.ErrInvitationNotFound):
+			httpapi.StatusError(w, http.StatusNotFound, "Invitation link not found")
+		case errors.Is(err, repository.ErrJoiningClosed):
+			httpapi.StatusError(w, http.StatusConflict, "Joining is closed for this round")
+		case errors.Is(err, repository.ErrMemberExists):
+			httpapi.StatusError(w, http.StatusConflict, "User is already a member of this plan")
+		case errors.Is(err, repository.ErrRosterFull):
+			httpapi.StatusError(w, http.StatusConflict, "This plan has reached its member limit")
+		case errors.Is(err, repository.ErrInvitationExpired), errors.Is(err, repository.ErrInvitationInvalid):
+			httpapi.StatusError(w, http.StatusGone, "Invitation link is expired or invalid")
+		default:
+			// Database or other unexpected failure: log it, but don't expose it.
+			log.Printf("accept_invitation_failed error=%v", err)
+			httpapi.StatusError(w, http.StatusInternalServerError, "Failed to join the plan")
 		}
-		if errors.Is(err, repository.ErrJoiningClosed) {
-			WriteError(w, http.StatusConflict, "Joining is closed for this round")
-			return
-		}
-		if errors.Is(err, repository.ErrInvitationExpired) || errors.Is(err, repository.ErrInvitationInvalid) {
-			WriteError(w, http.StatusGone, "Invitation link is expired or invalid")
-			return
-		}
-		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
+	httpapi.JSON(w, http.StatusOK, map[string]interface{}{
 		"message": "Successfully joined the plan",
 		"member":  member,
 	})

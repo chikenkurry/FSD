@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { AuthorisedMember } from '../auth/session-authoriser';
-import { Errors } from '../common/api-exception';
+import { Errors, orNotFound } from '../common/api-exception';
+import { IdSet, sameId } from '../common/ids';
+import { findRoundOrThrow } from '../rounds/find-round';
 import { RoundFacts, RoundRecord, RoundRepository } from '../rounds/round.repository';
 import { completenessErrors, isComplete } from './response-completeness';
 import { toDraftData } from './draft-data';
@@ -37,8 +39,8 @@ export class ResponsesService {
     }
     const stored = await this.responses.find(sourceRoundId, member.memberId);
     if (!stored) throw Errors.notFound('No earlier response to copy');
-    const knownQuestions = new Set((round.questions ?? []).map((q) => q.questionId));
-    const knownActivities = new Set(round.activityIds);
+    const knownQuestions = new IdSet((round.questions ?? []).map((q) => q.questionId));
+    const knownActivities = new IdSet(round.activityIds);
     const sameMoneyConvention = round.currency === source.currency && round.minorDigits === source.minorDigits;
     const data: DraftData = {
       acknowledgedOptionRevision: source.optionRevision,
@@ -59,8 +61,7 @@ export class ResponsesService {
       if (!id) throw Errors.staleVersion();
       return toView(roundId, unit.round, await unit.load(id));
     });
-    if (!view) throw Errors.notFound('Round not found');
-    return view;
+    return orNotFound(view, 'Round not found');
   }
 
   /**
@@ -104,14 +105,12 @@ export class ResponsesService {
       return toView(roundId, unit.round, await unit.load(responseId));
     });
 
-    if (!view) throw Errors.notFound('Round not found');
-    return view;
+    return orNotFound(view, 'Round not found');
   }
 
   /** Internal-only projection; identity is supplied by Planning, never by a public caller. */
   async previewSnapshot(roundId: string, memberId: string) {
-    const round = await this.rounds.findById(roundId);
-    if (!round) throw Errors.notFound('Round not found');
+    const round = await findRoundOrThrow(this.rounds, roundId);
     const snapshot = await this.responses.withRoundWriteLock(roundId, async (unit) => {
       if (unit.round.state !== 'COLLECTING') throw Errors.roundClosed();
       const responseId = await unit.findExistingId(memberId);
@@ -136,8 +135,7 @@ export class ResponsesService {
         response_revision: revision,
       };
     });
-    if (!snapshot) throw Errors.notFound('Round not found');
-    return snapshot;
+    return orNotFound(snapshot, 'Round not found');
   }
 
   /**
@@ -177,8 +175,7 @@ export class ResponsesService {
       return toView(roundId, unit.round, await unit.load(existingId));
     });
 
-    if (!view) throw Errors.notFound('Round not found');
-    return view;
+    return orNotFound(view, 'Round not found');
   }
 
   private assertAcceptingResponses(round: RoundFacts, acknowledgedOptionRevision: number): void {
@@ -209,13 +206,12 @@ export class ResponsesService {
 
   /** The round must be provisioned here and belong to the plan the session was authorised for. */
   private async requireRound(roundId: string, member: AuthorisedMember): Promise<RoundRecord> {
-    const round = await this.rounds.findById(roundId);
-    if (!round) throw Errors.notFound('This round is not open for responses');
+    const round = await findRoundOrThrow(this.rounds, roundId, 'This round is not open for responses');
     if (round.planId !== member.planId) throw Errors.forbidden();
     if (
       (round.rosterPolicy !== 'close' || round.state === 'FROZEN') &&
       round.memberIds?.length &&
-      !round.memberIds.some((id) => id.toLowerCase() === member.memberId.toLowerCase())
+      !round.memberIds.some((id) => sameId(id, member.memberId))
     ) {
       throw Errors.forbidden();
     }

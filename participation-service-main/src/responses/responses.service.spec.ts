@@ -1,5 +1,5 @@
 import { InMemoryResponseRepository, InMemoryRoundRepository } from '../testing/in-memory-repositories';
-import { ACTIVITY_A, MEMBER_1, MEMBER_2, PLAN_ID, ROUND_ID, aDraft, aRound } from '../testing/fixtures';
+import { ACTIVITY_A, ACTIVITY_B, MEMBER_1, MEMBER_2, PLAN_ID, ROUND_ID, aDraft, aRound } from '../testing/fixtures';
 import { ResponsesService } from './responses.service';
 
 const member1 = { memberId: MEMBER_1, planId: PLAN_ID };
@@ -143,6 +143,44 @@ describe('ResponsesService', () => {
       await expect(service.saveDraft(ROUND_ID, outsider, aDraft())).rejects.toMatchObject({
         code: 'FORBIDDEN',
       });
+    });
+  });
+
+  describe('copyDraft', () => {
+    const NEXT_ROUND_ID = '99999999-9999-4999-8999-999999999999';
+
+    it('keeps answers for activities that are still offered, whatever case the round lists them in', async () => {
+      // An id with hex letters, so upper- and lower-case spellings really differ.
+      const lettered = 'abcdefab-cdef-4bcd-8fab-cdefabcdefab';
+      const { service, rounds } = setup();
+      rounds.rounds.set(ROUND_ID, aRound({ activityIds: [lettered] }));
+      await service.saveDraft(
+        ROUND_ID,
+        member1,
+        aDraft({ activityAnswers: [{ activityId: lettered, kind: 'RATING', rating: 3 }] }),
+      );
+      rounds.rounds.set(
+        NEXT_ROUND_ID,
+        aRound({ id: NEXT_ROUND_ID, optionRevision: 2, activityIds: [lettered.toUpperCase()] }),
+      );
+
+      const copied = await service.copyDraft(NEXT_ROUND_ID, ROUND_ID, member1);
+
+      expect(copied.activityAnswers).toEqual([{ activityId: lettered, kind: 'RATING', rating: 3 }]);
+      expect(copied.acknowledgedOptionRevision).toBe(1);
+    });
+
+    it('drops answers for activities that are no longer offered', async () => {
+      const { service, rounds } = setup();
+      await service.saveDraft(ROUND_ID, member1, aDraft());
+      rounds.rounds.set(
+        NEXT_ROUND_ID,
+        aRound({ id: NEXT_ROUND_ID, optionRevision: 2, activityIds: [ACTIVITY_B] }),
+      );
+
+      const copied = await service.copyDraft(NEXT_ROUND_ID, ROUND_ID, member1);
+
+      expect(copied.activityAnswers.map((a) => a.activityId)).toEqual([ACTIVITY_B]);
     });
   });
 

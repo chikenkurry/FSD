@@ -1,11 +1,10 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
@@ -47,13 +46,12 @@ func NewUserHandler(repo *repository.UserRepository) *UserHandler {
 // POST /users - Create user
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	if req.Username == "" {
-		WriteError(w, http.StatusBadRequest, "username is required")
+		httpapi.StatusError(w, http.StatusBadRequest, "username is required")
 		return
 	}
 
@@ -64,14 +62,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.Create(r.Context(), user); err != nil {
 		if errors.Is(err, repository.ErrUsernameDuplicate) {
-			WriteError(w, http.StatusConflict, "Username is already taken")
+			httpapi.StatusError(w, http.StatusConflict, "Username is already taken")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to create user")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, UserResponse{
+	httpapi.JSON(w, http.StatusCreated, UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
@@ -80,24 +78,22 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // GET /v1/users/{id} - Get single user
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	userID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid UUID format")
+	userID, ok := httpapi.PathUUID(w, r, "id", "Invalid UUID format")
+	if !ok {
 		return
 	}
 
 	user, err := h.repo.GetByIDWithRelations(r.Context(), userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			WriteError(w, http.StatusNotFound, "User not found")
+			httpapi.StatusError(w, http.StatusNotFound, "User not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to fetch user")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to fetch user")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, UserDetailResponse{
+	httpapi.JSON(w, http.StatusOK, UserDetailResponse{
 		ID:           user.ID,
 		Username:     user.Username,
 		Email:        user.Email,
@@ -106,81 +102,23 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /v1/usersbyname/{username} - get single user by email
-func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
-	username := r.PathValue("username")
-	if username == "" {
-		WriteError(w, http.StatusBadRequest, "username query parameter is required")
-		return
-	}
 
-	user, err := h.repo.GetByUsername(r.Context(), username)
-	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
-			WriteError(w, http.StatusNotFound, "User not found with this username")
-			return
-		}
-		WriteError(w, http.StatusInternalServerError, "Failed to fetch user")
-		return
-	}
 
-	WriteJSONResponse(w, http.StatusOK, UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-	})
-}
-
-// GET /users - List users with pagination
-func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	if offset < 0 {
-		offset = 0
-	}
-
-	users, total, err := h.repo.List(r.Context(), limit, offset)
-	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to fetch users")
-		return
-	}
-
-	responseList := make([]UserResponse, len(users))
-	for i, u := range users {
-		responseList[i] = UserResponse{
-			ID:       u.ID,
-			Username: u.Username,
-		}
-	}
-
-	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
-		"data":   responseList,
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
-	})
-}
 
 // PUT /users/{id} - Update user
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	userID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid UUID format")
+	userID, ok := httpapi.PathUUID(w, r, "id", "Invalid UUID format")
+	if !ok {
 		return
 	}
 
 	var req UpdateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	if req.Username == "" {
-		WriteError(w, http.StatusBadRequest, "username is required")
+		httpapi.StatusError(w, http.StatusBadRequest, "username is required")
 		return
 	}
 
@@ -192,34 +130,33 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.Update(r.Context(), user); err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			WriteError(w, http.StatusNotFound, "User not found")
+			httpapi.StatusError(w, http.StatusNotFound, "User not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to update user")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to update user")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, UserResponse{
+	httpapi.JSON(w, http.StatusOK, UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
+		Email:    user.Email,
 	})
 }
 
 // DELETE /users/{id} - Delete user
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	userID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid UUID format")
+	userID, ok := httpapi.PathUUID(w, r, "id", "Invalid UUID format")
+	if !ok {
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), userID); err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			WriteError(w, http.StatusNotFound, "User not found")
+			httpapi.StatusError(w, http.StatusNotFound, "User not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to delete user")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to delete user")
 		return
 	}
 
