@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
@@ -70,25 +70,24 @@ func NewPlanHandler(repo *repository.PlanRepository) *PlanHandler {
 // POST /v1/plans
 func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 	var req CreatePlanRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	if req.Title == "" || req.OrganiserID == uuid.Nil {
-		WriteError(w, http.StatusBadRequest, "title and organiser id are required")
+		httpapi.StatusError(w, http.StatusBadRequest, "title and organiser id are required")
 		return
 	}
 
 	if !req.Category.IsValidCategory() {
-		WriteError(w, http.StatusBadRequest, "invalid category")
+		httpapi.StatusError(w, http.StatusBadRequest, "invalid category")
 		return
 	}
 
 	// The plan is always created as DRAFT, so only accept a state that agrees
 	// with that rather than silently discarding a different one.
 	if req.State != "" && req.State != model.PlanStateDraft {
-		WriteError(w, http.StatusBadRequest, "new plans always start in DRAFT")
+		httpapi.StatusError(w, http.StatusBadRequest, "new plans always start in DRAFT")
 		return
 	}
 
@@ -103,51 +102,47 @@ func (h *PlanHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.CreatePlan(r.Context(), plan, req.OrganiserName); err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to create plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to create plan")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, toPlanResponse(plan))
+	httpapi.JSON(w, http.StatusCreated, toPlanResponse(plan))
 }
 
 // GET /v1/plans/{id}
 func (h *PlanHandler) GetPlanById(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		WriteError(w, http.StatusBadRequest, "Plan id is required")
+	id, ok := httpapi.PathUUID(w, r, "id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	plan, err := h.repo.GetPlanById(r.Context(), id)
-
 	if err != nil {
 		if errors.Is(err, repository.ErrPlanNotFound) {
-			WriteError(w, http.StatusNotFound, "Plan not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to retrieve plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to retrieve plan")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, plan)
+	httpapi.JSON(w, http.StatusOK, plan)
 }
 
 // GET /v1/plans/details/{id}
 func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	id, ok := httpapi.PathUUID(w, r, "id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	plan, err := h.repo.GetByIDWithDetails(r.Context(), id)
-
 	if err != nil {
 		if errors.Is(err, repository.ErrPlanNotFound) {
-			WriteError(w, http.StatusNotFound, "Plan not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to retrieve plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to retrieve plan")
 		return
 	}
 
@@ -157,7 +152,7 @@ func (h *PlanHandler) GetByIDWithDetails(w http.ResponseWriter, r *http.Request)
 	for i := range plan.ProposedActivities {
 		activities[i] = toProposedActivityResponse(&plan.ProposedActivities[i])
 	}
-	WriteJSONResponse(w, http.StatusOK, struct {
+	httpapi.JSON(w, http.StatusOK, struct {
 		*model.Plan
 		Activities []ProposedActivityResponse `json:"proposed_activities"`
 	}{plan, activities})
@@ -174,9 +169,8 @@ func (h *PlanHandler) ListPlansByMember(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *PlanHandler) listPlans(w http.ResponseWriter, r *http.Request, joined bool) {
-	userID := r.PathValue("id")
-	if userID == "" {
-		WriteError(w, http.StatusBadRequest, "User id is required")
+	userID, ok := httpapi.PathUUID(w, r, "id", "Invalid User UUID format")
+	if !ok {
 		return
 	}
 
@@ -188,7 +182,7 @@ func (h *PlanHandler) listPlans(w http.ResponseWriter, r *http.Request, joined b
 		plans, err = h.repo.ListByOrganiser(r.Context(), userID, 20, 0)
 	}
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to list plans")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to list plans")
 		return
 	}
 	responses := make([]PlanResponse, len(plans))
@@ -196,21 +190,18 @@ func (h *PlanHandler) listPlans(w http.ResponseWriter, r *http.Request, joined b
 		responses[i] = toPlanResponse(&plans[i])
 		responses[i].MembersCount = len(plans[i].Members)
 	}
-	WriteJSONResponse(w, http.StatusOK, responses)
+	httpapi.JSON(w, http.StatusOK, responses)
 }
 
 // PATCH /v1/plans/{id} - Update plan details or transition status
 func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	planID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	var req UpdatePlanRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
@@ -218,7 +209,7 @@ func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	updates := make(map[string]interface{})
 	if req.Category != nil {
 		if !req.Category.IsValidCategory() {
-			WriteError(w, http.StatusBadRequest, "invalid category")
+			httpapi.StatusError(w, http.StatusBadRequest, "invalid category")
 			return
 		}
 		updates["category"] = *req.Category
@@ -231,7 +222,7 @@ func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.State != nil {
 		if !req.State.IsValidState() {
-			WriteError(w, http.StatusBadRequest, "invalid state")
+			httpapi.StatusError(w, http.StatusBadRequest, "invalid state")
 			return
 		}
 		updates["state"] = *req.State
@@ -244,38 +235,36 @@ func (h *PlanHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(updates) == 0 {
-		WriteError(w, http.StatusBadRequest, "No fields provided to update")
+		httpapi.StatusError(w, http.StatusBadRequest, "No fields provided to update")
 		return
 	}
 
 	updatedPlan, err := h.repo.Update(r.Context(), planID, updates)
 	if err != nil {
 		if errors.Is(err, repository.ErrPlanNotFound) {
-			WriteError(w, http.StatusNotFound, "Plan not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to update plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to update plan")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, toPlanResponse(updatedPlan))
+	httpapi.JSON(w, http.StatusOK, toPlanResponse(updatedPlan))
 }
 
 // DELETE /v1/plans/{id} - Delete a plan
 func (h *PlanHandler) DeletePlan(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	planID, err := uuid.Parse(idStr)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), planID); err != nil {
 		if errors.Is(err, repository.ErrPlanNotFound) {
-			WriteError(w, http.StatusNotFound, "Plan not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Plan not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to delete plan")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to delete plan")
 		return
 	}
 

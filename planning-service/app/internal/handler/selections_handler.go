@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
@@ -33,21 +34,17 @@ type CreateConfirmedSelectionRequest struct {
 
 // POST /v1/confirmed-selection/plans/{plan_id}
 func (h *ConfirmedSelectionHandler) CreateConfirmedSelection(w http.ResponseWriter, r *http.Request) {
-	planID, err := uuid.Parse(r.PathValue("plan_id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	var req CreateConfirmedSelectionRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	selectionDetails := req.SelectionDetails
-
 	if len(selectionDetails) == 0 {
 		selectionDetails = json.RawMessage(`{}`)
 	}
@@ -66,36 +63,32 @@ func (h *ConfirmedSelectionHandler) CreateConfirmedSelection(w http.ResponseWrit
 
 	if err := h.repo.Create(r.Context(), selection); err != nil {
 		if errors.Is(err, repository.ErrConfirmedSelectionExists) {
-			WriteError(w, http.StatusConflict, "A confirmed selection already exists for this plan")
+			httpapi.StatusError(w, http.StatusConflict, "A confirmed selection already exists for this plan")
 			return
 		}
-
-		WriteError(w, http.StatusInternalServerError, "Failed to create confirmed selection")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to create confirmed selection")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, selection)
+	httpapi.JSON(w, http.StatusCreated, selection)
 }
 
 // GET /v1/confirmed-selection/plans/{plan_id}
 func (h *ConfirmedSelectionHandler) GetConfirmedSelectionByPlan(w http.ResponseWriter, r *http.Request) {
-	planID, err := uuid.Parse(r.PathValue("plan_id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	selection, err := h.repo.GetByPlanID(r.Context(), planID)
-
 	if errors.Is(err, repository.ErrConfirmedSelectionNotFound) {
-		WriteError(w, http.StatusNotFound, "Confirmed selection not found")
+		httpapi.StatusError(w, http.StatusNotFound, "Confirmed selection not found")
 		return
 	}
-
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to get confirmed selection")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to get confirmed selection")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, selection)
+	httpapi.JSON(w, http.StatusOK, selection)
 }

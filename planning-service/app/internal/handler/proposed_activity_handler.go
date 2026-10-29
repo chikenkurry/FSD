@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
@@ -44,25 +45,23 @@ type ProposedActivityResponse struct {
 	EstCostPerPerson float64         `json:"est_cost_per_person"`
 	DurationMinutes  int             `json:"duration_minutes"`
 	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time  	 `json:"created_at"`
+	CreatedAt        time.Time       `json:"created_at"`
 }
 
 // POST /v1/proposed_activity/plans/{plan_id} - Add activity to a plan
 func (h *ProposedActivityHandler) CreateActivity(w http.ResponseWriter, r *http.Request) {
-	planID, err := uuid.Parse(r.PathValue("plan_id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	var req CreateProposedActivityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	if req.Title == "" {
-		WriteError(w, http.StatusBadRequest, "Title is required")
+		httpapi.StatusError(w, http.StatusBadRequest, "Title is required")
 		return
 	}
 
@@ -76,71 +75,63 @@ func (h *ProposedActivityHandler) CreateActivity(w http.ResponseWriter, r *http.
 	}
 
 	if err := h.repo.Create(r.Context(), activity); err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to create activity")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to create activity")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusCreated, toProposedActivityResponse(activity))
+	httpapi.JSON(w, http.StatusCreated, toProposedActivityResponse(activity))
 }
 
 // GET /v1/proposed_activity/plans/{plan_id} - List activities for a plan
 func (h *ProposedActivityHandler) ListActivitiesByPlan(w http.ResponseWriter, r *http.Request) {
-	planID, err := uuid.Parse(r.PathValue("plan_id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 
 	activities, err := h.repo.ListByPlanID(r.Context(), planID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to list activities")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to list activities")
 		return
 	}
 
 	responses := make([]ProposedActivityResponse, 0, len(activities))
-
 	for i := range activities {
 		responses = append(responses, toProposedActivityResponse(&activities[i]))
 	}
 
-	WriteJSONResponse(w, http.StatusOK, map[string]interface{}{"data": responses})
+	httpapi.JSON(w, http.StatusOK, map[string]interface{}{"data": responses})
 }
 
 // GET /v1/proposed_activity/{id} - Get an activity by ID
 func (h *ProposedActivityHandler) GetActivityByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Activity UUID format")
+	id, ok := httpapi.PathUUID(w, r, "id", "Invalid Activity UUID format")
+	if !ok {
 		return
 	}
 
 	activity, err := h.repo.GetByID(r.Context(), id)
-
 	if errors.Is(err, repository.ErrProposedActivityNotFound) {
-		WriteError(w, http.StatusNotFound, "Activity not found")
+		httpapi.StatusError(w, http.StatusNotFound, "Activity not found")
 		return
 	}
-
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to get activity")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to get activity")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, toProposedActivityResponse(activity))
+	httpapi.JSON(w, http.StatusOK, toProposedActivityResponse(activity))
 }
 
 // PATCH /v1/proposed_activity/{id} - Update an activity
 func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Activity UUID format")
+	id, ok := httpapi.PathUUID(w, r, "id", "Invalid Activity UUID format")
+	if !ok {
 		return
 	}
 
 	var req UpdateProposedActivityRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
@@ -148,10 +139,9 @@ func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.
 
 	if req.Title != nil {
 		if *req.Title == "" {
-			WriteError(w, http.StatusBadRequest, "Title cannot be empty")
+			httpapi.StatusError(w, http.StatusBadRequest, "Title cannot be empty")
 			return
 		}
-
 		updates["title"] = *req.Title
 	}
 
@@ -161,19 +151,17 @@ func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.
 
 	if req.EstCostPerPerson != nil {
 		if *req.EstCostPerPerson < 0 {
-			WriteError(w, http.StatusBadRequest, "Cost cannot be negative")
+			httpapi.StatusError(w, http.StatusBadRequest, "Cost cannot be negative")
 			return
 		}
-
 		updates["est_cost_per_person"] = *req.EstCostPerPerson
 	}
 
 	if req.DurationMinutes != nil {
 		if *req.DurationMinutes <= 0 {
-			WriteError(w, http.StatusBadRequest, "Duration must be greater than 0")
+			httpapi.StatusError(w, http.StatusBadRequest, "Duration must be greater than 0")
 			return
 		}
-
 		updates["duration_minutes"] = *req.DurationMinutes
 	}
 
@@ -182,39 +170,36 @@ func (h *ProposedActivityHandler) UpdateActivity(w http.ResponseWriter, r *http.
 	}
 
 	if len(updates) == 0 {
-		WriteError(w, http.StatusBadRequest, "No fields provided to update")
+		httpapi.StatusError(w, http.StatusBadRequest, "No fields provided to update")
 		return
 	}
 
 	updatedActivity, err := h.repo.Update(r.Context(), id, updates)
 	if err != nil {
 		if errors.Is(err, repository.ErrProposedActivityNotFound) {
-			WriteError(w, http.StatusNotFound, "Activity not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Activity not found")
 			return
 		}
-
-		WriteError(w, http.StatusInternalServerError, "Failed to update activity")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to update activity")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, toProposedActivityResponse(updatedActivity))
+	httpapi.JSON(w, http.StatusOK, toProposedActivityResponse(updatedActivity))
 }
 
 // DELETE /v1/proposed_activity/{id} - Delete an activity
 func (h *ProposedActivityHandler) DeleteActivity(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Activity UUID format")
+	id, ok := httpapi.PathUUID(w, r, "id", "Invalid Activity UUID format")
+	if !ok {
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), id); err != nil {
 		if errors.Is(err, repository.ErrProposedActivityNotFound) {
-			WriteError(w, http.StatusNotFound, "Activity not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Activity not found")
 			return
 		}
-
-		WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to delete activity")
 		return
 	}
 

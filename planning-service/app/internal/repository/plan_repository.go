@@ -43,13 +43,13 @@ func (r *PlanRepository) CreatePlan(ctx context.Context, plan *model.Plan, organ
 	})
 }
 
-// GetByID finds a plan by primary key
-func (r *PlanRepository) GetPlanById(ctx context.Context, id string) (*model.Plan, error) {
+// GetPlanById finds a plan by primary key
+func (r *PlanRepository) GetPlanById(ctx context.Context, id uuid.UUID) (*model.Plan, error) {
 	var plan model.Plan
 	err := database.ContextDB(ctx, r.db).First(&plan, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("plan not found")
+			return nil, ErrPlanNotFound
 		}
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (r *PlanRepository) GetByIDWithDetails(ctx context.Context, id uuid.UUID) (
 }
 
 // ListByOrganiser queries plans for a specific user
-func (r *PlanRepository) ListByOrganiser(ctx context.Context, organiserID string, limit, offset int) ([]model.Plan, error) {
+func (r *PlanRepository) ListByOrganiser(ctx context.Context, organiserID uuid.UUID, limit, offset int) ([]model.Plan, error) {
 	var plans []model.Plan
 	err := database.ContextDB(ctx, r.db).
 		Where("created_by_user_id = ?", organiserID).
@@ -96,8 +96,8 @@ func (r *PlanRepository) ListByOrganiser(ctx context.Context, organiserID string
 	return plans, err
 }
 
-// update updates non-empty fields of a plan
-func (r *PlanRepository) ListByMember(ctx context.Context, memberID string, limit, offset int) ([]model.Plan, error) {
+// ListByMember queries plans the user belongs to
+func (r *PlanRepository) ListByMember(ctx context.Context, memberID uuid.UUID, limit, offset int) ([]model.Plan, error) {
 	var plans []model.Plan
 	err := database.ContextDB(ctx, r.db).Where("id IN (SELECT plan_id FROM plan_members WHERE user_id = ?)", memberID).
 		Order("created_at DESC").Limit(limit).Offset(offset).Preload("CreatedBy").

@@ -20,7 +20,11 @@ var (
 	ErrInvitationNotFound = errors.New("invitation link not found")
 	ErrInvitationExpired  = errors.New("invitation link has expired")
 	ErrInvitationInvalid  = errors.New("invitation link is no longer valid")
+	ErrRosterFull         = errors.New("plan roster is full")
 )
+
+// MaxPlanMembers caps how many members a plan can admit through invitations.
+const MaxPlanMembers = 30
 
 type InvitationRepository struct {
 	db *gorm.DB
@@ -120,22 +124,27 @@ func (r *InvitationRepository) AcceptInvitation(ctx context.Context, token strin
 			} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
-		}
-		var count int64
-		if err := tx.Model(&model.PlanMember{}).Where("plan_id = ?", plan.ID).Count(&count).Error; err != nil {
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
-		}
-		if count >= 30 {
-			return errors.New("plan roster is full")
 		}
 
 		// 1. Check if user is already a member
 		var existingCount int64
-		tx.Model(&model.PlanMember{}).
+		if err := tx.Model(&model.PlanMember{}).
 			Where("plan_id = ? AND user_id = ?", invitation.PlanID, userID).
-			Count(&existingCount)
+			Count(&existingCount).Error; err != nil {
+			return err
+		}
 		if existingCount > 0 {
-			return errors.New("user is already a member of this plan")
+			return ErrMemberExists
+		}
+
+		var count int64
+		if err := tx.Model(&model.PlanMember{}).Where("plan_id = ?", plan.ID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count >= MaxPlanMembers {
+			return ErrRosterFull
 		}
 
 		// 2. Create the new PlanMember

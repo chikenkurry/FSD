@@ -52,8 +52,8 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 // GetByUsername fetches a single user by their username
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
 	var user model.User
-	
-	err := r.db.WithContext(ctx).First(&user, "username = ?", username).Error
+
+	err := database.ContextDB(ctx, r.db).First(&user, "username = ?", username).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -100,12 +100,13 @@ func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]model.U
 	return users, total, err
 }
 
-// Update updates a user's username
+// Update replaces a user's username and email. An empty email clears it
+// (email is optional; see migration 004).
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	result := database.ContextDB(ctx, r.db).
-		Model(user).
+		Model(&model.User{}).
 		Where("id = ?", user.ID).
-		Update("username", user.Username)
+		Updates(map[string]interface{}{"username": user.Username, "email": user.Email})
 
 	if result.Error != nil {
 		return result.Error

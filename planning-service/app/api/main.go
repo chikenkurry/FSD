@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -175,7 +174,5 @@ func main() {
 }
 
 func GetHealth(w http.ResponseWriter, r *http.Request) {
-	result := JsonResponse{Status: "okay", Message: "service be alive"}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	httpapi.JSON(w, http.StatusOK, JsonResponse{Status: "okay", Message: "service be alive"})
 }

@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
+
+	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
 	"planning-service/app/internal/repository"
 
@@ -42,13 +43,12 @@ func NewQuestionHandler(repo *repository.QuestionRepository) *QuestionHandler {
 // POST /v1/question
 func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateQuestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON payload")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
 	if req.Title == "" || req.PlanID == uuid.Nil {
-		WriteError(w, http.StatusBadRequest, "title and plan id are required")
+		httpapi.StatusError(w, http.StatusBadRequest, "title and plan id are required")
 		return
 	}
 
@@ -62,40 +62,35 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Options:     req.Options,
 	}
 	if err := h.repo.Create(r.Context(), question); err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to create question")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to create question")
 		return
 	}
-	WriteJSONResponse(w, http.StatusCreated, question)
+	httpapi.JSON(w, http.StatusCreated, question)
 }
 
 // GET /v1/plans/question/{plan_id}
 func (h *QuestionHandler) GetQuestionByPlanId(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("plan_id")
-	planID, err := uuid.Parse(id)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
+	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
+	if !ok {
 		return
 	}
 	questions, err := h.repo.ListByPlanID(r.Context(), planID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Failed to list questions")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to list questions")
 		return
 	}
-	WriteJSONResponse(w, http.StatusOK, questions)
+	httpapi.JSON(w, http.StatusOK, questions)
 }
 
 // PATCH /v1/question/{question_id}
 func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("question_id")
-	questionID, err := uuid.Parse(id)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Question UUID format")
+	questionID, ok := httpapi.PathUUID(w, r, "question_id", "Invalid Question UUID format")
+	if !ok {
 		return
 	}
 
 	var req UpdateQuestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+	if !httpapi.BindJSON(w, r, &req) {
 		return
 	}
 
@@ -121,38 +116,36 @@ func (h *QuestionHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(updates) == 0 {
-		WriteError(w, http.StatusBadRequest, "No fields provided to update")
+		httpapi.StatusError(w, http.StatusBadRequest, "No fields provided to update")
 		return
 	}
 
 	updatedQuestion, err := h.repo.Update(r.Context(), questionID, updates)
 	if err != nil {
 		if errors.Is(err, repository.ErrQuestionNotFound) {
-			WriteError(w, http.StatusNotFound, "Question not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Question not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to update question")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to update question")
 		return
 	}
 
-	WriteJSONResponse(w, http.StatusOK, updatedQuestion)
+	httpapi.JSON(w, http.StatusOK, updatedQuestion)
 }
 
 // DELETE /v1/question/{question_id}
 func (h *QuestionHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("question_id")
-	questionID, err := uuid.Parse(id)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Invalid Question UUID format")
+	questionID, ok := httpapi.PathUUID(w, r, "question_id", "Invalid Question UUID format")
+	if !ok {
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), questionID); err != nil {
 		if errors.Is(err, repository.ErrQuestionNotFound) {
-			WriteError(w, http.StatusNotFound, "Question not found")
+			httpapi.StatusError(w, http.StatusNotFound, "Question not found")
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Failed to delete question")
+		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to delete question")
 		return
 	}
 
