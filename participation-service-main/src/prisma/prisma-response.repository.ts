@@ -106,10 +106,12 @@ class PrismaDraftUnitOfWork implements DraftUnitOfWork {
   }
 
   load(responseId: string): Promise<ResponseRecord> {
-    return this.tx.response.findUniqueOrThrow({
-      where: { id: responseId },
-      include: INCLUDE_CHILDREN,
-    }).then(toResponseRecord);
+    return this.tx.response
+      .findUniqueOrThrow({
+        where: { id: responseId },
+        include: INCLUDE_CHILDREN,
+      })
+      .then(toResponseRecord);
   }
 }
 
@@ -120,23 +122,24 @@ export class PrismaResponseRepository extends ResponseRepository {
   }
 
   find(roundId: string, memberId: string): Promise<ResponseRecord | null> {
-    return this.prisma.response.findUnique({
-      where: { roundId_memberId: { roundId, memberId } },
-      include: INCLUDE_CHILDREN,
-    }).then(row => row ? toResponseRecord(row) : null);
+    return this.prisma.response
+      .findUnique({
+        where: { roundId_memberId: { roundId, memberId } },
+        include: INCLUDE_CHILDREN,
+      })
+      .then((row) => (row ? toResponseRecord(row) : null));
   }
 
   listByRound(roundId: string): Promise<ResponseRecord[]> {
-    return this.prisma.response.findMany({
-      where: { roundId },
-      include: INCLUDE_CHILDREN,
-    }).then(rows => rows.map(toResponseRecord));
+    return this.prisma.response
+      .findMany({
+        where: { roundId },
+        include: INCLUDE_CHILDREN,
+      })
+      .then((rows) => rows.map(toResponseRecord));
   }
 
-  withRoundWriteLock<T>(
-    roundId: string,
-    work: (unit: DraftUnitOfWork) => Promise<T>,
-  ): Promise<T | null> {
+  withRoundWriteLock<T>(roundId: string, work: (unit: DraftUnitOfWork) => Promise<T>): Promise<T | null> {
     return this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<{ id: string }[]>`
         SELECT id
@@ -151,10 +154,7 @@ export class PrismaResponseRepository extends ResponseRepository {
     });
   }
 
-  withRoundFreezeLock<T>(
-    roundId: string,
-    work: (unit: FreezeUnitOfWork) => Promise<T>,
-  ): Promise<T | null> {
+  withRoundFreezeLock<T>(roundId: string, work: (unit: FreezeUnitOfWork) => Promise<T>): Promise<T | null> {
     return this.prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw<{ id: string }[]>`
         SELECT id FROM response_rounds WHERE id = ${roundId}::uuid FOR UPDATE`;
@@ -173,19 +173,23 @@ class PrismaFreezeUnitOfWork implements FreezeUnitOfWork {
   ) {}
 
   listResponses(): Promise<ResponseRecord[]> {
-    return this.tx.response.findMany({
-      where: { roundId: this.round.id },
-      include: INCLUDE_CHILDREN,
-    }).then(rows => rows.map(toResponseRecord));
+    return this.tx.response
+      .findMany({
+        where: { roundId: this.round.id },
+        include: INCLUDE_CHILDREN,
+      })
+      .then((rows) => rows.map(toResponseRecord));
   }
 
   async rejectedFreeze(operationId: string): Promise<string | null> {
-    const row = await this.tx.rejectedFreeze.findUnique({ where: { roundId_operationId: { roundId:this.round.id, operationId } } });
+    const row = await this.tx.rejectedFreeze.findUnique({
+      where: { roundId_operationId: { roundId: this.round.id, operationId } },
+    });
     return row?.payloadHash ?? null;
   }
 
   async rejectFreeze(operationId: string, payloadHash: string): Promise<void> {
-    await this.tx.rejectedFreeze.create({ data: { roundId:this.round.id, operationId, payloadHash } });
+    await this.tx.rejectedFreeze.create({ data: { roundId: this.round.id, operationId, payloadHash } });
   }
 
   async freeze(data: FreezeWrite): Promise<void> {
@@ -204,6 +208,6 @@ class PrismaFreezeUnitOfWork implements FreezeUnitOfWork {
   }
 }
 
-function toResponseRecord(row: Omit<ResponseRecord, "answers"> & { answers: Prisma.JsonValue }): ResponseRecord {
-  return { ...row, answers: row.answers as unknown as ResponseRecord["answers"] };
+function toResponseRecord(row: Omit<ResponseRecord, 'answers'> & { answers: Prisma.JsonValue }): ResponseRecord {
+  return { ...row, answers: row.answers as unknown as ResponseRecord['answers'] };
 }

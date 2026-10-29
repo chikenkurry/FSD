@@ -26,10 +26,6 @@ type JsonResponse struct {
 	Message string `json:"message"`
 }
 
-var ctx = context.Background()
-
-var joinBaseURL = "http://localhost:8080/join"
-
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		client := &http.Client{Timeout: 2 * time.Second}
@@ -56,15 +52,14 @@ func main() {
 	}
 
 	log.Println("Successfully connected to PostgreSQL database!")
-	_ = db
 
 	if err := database.Migrate(db); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 
-	// seed preset templates
+	// Seed preset question templates.
 	if err := database.SeedQuestionPresets(db); err != nil {
-		log.Printf("WarningL failed to seed presets: %v", err)
+		log.Printf("Warning: failed to seed presets: %v", err)
 	}
 
 	// Initialize layers
@@ -78,7 +73,7 @@ func main() {
 	questionHandler := handler.NewQuestionHandler(questionRepo)
 
 	invitationRepo := repository.NewInvitationRepository(db)
-	invitationHandler := handler.NewInvitationHandler(invitationRepo, joinBaseURL)
+	invitationHandler := handler.NewInvitationHandler(invitationRepo, cfg.PublicAppURL)
 
 	planMemberRepo := repository.NewPlanMemberRepository(db)
 	planMemberHandler := handler.NewPlanMemberHandler(planMemberRepo)
@@ -97,9 +92,11 @@ func main() {
 
 	mux.HandleFunc("GET /health", GetHealth)
 	mux.HandleFunc("GET /health/ready", flow.Ready)
+	mux.HandleFunc("GET /openapi.yaml", GetOpenAPISpec)
+	mux.HandleFunc("GET /docs", GetAPIDocs)
 
 	// plans CRUD methods
-	mux.HandleFunc("POST /v1/plans", planHandler.CreatePlan) //👌
+	mux.HandleFunc("POST /v1/plans", planHandler.CreatePlan)
 	mux.HandleFunc("GET /v1/plans/{id}", planHandler.GetPlanById)
 	mux.HandleFunc("GET /v1/plans/details/{id}", planHandler.GetByIDWithDetails)
 	mux.HandleFunc("GET /v1/plans/organiser/{id}", planHandler.ListPlansByOrganiser)
@@ -108,14 +105,14 @@ func main() {
 	mux.HandleFunc("DELETE /v1/plans/{id}", flow.DefinitionCommand(planHandler.DeletePlan))
 
 	// users CRUD methods
-	mux.HandleFunc("POST /v1/users", flow.RegisterUser) //👌
+	mux.HandleFunc("POST /v1/users", flow.RegisterUser)
 	mux.HandleFunc("POST /v1/session/revoke", flow.RevokeSession)
 	mux.HandleFunc("POST /v1/session/rotate", flow.RotateSession)
 	mux.HandleFunc("GET /v1/users/{id}", userHandler.GetUserByID)
 	mux.HandleFunc("PUT /v1/users/{id}", userHandler.UpdateUser)
 
 	// question CRUD methods
-	mux.HandleFunc("POST /v1/question", flow.DefinitionCommand(questionHandler.Create)) //👌
+	mux.HandleFunc("POST /v1/question", flow.DefinitionCommand(questionHandler.Create))
 	mux.HandleFunc("GET /v1/plans/question/{plan_id}", questionHandler.GetQuestionByPlanId)
 	mux.HandleFunc("PATCH /v1/question/{question_id}", flow.DefinitionCommand(questionHandler.UpdateQuestion))
 	mux.HandleFunc("DELETE /v1/question/{question_id}", flow.DefinitionCommand(questionHandler.Delete))
@@ -157,7 +154,7 @@ func main() {
 	})
 	mux.HandleFunc("GET /v1/confirmed-selection/plans/{plan_id}", flow.GetPlanSelection)
 
-	// start Server
+	// Start the server
 	log.Println("Planning Service running on :8080...")
 	server := &http.Server{Addr: ":8080", Handler: httpapi.Middleware(httpapi.Limits(flow.Guard(mux))), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 	shutdown, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -175,7 +172,7 @@ func main() {
 }
 
 func GetHealth(w http.ResponseWriter, r *http.Request) {
-	result := JsonResponse{Status: "okay", Message: "service be alive"}
+	result := JsonResponse{Status: "okay", Message: "service is alive"}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }

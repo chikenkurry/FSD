@@ -13,23 +13,23 @@ import (
 )
 
 type AddPlanMemberRequest struct {
-	UserID      uuid.UUID         `json:"user_id"`
-	DisplayName string            `json:"display_name"`
+	UserID      uuid.UUID        `json:"user_id"`
+	DisplayName string           `json:"display_name"`
 	Role        model.MemberRole `json:"role,omitempty"` // Default: MEMBER
 }
 
 type UpdatePlanMemberRequest struct {
-	DisplayName *string            `json:"display_name,omitempty"`
+	DisplayName *string           `json:"display_name,omitempty"`
 	Role        *model.MemberRole `json:"role,omitempty"`
 }
 
 type PlanMemberResponse struct {
-	ID          uuid.UUID  `json:"id"`
-	PlanID      uuid.UUID  `json:"plan_id"`
-	UserID      uuid.UUID  `json:"user_id"`
-	DisplayName string     `json:"display_name"`
-	Role        model.MemberRole     `json:"role"`
-	JoinedAt    time.Time `json:"joined_at"`
+	ID          uuid.UUID        `json:"id"`
+	PlanID      uuid.UUID        `json:"plan_id"`
+	UserID      uuid.UUID        `json:"user_id"`
+	DisplayName string           `json:"display_name"`
+	Role        model.MemberRole `json:"role"`
+	JoinedAt    time.Time        `json:"joined_at"`
 
 	// Preloaded user info if needed
 	Username string `json:"username,omitempty"`
@@ -93,7 +93,7 @@ func (h *PlanMemberHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /v1/plan_members/{plan_id}
-func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request){
+func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("plan_id")
 	planID, err := uuid.Parse(idString)
 	if err != nil {

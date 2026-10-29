@@ -30,7 +30,7 @@ export function toRoundRecord(row: {
     planId: row.planId,
     optionRevision: row.optionRevision,
     activityIds: row.activityIds,
-    questions: row.questions as unknown as RoundRecord["questions"],
+    questions: row.questions as unknown as RoundRecord['questions'],
     memberIds: row.memberIds,
     currency: row.currency,
     minorDigits: row.minorDigits,
@@ -58,7 +58,11 @@ export class PrismaRoundRepository extends RoundRepository {
 
   async create(round: NewRound): Promise<RoundRecord | null> {
     try {
-      return toRoundRecord(await this.prisma.responseRound.create({ data: { ...round, questions: (round.questions ?? []) as unknown as Prisma.InputJsonValue } }));
+      return toRoundRecord(
+        await this.prisma.responseRound.create({
+          data: { ...round, questions: (round.questions ?? []) as unknown as Prisma.InputJsonValue },
+        }),
+      );
     } catch (error) {
       if (isUniqueViolation(error)) return null;
       throw error;

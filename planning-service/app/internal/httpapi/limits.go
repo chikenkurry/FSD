@@ -13,6 +13,9 @@ type bucket struct {
 	count   int
 }
 
+// clock is replaced in tests to move a rate-limit window forward.
+var clock = time.Now
+
 // Bounded local admission limits. Untrusted proxy headers cannot bypass this
 // limit. A gateway should apply shared limits when deploying several replicas.
 func Limits(next http.Handler) http.Handler {
@@ -35,7 +38,7 @@ func Limits(next http.Handler) http.Handler {
 			category, limit = "compute", 60
 		}
 		key := host + ":" + category
-		now := time.Now()
+		now := clock()
 		mutex.Lock()
 		if len(entries) >= 4096 {
 			for key, value := range entries {

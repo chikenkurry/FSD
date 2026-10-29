@@ -16,9 +16,7 @@ export class InMemoryRoundRepository extends RoundRepository {
   }
 
   async create(round: NewRound): Promise<RoundRecord | null> {
-    const operationTaken = [...this.rounds.values()].some(
-      (r) => r.provisionOperationId === round.provisionOperationId,
-    );
+    const operationTaken = [...this.rounds.values()].some((r) => r.provisionOperationId === round.provisionOperationId);
     if (this.rounds.has(round.id) || operationTaken) return null;
     const record: RoundRecord = {
       ...round,
@@ -55,15 +53,10 @@ export class InMemoryResponseRepository extends ResponseRepository {
   }
 
   async listByRound(roundId: string): Promise<ResponseRecord[]> {
-    return [...this.stored.values()]
-      .filter((r) => r.roundId === roundId)
-      .map((r) => structuredClone(r));
+    return [...this.stored.values()].filter((r) => r.roundId === roundId).map((r) => structuredClone(r));
   }
 
-  async withRoundWriteLock<T>(
-    roundId: string,
-    work: (unit: DraftUnitOfWork) => Promise<T>,
-  ): Promise<T | null> {
+  async withRoundWriteLock<T>(roundId: string, work: (unit: DraftUnitOfWork) => Promise<T>): Promise<T | null> {
     const round = this.rounds.rounds.get(roundId);
     if (!round) return null;
     return work(this.unitFor(roundId, round));
@@ -115,17 +108,16 @@ export class InMemoryResponseRepository extends ResponseRepository {
     };
   }
 
-  async withRoundFreezeLock<T>(
-    roundId: string,
-    work: (unit: FreezeUnitOfWork) => Promise<T>,
-  ): Promise<T | null> {
+  async withRoundFreezeLock<T>(roundId: string, work: (unit: FreezeUnitOfWork) => Promise<T>): Promise<T | null> {
     const round = this.rounds.rounds.get(roundId);
     if (!round) return null;
     return work({
       round,
       listResponses: () => this.listByRound(roundId),
       rejectedFreeze: async (operationId) => this.rejectedFreezes.get(`${roundId}:${operationId}`) ?? null,
-      rejectFreeze: async (operationId, hash) => { this.rejectedFreezes.set(`${roundId}:${operationId}`, hash); },
+      rejectFreeze: async (operationId, hash) => {
+        this.rejectedFreezes.set(`${roundId}:${operationId}`, hash);
+      },
       freeze: async (data) => {
         this.rounds.rounds.set(roundId, {
           ...round,
@@ -140,7 +132,7 @@ export class InMemoryResponseRepository extends ResponseRepository {
       },
     });
   }
-  private readonly rejectedFreezes = new Map<string,string>();
+  private readonly rejectedFreezes = new Map<string, string>();
 }
 
 function fields(data: DraftData) {

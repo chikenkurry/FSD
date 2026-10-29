@@ -59,9 +59,7 @@ describe('validateDraft', () => {
 
   it('requires capMinor for CAP and forbids it otherwise; zero is a valid cap', () => {
     expect(fields(draft({ budget: { kind: 'CAP' } }))).toContain('budget.capMinor');
-    expect(fields(draft({ budget: { kind: 'UNLIMITED', capMinor: 100 } }))).toContain(
-      'budget.capMinor',
-    );
+    expect(fields(draft({ budget: { kind: 'UNLIMITED', capMinor: 100 } }))).toContain('budget.capMinor');
     expect(validateDraft(draft({ budget: { kind: 'CAP', capMinor: 0 } }), round)).toEqual([]);
   });
 
@@ -69,9 +67,9 @@ describe('validateDraft', () => {
     expect(fields(draft({ activityAnswers: [{ activityId: A1, kind: 'RATING' }] }))).toContain(
       'activityAnswers.0.rating',
     );
-    expect(
-      fields(draft({ activityAnswers: [{ activityId: A1, kind: 'CANNOT_JOIN', rating: 3 }] })),
-    ).toContain('activityAnswers.0.rating');
+    expect(fields(draft({ activityAnswers: [{ activityId: A1, kind: 'CANNOT_JOIN', rating: 3 }] }))).toContain(
+      'activityAnswers.0.rating',
+    );
     expect(
       validateDraft(
         draft({
@@ -87,9 +85,9 @@ describe('validateDraft', () => {
 
   it('rejects unknown and duplicate activities', () => {
     const unknown = '33333333-3333-4333-8333-333333333333';
-    expect(
-      fields(draft({ activityAnswers: [{ activityId: unknown, kind: 'NEEDS_INFO' }] })),
-    ).toContain('activityAnswers.0.activityId');
+    expect(fields(draft({ activityAnswers: [{ activityId: unknown, kind: 'NEEDS_INFO' }] }))).toContain(
+      'activityAnswers.0.activityId',
+    );
     expect(
       fields(
         draft({

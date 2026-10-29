@@ -106,11 +106,7 @@ describe('Participation service (e2e)', () => {
 
     it('rejects reuse of the round with a different operation or payload', async () => {
       const body = provisionBody();
-      await request(app.getHttpServer())
-        .post('/internal/rounds/provision')
-        .set(INTERNAL)
-        .send(body)
-        .expect(200);
+      await request(app.getHttpServer()).post('/internal/rounds/provision').set(INTERNAL).send(body).expect(200);
 
       const differentPayload = await request(app.getHttpServer())
         .post('/internal/rounds/provision')
@@ -166,11 +162,7 @@ describe('Participation service (e2e)', () => {
     });
 
     it('saves and reads back a private draft', async () => {
-      const saved = await request(app.getHttpServer())
-        .put(url())
-        .set(bearer(memberA))
-        .send(draftBody())
-        .expect(200);
+      const saved = await request(app.getHttpServer()).put(url()).set(bearer(memberA)).send(draftBody()).expect(200);
       expect(saved.body.revision).toBe(1);
 
       const read = await request(app.getHttpServer()).get(url()).set(bearer(memberA)).expect(200);
@@ -215,9 +207,7 @@ describe('Participation service (e2e)', () => {
 
     it('serialises concurrent first saves: exactly one wins', async () => {
       const results = await Promise.all(
-        [1, 2, 3, 4].map(() =>
-          request(app.getHttpServer()).put(url()).set(bearer(memberA)).send(draftBody()),
-        ),
+        [1, 2, 3, 4].map(() => request(app.getHttpServer()).put(url()).set(bearer(memberA)).send(draftBody())),
       );
       const statuses = results.map((r) => r.status).sort();
       expect(statuses.filter((s) => s === 200)).toHaveLength(1);
@@ -226,11 +216,7 @@ describe('Participation service (e2e)', () => {
 
     it('rejects writes once the round is frozen', async () => {
       await prisma.responseRound.update({ where: { id: roundId }, data: { state: 'FROZEN' } });
-      const res = await request(app.getHttpServer())
-        .put(url())
-        .set(bearer(memberA))
-        .send(draftBody())
-        .expect(409);
+      const res = await request(app.getHttpServer()).put(url()).set(bearer(memberA)).send(draftBody()).expect(409);
       expect(res.body.code).toBe('ROUND_CLOSED');
     });
 
@@ -273,11 +259,7 @@ describe('Participation service (e2e)', () => {
         .send({ expectedRevision: 0 })
         .expect(400);
 
-      const saved = await request(app.getHttpServer())
-        .put(url())
-        .set(bearer(memberA))
-        .send(draftBody())
-        .expect(200);
+      const saved = await request(app.getHttpServer()).put(url()).set(bearer(memberA)).send(draftBody()).expect(200);
 
       const submitted = await request(app.getHttpServer())
         .post(`${url()}/submit`)

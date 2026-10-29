@@ -10,8 +10,8 @@ import (
 )
 
 // SeedQuestionPresets inserts default question templates into the database
-func SeedQuestionPresets(db *gorm.DB) error{
-	presets := []model.QuestionPreset {
+func SeedQuestionPresets(db *gorm.DB) error {
+	presets := []model.QuestionPreset{
 		// TRAVEL PRESETS
 		{
 			Category:    model.CategoryTravel,
@@ -28,11 +28,11 @@ func SeedQuestionPresets(db *gorm.DB) error{
 			IsRequired:  true,
 		},
 		{
-			Category: model.CategoryTravel,
-			Title: "What is your budget?",
-			Type: model.QuestionTypeBudget,
+			Category:    model.CategoryTravel,
+			Title:       "What is your budget?",
+			Type:        model.QuestionTypeBudget,
 			Description: "Helps narrow down lodging and transport options.",
-			IsRequired: false,
+			IsRequired:  false,
 			Options:     datatypes.JSON([]byte(`{"currency": "SGD", "suggested_ranges": ["<$500", "$500-$1500", "$1500+"]}`)),
 		},
 
@@ -54,11 +54,11 @@ func SeedQuestionPresets(db *gorm.DB) error{
 			SortOrder:   2,
 		},
 		{
-			Category:    model.CategoryDining,
-			Title:       "What time works best for dinner?",
-			Type:        model.QuestionTypeMeetingTime,
-			IsRequired:  true,
-			SortOrder:   3,
+			Category:   model.CategoryDining,
+			Title:      "What time works best for dinner?",
+			Type:       model.QuestionTypeMeetingTime,
+			IsRequired: true,
+			SortOrder:  3,
 		},
 	}
 	for _, preset := range presets {

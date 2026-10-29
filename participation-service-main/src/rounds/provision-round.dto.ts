@@ -1,4 +1,18 @@
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsInt, IsUUID, IsOptional, IsString, IsIn, Matches, Max, Min, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsInt,
+  IsUUID,
+  IsOptional,
+  IsString,
+  IsIn,
+  Matches,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { QuestionDefinitionDto } from '../responses/question-answer';
 

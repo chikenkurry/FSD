@@ -60,6 +60,13 @@ func (r *InvitationRepository) Create(ctx context.Context, planID, createdBy uui
 	return invitation, nil
 }
 
+// LatestRoundID returns the plan's newest round, which invitation links open.
+func (r *InvitationRepository) LatestRoundID(ctx context.Context, planID uuid.UUID) (uuid.UUID, error) {
+	var round model.PlanRound
+	err := database.ContextDB(ctx, r.db).Select("id").Where("plan_id = ?", planID).Order("round_number DESC").First(&round).Error
+	return round.ID, err
+}
+
 // GetByToken fetches and validates an invitation token
 func (r *InvitationRepository) GetByToken(ctx context.Context, token string) (*model.Invitation, error) {
 	var invitation model.Invitation

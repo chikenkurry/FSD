@@ -1,4 +1,15 @@
-import { Allow, ArrayMaxSize, IsArray, IsBoolean, IsDefined, IsIn, IsOptional, IsUUID, IsInt, Min } from 'class-validator';
+import {
+  Allow,
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsDefined,
+  IsIn,
+  IsOptional,
+  IsUUID,
+  IsInt,
+  Min,
+} from 'class-validator';
 
 export class QuestionDefinitionDto {
   @IsUUID('all')

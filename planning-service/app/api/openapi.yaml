@@ -1,0 +1,1020 @@
+openapi: 3.1.0
+info:
+  title: What2Do Planning API
+  version: 1.0.0
+  description: |
+    Planning owns plans, options, questions, membership, guest sessions and the
+    round lifecycle (draft → publish → collect → close → recommend → confirm → reopen).
+    It is the only browser-facing entry point to Decision; Participation is called directly
+    for answers.
+
+    **Authentication.** Register with `POST /v1/users` and send the returned `session_token`
+    as `Authorization: Bearer <token>`. Every `/v1` request is checked against plan membership;
+    writes that change a plan need the organiser role. A user ID in a URL or body never
+    authenticates a request.
+
+    **Errors.** Every error uses the `Error` body below, and every response carries an
+    `x-request-id` header (a caller-supplied `x-request-id` is echoed when it is safe).
+
+    **Rate limits.** Per client IP and per minute: 100 registrations, 60 compute requests
+    (`preview`, `recommendations`, `fact-collection`) and 360 other `/v1` requests.
+    A limited request receives `429 RATE_LIMITED` with `Retry-After: 60`.
+
+    **Shared contracts.** Run, recommendation view, preview, fact and selection payloads are
+    defined in `contracts/api.schema.json` and shared with Participation and Decision.
+
+    **Known naming debt.** Some routes predate the round lifecycle and keep their original
+    names for compatibility: `/v1/question` is singular, `/v1/proposed_activity` and
+    `/v1/plan_members` use snake_case, `/v1/rounds/open/{id}` puts a verb in the path, and
+    lookups such as `/v1/plans/question/{plan_id}` nest the parent after the child.
+servers:
+  - url: http://127.0.0.1:18080
+    description: Local Docker Compose stack
+  - url: http://localhost:15173/api/planning
+    description: Through the frontend proxy
+security:
+  - session: []
+tags:
+  - name: Health
+  - name: Sessions
+  - name: Plans
+  - name: Members
+  - name: Questions
+  - name: Options
+  - name: Rounds
+  - name: Collection
+  - name: Facts and research
+  - name: Results
+  - name: Internal
+  - name: Documentation
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      security: []
+      responses:
+        '200':
+          description: The process is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: okay}
+                  message: {type: string, example: service is alive}
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness check, including the database
+      security: []
+      responses:
+        '200':
+          description: Ready to serve requests.
+        '503':
+          $ref: '#/components/responses/Error'
+
+  /openapi.yaml:
+    get:
+      tags: [Documentation]
+      summary: This OpenAPI document
+      security: []
+      responses:
+        '200':
+          description: OpenAPI 3.1 document.
+          content:
+            application/yaml: {}
+  /docs:
+    get:
+      tags: [Documentation]
+      summary: Interactive API documentation (Swagger UI)
+      security: []
+      responses:
+        '200':
+          description: HTML page.
+          content:
+            text/html: {}
+
+  /v1/users:
+    post:
+      tags: [Sessions]
+      summary: Register a guest user and start a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username: {type: string, minLength: 1, maxLength: 255}
+      responses:
+        '201':
+          description: The user and a 30-day session token. The token is shown only once.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NewSession'}
+        '400': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+  /v1/users/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      tags: [Sessions]
+      summary: Read your own user record
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [Sessions]
+      summary: Update your own user record
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: {type: string}
+                email: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/session/revoke:
+    post:
+      tags: [Sessions]
+      summary: Revoke the current session token
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+  /v1/session/rotate:
+    post:
+      tags: [Sessions]
+      summary: Replace the current session token with a new one
+      responses:
+        '200':
+          description: The new token. The previous token stops working.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NewSession'}
+
+  /v1/plans:
+    post:
+      tags: [Plans]
+      summary: Create a plan with yourself as organiser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PlanInput'}
+      responses:
+        '201': {$ref: '#/components/responses/Object'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/plans/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      tags: [Plans]
+      summary: Read a plan you belong to
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+    patch:
+      tags: [Plans]
+      summary: Edit a draft plan (organiser)
+      description: Lifecycle state cannot be set here; use the round endpoints.
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PlanUpdate'}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      tags: [Plans]
+      summary: Delete a plan with no published history (organiser)
+      responses:
+        '204': {description: Deleted.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/plans/details/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      tags: [Plans]
+      summary: Read a plan with its members, options and questions
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/plans/organiser/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      tags: [Plans]
+      summary: List plans you organise (id must be your user ID)
+      responses:
+        '200': {$ref: '#/components/responses/List'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/plans/member/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      tags: [Plans]
+      summary: List plans you are a member of (id must be your user ID)
+      responses:
+        '200': {$ref: '#/components/responses/List'}
+        '403': {$ref: '#/components/responses/Error'}
+
+  /v1/plans/{plan_id}/invites:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    post:
+      tags: [Members]
+      summary: Create an invitation link (organiser)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                created_by: {type: string, format: uuid, description: Must be your user ID when present.}
+                ttl_hours: {type: integer, default: 72}
+                max_uses: {type: integer, default: 0, description: 0 means unlimited.}
+      responses:
+        '201':
+          description: The invitation.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Invitation'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/invites/{token}/join:
+    parameters:
+      - {name: token, in: path, required: true, schema: {type: string}}
+    post:
+      tags: [Members]
+      summary: Join a plan with an invitation token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, display_name]
+              properties:
+                user_id: {type: string, format: uuid, description: Must be your user ID.}
+                display_name: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '410': {$ref: '#/components/responses/Error'}
+  /v1/plans/{plan_id}/members:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    post:
+      tags: [Members]
+      summary: Add a member directly (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, display_name]
+              properties:
+                user_id: {type: string, format: uuid}
+                display_name: {type: string}
+                role: {type: string, enum: [MEMBER, ORGANISER], default: MEMBER}
+      responses:
+        '201': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/plans/{plan_id}/replace-member:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    post:
+      tags: [Members]
+      summary: Move a guest's membership to a returning user (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [previous_user_id, replacement_user_id]
+              properties:
+                previous_user_id: {type: string, format: uuid}
+                replacement_user_id: {type: string, format: uuid}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /v1/plans/{plan_id}/members/{user_id}:
+    parameters:
+      - {$ref: '#/components/parameters/PlanId'}
+      - {name: user_id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      tags: [Members]
+      summary: Remove a user from a plan (organiser)
+      responses:
+        '204': {description: Deleted.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/plan_members/{plan_id}:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    get:
+      tags: [Members]
+      summary: List a plan's members
+      responses:
+        '200': {$ref: '#/components/responses/Page'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/members/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    patch:
+      tags: [Members]
+      summary: Change a member's display name or role (organiser)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name: {type: string}
+                role: {type: string, enum: [MEMBER, ORGANISER]}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      tags: [Members]
+      summary: Remove a membership (organiser; the last organiser cannot be removed)
+      responses:
+        '204': {description: Deleted.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /v1/question:
+    post:
+      tags: [Questions]
+      summary: Add a question to a draft plan (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/QuestionInput'
+                - type: object
+                  required: [plan_id, title, question_type]
+                  properties:
+                    plan_id: {type: string, format: uuid}
+      responses:
+        '201': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/question/{question_id}:
+    parameters:
+      - {name: question_id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      tags: [Questions]
+      summary: Edit a draft question (organiser)
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QuestionInput'}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      tags: [Questions]
+      summary: Delete a draft question (organiser)
+      responses:
+        '204': {description: Deleted.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/plans/question/{plan_id}:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    get:
+      tags: [Questions]
+      summary: List a plan's questions
+      responses:
+        '200': {$ref: '#/components/responses/List'}
+        '403': {$ref: '#/components/responses/Error'}
+
+  /v1/proposed_activity/plans/{plan_id}:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    post:
+      tags: [Options]
+      summary: Add an option to a draft plan (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/OptionInput'
+                - {type: object, required: [title]}
+      responses:
+        '201': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      tags: [Options]
+      summary: List a plan's options
+      responses:
+        '200': {$ref: '#/components/responses/Page'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/proposed_activity/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      tags: [Options]
+      summary: Read an option
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+    patch:
+      tags: [Options]
+      summary: Edit a draft option (organiser)
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OptionInput'}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      tags: [Options]
+      summary: Delete a draft option (organiser)
+      responses:
+        '204': {description: Deleted.}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /v1/rounds/plans/{plan_id}:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    post:
+      tags: [Rounds]
+      summary: Start a draft round (organiser; the previous round must be closed)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deadline_at: {type: string, format: date-time}
+      responses:
+        '201': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      tags: [Rounds]
+      summary: List a plan's rounds
+      responses:
+        '200': {$ref: '#/components/responses/Page'}
+        '403': {$ref: '#/components/responses/Error'}
+  /v1/rounds/{id}:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Rounds]
+      summary: Read a round
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+    patch:
+      tags: [Rounds]
+      summary: Change a draft round's deadline (organiser)
+      description: Activation is managed by the lifecycle endpoints and is rejected here.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deadline_at: {type: string, format: date-time}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      tags: [Rounds]
+      summary: Delete an unpublished round (organiser)
+      responses:
+        '204': {description: Deleted.}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/open/{id}:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Rounds]
+      summary: Publish a draft round (legacy alias of /v1/rounds/{id}/publish)
+      requestBody: {$ref: '#/components/requestBodies/PublishSettings'}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/{id}/publish:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Rounds]
+      summary: Freeze the options and questions and open collection (organiser)
+      description: Idempotent for the same round. Participation receives the frozen form.
+      requestBody: {$ref: '#/components/requestBodies/PublishSettings'}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/{id}/draft:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Rounds]
+      summary: Read the creator's saved progress (organiser)
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [Rounds]
+      summary: Save the creator's progress so it survives a refresh (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currency, step, visited]
+              properties:
+                currency: {type: string, minLength: 3, maxLength: 3}
+                decision_question: {type: string, maxLength: 1200}
+                location: {type: string, maxLength: 1000}
+                step: {type: integer, minimum: 1, maximum: 5}
+                visited: {type: integer, minimum: 1, maximum: 5}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/{id}/form:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Collection]
+      summary: Read the frozen form members answer
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /v1/rounds/{id}/preview:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Collection]
+      summary: Request a private interpretation of your saved answers (any member)
+      description: Returns a durable job; poll `GET` on the same path. Schema `preview_request` in contracts/api.schema.json.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision]
+              properties:
+                expected_revision: {type: integer, minimum: 0}
+                retry: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/Error'}
+    get:
+      tags: [Collection]
+      summary: Poll your private interpretation
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+  /v1/rounds/{id}/clarifications:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Collection]
+      summary: List answers that need clarification before a result
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+  /v1/rounds/{id}/readiness:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Collection]
+      summary: Roster progress, missing responses and whether the round can close
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+  /v1/rounds/{id}/deadline:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Collection]
+      summary: Set or clear the collection deadline (organiser)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deadline_at: {type: [string, 'null'], format: date-time}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/{id}/close:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Collection]
+      summary: Close collection and freeze the roster and responses (organiser)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                count_responded_only:
+                  type: boolean
+                  description: Close early and evaluate only members who have submitted.
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /v1/rounds/{id}/research:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Facts and research]
+      summary: Start AI option research (overviews, drafted questions or sourced facts)
+      description: Organiser-facing help. Results are suggestions; they never set a score or a winner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task, input]
+              properties:
+                task: {type: string}
+                input: {type: object}
+                retry: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+        '400': {$ref: '#/components/responses/Error'}
+    get:
+      tags: [Facts and research]
+      summary: Poll an option research job
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+  /v1/rounds/{id}/fact-collection:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Facts and research]
+      summary: Collect cited option facts (organiser; up to 64 option/attribute pairs)
+      description: Schema `fact_request` in contracts/api.schema.json.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requests]
+              properties:
+                requests: {type: array, minItems: 1, maxItems: 64, items: {type: object}}
+                settings: {$ref: '#/components/schemas/RoundSettings'}
+                retry: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/Error'}
+    get:
+      tags: [Facts and research]
+      summary: Poll fact collection
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+  /v1/rounds/{id}/accept-facts:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Facts and research]
+      summary: Accept reviewed fact claims into a draft round (organiser)
+      description: Schema `accept_facts_request` in contracts/api.schema.json.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation_id, collection_run_id, claim_ids, reviewed]
+              properties:
+                operation_id: {type: string, format: uuid}
+                collection_run_id: {type: string, format: uuid}
+                claim_ids: {type: array, minItems: 1, maxItems: 64, items: {type: string}}
+                reviewed: {type: boolean, const: true}
+                replace_existing: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/{id}/place:
+    parameters:
+      - {$ref: '#/components/parameters/RoundId'}
+      - {name: place_id, in: query, required: true, schema: {type: string}}
+    get:
+      tags: [Facts and research]
+      summary: Google Places details for an option in this plan (display only)
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '404': {$ref: '#/components/responses/Error'}
+  /v1/rounds/{id}/place-photo:
+    parameters:
+      - {$ref: '#/components/parameters/RoundId'}
+      - {name: name, in: query, required: true, schema: {type: string}}
+    get:
+      tags: [Facts and research]
+      summary: Proxy a Google Places photo for an option in this plan
+      responses:
+        '200':
+          description: Image bytes.
+          content:
+            image/*: {}
+        '404': {$ref: '#/components/responses/Error'}
+
+  /v1/rounds/{id}/recommendations:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Results]
+      summary: Evaluate the closed round (organiser)
+      description: |
+        Admits a durable recommendation job. Duplicate requests for the same frozen
+        inputs share one run. Poll `GET /v1/rounds/{id}/recommendation`.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retry: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/Error'}
+  /v1/rounds/{id}/recommendation:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Results]
+      summary: Read the shared, privacy-filtered recommendation
+      description: Schemas `run` and `recommendation_view` in contracts/api.schema.json.
+      responses:
+        '200': {$ref: '#/components/responses/Run'}
+        '202': {$ref: '#/components/responses/Run'}
+        '404': {$ref: '#/components/responses/Error'}
+  /v1/rounds/{id}/confirm:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Results]
+      summary: Confirm an eligible candidate (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation_id, run_id, candidate_id]
+              properties:
+                operation_id: {type: string, format: uuid}
+                run_id: {type: string, format: uuid}
+                candidate_id: {type: string}
+                event_date: {type: string, format: date, description: Required when the round polled dates.}
+                event_time: {type: string, pattern: '^\d{2}:\d{2}$'}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/rounds/{id}/selection:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Results]
+      summary: Read the round's confirmed selection
+      description: Schema `selection` in contracts/api.schema.json.
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '404': {$ref: '#/components/responses/Error'}
+  /v1/rounds/{id}/reopen:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    post:
+      tags: [Results]
+      summary: Start a new draft round from this one (organiser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation_id]
+              properties:
+                operation_id: {type: string, format: uuid}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /v1/confirmed-selection/plans/{plan_id}:
+    parameters: [{$ref: '#/components/parameters/PlanId'}]
+    get:
+      tags: [Results]
+      summary: Read the plan's latest confirmed selection
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '404': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Results]
+      summary: Retired; confirm through POST /v1/rounds/{id}/confirm
+      deprecated: true
+      responses:
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /internal/sessions/authorise:
+    post:
+      tags: [Internal]
+      summary: Resolve a session token for Participation
+      security: [{internalToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionToken]
+              properties:
+                sessionToken: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '401': {$ref: '#/components/responses/Error'}
+  /internal/rounds/{id}/option-snapshot:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Internal]
+      summary: Frozen option snapshot for Decision
+      security: [{internalToken: []}]
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '401': {$ref: '#/components/responses/Error'}
+  /internal/rounds/{id}/selection:
+    parameters: [{$ref: '#/components/parameters/RoundId'}]
+    get:
+      tags: [Internal]
+      summary: Confirmed selection context for Participation RSVPs
+      security: [{internalToken: []}]
+      responses:
+        '200': {$ref: '#/components/responses/Object'}
+        '401': {$ref: '#/components/responses/Error'}
+
+components:
+  securitySchemes:
+    session:
+      type: http
+      scheme: bearer
+      description: The `session_token` returned by `POST /v1/users`.
+    internalToken:
+      type: apiKey
+      in: header
+      name: x-internal-token
+      description: Shared service token. `/internal/*` routes are never exposed through the frontend proxy.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    PlanId:
+      name: plan_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    RoundId:
+      name: id
+      in: path
+      required: true
+      description: Round ID.
+      schema: {type: string, format: uuid}
+
+  requestBodies:
+    PublishSettings:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/RoundSettings'}
+
+  responses:
+    Object:
+      description: Success.
+      content:
+        application/json:
+          schema: {type: object}
+    Page:
+      description: Success.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: {type: array, items: {type: object}}
+              total: {type: integer}
+    List:
+      description: Success.
+      content:
+        application/json:
+          schema: {type: array, items: {type: object}}
+    Run:
+      description: |
+        A durable job. `202` with `Retry-After: 1` while pending; `200` once complete or failed.
+        Schema `run` in contracts/api.schema.json.
+      content:
+        application/json:
+          schema: {type: object}
+    Error:
+      description: Error.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Conflict:
+      description: |
+        The request conflicts with the round lifecycle. Codes include `REOPEN_REQUIRED` (the plan's
+        latest round is published), `FROZEN_HISTORY`, `CLOSE_ROUND_FIRST` and `USE_ROUND_LIFECYCLE`.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message, retryable, requestId]
+      properties:
+        code: {type: string, example: FORBIDDEN}
+        message: {type: string}
+        retryable: {type: boolean, description: True for 5xx and 429.}
+        requestId: {type: string}
+    NewSession:
+      type: object
+      required: [id, username, session_token]
+      properties:
+        id: {type: string, format: uuid}
+        username: {type: string}
+        session_token: {type: string}
+    Invitation:
+      type: object
+      required: [token, expires_at]
+      properties:
+        token: {type: string}
+        share_url:
+          type: string
+          format: uri
+          description: Frontend link `PUBLIC_APP_URL/#round=…&invite=…` for the plan's latest round. Omitted when the plan has no round.
+        expires_at: {type: string, format: date-time}
+    PlanInput:
+      type: object
+      required: [title, plan_category, plan_state, organiser_id]
+      properties:
+        title: {type: string}
+        description: {type: string}
+        plan_category: {type: string, enum: [MEETING, TRAVEL, DINING, GENERAL]}
+        plan_state:
+          type: string
+          enum: [DRAFT, COLLECTING, REVIEWING, CONFIRMED, ARCHIVED]
+          description: Validated for compatibility; new plans always start as DRAFT.
+        organiser_id: {type: string, format: uuid, description: Must be your user ID.}
+        organiser_name: {type: string}
+        time_window_start: {type: string, format: date-time}
+        time_window_end: {type: string, format: date-time}
+    PlanUpdate:
+      type: object
+      properties:
+        title: {type: string}
+        description: {type: string}
+        plan_category: {type: string, enum: [MEETING, TRAVEL, DINING, GENERAL]}
+        time_window_start: {type: string, format: date-time}
+        time_window_end: {type: string, format: date-time}
+    QuestionInput:
+      type: object
+      properties:
+        title: {type: string}
+        question_type: {type: string}
+        description: {type: string}
+        is_required: {type: boolean}
+        sort_order: {type: integer}
+        options:
+          type: object
+          description: Answer format and choices, for example {"options":["Italian","Japanese"],"allow_other":true}.
+    OptionInput:
+      type: object
+      properties:
+        title: {type: string}
+        description: {type: string}
+        est_cost_per_person: {type: number}
+        duration_minutes: {type: integer}
+        metadata: {type: object, description: Option identity, location, Places ID and sourced facts.}
+    RoundSettings:
+      type: object
+      properties:
+        currency: {type: string, minLength: 3, maxLength: 3}
+        currency_minor_digits: {type: integer}
+        cost_scope: {type: string}
+        timezone: {type: string}
+        execution_mode: {type: string}
+        criteria: {type: array, items: {type: object}}
+        scenario_costs: {type: array, items: {type: object}}
+        canonicalization: {type: object}
+        group_objective: {type: object}
+        decision_question: {type: string}
+        interpretation_policy: {type: string}

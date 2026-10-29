@@ -90,17 +90,11 @@ export abstract class ResponseRepository {
    * together, while a freeze (which will take an exclusive lock on the same row) waits for them and
    * then blocks later ones. Resolves null if the round does not exist.
    */
-  abstract withRoundWriteLock<T>(
-    roundId: string,
-    work: (unit: DraftUnitOfWork) => Promise<T>,
-  ): Promise<T | null>;
+  abstract withRoundWriteLock<T>(roundId: string, work: (unit: DraftUnitOfWork) => Promise<T>): Promise<T | null>;
 
   /**
    * Exclusive lock on the round row. In-flight shared-lock saves finish first; later writes wait
    * and then see FROZEN. Resolves null if the round does not exist.
    */
-  abstract withRoundFreezeLock<T>(
-    roundId: string,
-    work: (unit: FreezeUnitOfWork) => Promise<T>,
-  ): Promise<T | null>;
+  abstract withRoundFreezeLock<T>(roundId: string, work: (unit: FreezeUnitOfWork) => Promise<T>): Promise<T | null>;
 }

@@ -10,14 +10,11 @@ export function validJson(value: unknown): boolean {
   }
 }
 
-export function answeredRequiredQuestions(
-  answers: QuestionAnswerDto[],
-  questions: QuestionDefinitionDto[],
-): boolean {
+export function answeredRequiredQuestions(answers: QuestionAnswerDto[], questions: QuestionDefinitionDto[]): boolean {
   const present = new Set(
-    answers.filter(answer => isAnswered(answer.value)).map(answer => answer.question_id.toLowerCase()),
+    answers.filter((answer) => isAnswered(answer.value)).map((answer) => answer.question_id.toLowerCase()),
   );
-  return questions.every(q => !q.required || present.has(q.questionId.toLowerCase()));
+  return questions.every((q) => !q.required || present.has(q.questionId.toLowerCase()));
 }
 
 function isAnswered(value: unknown): boolean {
@@ -33,7 +30,7 @@ export function validateQuestionAnswers(
   definitions: QuestionDefinitionDto[],
 ): FieldError[] {
   const errors: FieldError[] = [];
-  const questions = new Map(definitions.map(q => [q.questionId.toLowerCase(), q]));
+  const questions = new Map(definitions.map((q) => [q.questionId.toLowerCase(), q]));
   const answered = new Set<string>();
   for (const [index, answer] of answers.entries()) {
     const id = answer.question_id.toLowerCase();
@@ -64,16 +61,17 @@ function matchesQuestionValue(value: unknown, definition: QuestionDefinitionDto)
   if (!matchesFormat(value, definition.answerFormat)) return false;
   if (definition.answerFormat === 'date_poll') {
     // Each proposed date gets yes, maybe or no; only published dates can be answered.
-    const dates = new Set((definition.choices ?? []).map(choice => String(choice)));
-    return Object.entries(value as Record<string, unknown>)
-      .every(([day, answer]) => dates.has(day) && ['yes', 'maybe', 'no'].includes(answer as string));
+    const dates = new Set((definition.choices ?? []).map((choice) => String(choice)));
+    return Object.entries(value as Record<string, unknown>).every(
+      ([day, answer]) => dates.has(day) && ['yes', 'maybe', 'no'].includes(answer as string),
+    );
   }
   if (definition.answerFormat !== 'choice' && definition.answerFormat !== 'multi_choice') return true;
-  const choices = (definition.choices ?? []).map(choice =>
+  const choices = (definition.choices ?? []).map((choice) =>
     typeof choice === 'object' && choice !== null ? (choice as { choice_id?: unknown }).choice_id : choice,
   );
   const selected = Array.isArray(value) ? value : [value];
-  return selected.every(item => choices.includes(item));
+  return selected.every((item) => choices.includes(item));
 }
 
 function matchesFormat(value: unknown, format: string): boolean {
@@ -91,9 +89,15 @@ function matchesFormat(value: unknown, format: string): boolean {
       return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length <= 31;
     case 'option_rating':
       // Option ID -> whole-number rating from 0 (not for me) to 4 (love it).
-      return typeof value === 'object' && value !== null && !Array.isArray(value)
-        && Object.keys(value).length <= 20
-        && Object.values(value).every(rating => Number.isInteger(rating) && (rating as number) >= 0 && (rating as number) <= 4);
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        Object.keys(value).length <= 20 &&
+        Object.values(value).every(
+          (rating) => Number.isInteger(rating) && (rating as number) >= 0 && (rating as number) <= 4,
+        )
+      );
     default:
       return typeof value === 'string' || typeof value === 'number';
   }

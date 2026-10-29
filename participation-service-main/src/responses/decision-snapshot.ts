@@ -15,7 +15,7 @@ export type { DecisionResponseStatus } from './response-completeness';
  * copied onto every candidate of that activity as `candidate_flags` before the algorithm runs.
  */
 export interface ResponseSnapshotV2 {
-  schema_version: "response-snapshot-v2";
+  schema_version: 'response-snapshot-v2';
   option_snapshot_id: string | null;
   currency: string;
   minor_digits: number;
@@ -87,14 +87,14 @@ export function toDecisionSnapshot(args: {
       is_required_for_decision: !args.countRespondedOnly || status === 'complete',
       ...(args.questions?.length ? { answers: structuredClone(response?.answers ?? []) } : {}),
     });
-    constraints.push(toConstraint(memberId, response, args.currency ?? "SGD"));
+    constraints.push(toConstraint(memberId, response, args.currency ?? 'SGD'));
     if (response) preferences.push(...toPreferences(memberId, response.activityAnswers));
   }
 
   return {
-    schema_version: "response-snapshot-v2",
+    schema_version: 'response-snapshot-v2',
     option_snapshot_id: args.optionSnapshotId ?? null,
-    currency: args.currency ?? "SGD",
+    currency: args.currency ?? 'SGD',
     minor_digits: args.minorDigits ?? 2,
     snapshot_id: args.snapshotId,
     round_id: args.roundId,
@@ -107,7 +107,11 @@ export function toDecisionSnapshot(args: {
   };
 }
 
-function toConstraint(participantId: string, response: ResponseRecord | undefined, currency: string): SnapshotConstraint {
+function toConstraint(
+  participantId: string,
+  response: ResponseRecord | undefined,
+  currency: string,
+): SnapshotConstraint {
   return {
     participant_id: participantId,
     availability: {
@@ -125,11 +129,7 @@ function toConstraint(participantId: string, response: ResponseRecord | undefine
   };
 }
 
-function toBudget(
-  kind: BudgetKindValue,
-  capMinor: number | null,
-  currency: string,
-): SnapshotConstraint['budget'] {
+function toBudget(kind: BudgetKindValue, capMinor: number | null, currency: string): SnapshotConstraint['budget'] {
   if (kind === 'UNLIMITED') return { kind: 'unlimited', currency };
   if (kind === 'CAP' && capMinor !== null) {
     return { kind: 'limited', max_cost_minor: capMinor, currency };
@@ -156,7 +156,13 @@ function toPreferences(
   return answers
     .flatMap((a) => {
       if (a.kind === 'RATING' && a.rating !== null) {
-        return [{ participant_id: participantId, activity_id: a.activityId, rating: a.rating as SnapshotPreference['rating'] }];
+        return [
+          {
+            participant_id: participantId,
+            activity_id: a.activityId,
+            rating: a.rating as SnapshotPreference['rating'],
+          },
+        ];
       }
       if (a.kind === 'NO_PREFERENCE') {
         return [{ participant_id: participantId, activity_id: a.activityId, rating: 2 as const }];

@@ -33,11 +33,11 @@ export class ResponsesService {
     const round = await this.requireRound(roundId, member);
     const source = await this.requireRound(sourceRoundId, member);
     if (roundId === sourceRoundId || round.optionRevision <= source.optionRevision) {
-      throw Errors.invalidInput([{field:'sourceRoundId',message:'Copy from an earlier round of this plan'}]);
+      throw Errors.invalidInput([{ field: 'sourceRoundId', message: 'Copy from an earlier round of this plan' }]);
     }
     const stored = await this.responses.find(sourceRoundId, member.memberId);
     if (!stored) throw Errors.notFound('No earlier response to copy');
-    const knownQuestions = new Set((round.questions ?? []).map(q => q.questionId));
+    const knownQuestions = new Set((round.questions ?? []).map((q) => q.questionId));
     const knownActivities = new Set(round.activityIds);
     const sameMoneyConvention = round.currency === source.currency && round.minorDigits === source.minorDigits;
     const data: DraftData = {
@@ -46,13 +46,15 @@ export class ResponsesService {
       budgetCapMinor: sameMoneyConvention ? stored.budgetCapMinor : null,
       privateNote: stored.privateNote,
       availability: structuredClone(stored.availability),
-      activityAnswers: stored.activityAnswers.filter(a => knownActivities.has(a.activityId)),
-      answers: (stored.answers ?? []).filter(a => knownQuestions.has(a.question_id))
-        .map(a => ({ question_id: a.question_id, value: structuredClone(a.value) })),
+      activityAnswers: stored.activityAnswers.filter((a) => knownActivities.has(a.activityId)),
+      answers: (stored.answers ?? [])
+        .filter((a) => knownQuestions.has(a.question_id))
+        .map((a) => ({ question_id: a.question_id, value: structuredClone(a.value) })),
     };
-    const view = await this.responses.withRoundWriteLock(roundId, async unit => {
+    const view = await this.responses.withRoundWriteLock(roundId, async (unit) => {
       if (unit.round.state !== 'COLLECTING') throw Errors.roundClosed();
-      if (await unit.findExistingId(member.memberId)) throw Errors.operationConflict('A draft already exists; copying cannot overwrite it');
+      if (await unit.findExistingId(member.memberId))
+        throw Errors.operationConflict('A draft already exists; copying cannot overwrite it');
       const id = await unit.create(member.memberId, data);
       if (!id) throw Errors.staleVersion();
       return toView(roundId, unit.round, await unit.load(id));
@@ -67,11 +69,7 @@ export class ResponsesService {
    *  2. under the round lock, the round still accepts responses for the option revision the form used;
    *  3. the caller's revision matches, so another tab's save is never silently overwritten.
    */
-  async saveDraft(
-    roundId: string,
-    member: AuthorisedMember,
-    dto: SaveDraftDto,
-  ): Promise<MyResponseView> {
+  async saveDraft(roundId: string, member: AuthorisedMember, dto: SaveDraftDto): Promise<MyResponseView> {
     const round = await this.requireRound(roundId, member);
 
     const problems = validateDraft(dto, round);
@@ -80,15 +78,25 @@ export class ResponsesService {
     const data = toDraftData(dto);
     const view = await this.responses.withRoundWriteLock(roundId, async (unit) => {
       this.assertAcceptingResponses(unit.round, data.acknowledgedOptionRevision);
-      if (unit.round.rosterPolicy === 'close' && (data.answers ?? []).some(a => a.confirmed_requirement !== undefined || a.confirmed_requirements !== undefined)) {
+      if (
+        unit.round.rosterPolicy === 'close' &&
+        (data.answers ?? []).some(
+          (a) => a.confirmed_requirement !== undefined || a.confirmed_requirements !== undefined,
+        )
+      ) {
         const existingId = await unit.findExistingId(member.memberId);
         const current = existingId ? await unit.load(existingId) : null;
         for (const answer of data.answers ?? []) {
           if (answer.confirmed_requirement === undefined && answer.confirmed_requirements === undefined) continue;
-          const previous = current?.answers?.find(a => a.question_id === answer.question_id);
-          if (answer.reviewed_revision !== dto.expectedRevision || !previous ||
-              JSON.stringify(previous.value) !== JSON.stringify(answer.value)) {
-            throw Errors.staleVersion('Save the answer, preview its current revision, then confirm that interpretation');
+          const previous = current?.answers?.find((a) => a.question_id === answer.question_id);
+          if (
+            answer.reviewed_revision !== dto.expectedRevision ||
+            !previous ||
+            JSON.stringify(previous.value) !== JSON.stringify(answer.value)
+          ) {
+            throw Errors.staleVersion(
+              'Save the answer, preview its current revision, then confirm that interpretation',
+            );
           }
         }
       }
@@ -104,17 +112,29 @@ export class ResponsesService {
   async previewSnapshot(roundId: string, memberId: string) {
     const round = await this.rounds.findById(roundId);
     if (!round) throw Errors.notFound('Round not found');
-    const snapshot = await this.responses.withRoundWriteLock(roundId, async unit => {
+    const snapshot = await this.responses.withRoundWriteLock(roundId, async (unit) => {
       if (unit.round.state !== 'COLLECTING') throw Errors.roundClosed();
       const responseId = await unit.findExistingId(memberId);
       const current = responseId ? await unit.load(responseId) : null;
       const revision = current?.revision ?? 0;
       const snapshotId = createHash('sha256').update(`${roundId}:${memberId}:${revision}`).digest('hex');
-      return { ...toDecisionSnapshot({snapshotId, roundId, planId: round.planId,
-        optionRevision: round.optionRevision, activityIds: round.activityIds, memberIds: [memberId],
-        responses: current ? [current] : [], createdAt: current?.updatedAt ?? new Date(0),
-        questions: round.questions, currency: round.currency, minorDigits: round.minorDigits,
-        optionSnapshotId: round.optionSnapshotId}), response_revision: revision };
+      return {
+        ...toDecisionSnapshot({
+          snapshotId,
+          roundId,
+          planId: round.planId,
+          optionRevision: round.optionRevision,
+          activityIds: round.activityIds,
+          memberIds: [memberId],
+          responses: current ? [current] : [],
+          createdAt: current?.updatedAt ?? new Date(0),
+          questions: round.questions,
+          currency: round.currency,
+          minorDigits: round.minorDigits,
+          optionSnapshotId: round.optionSnapshotId,
+        }),
+        response_revision: revision,
+      };
     });
     if (!snapshot) throw Errors.notFound('Round not found');
     return snapshot;
@@ -124,11 +144,7 @@ export class ResponsesService {
    * Submits a complete draft. Published question forms require their required
    * answers; legacy activity forms require each activity and an explicit budget.
    */
-  async submit(
-    roundId: string,
-    member: AuthorisedMember,
-    dto: SubmitResponseDto,
-  ): Promise<MyResponseView> {
+  async submit(roundId: string, member: AuthorisedMember, dto: SubmitResponseDto): Promise<MyResponseView> {
     const round = await this.requireRound(roundId, member);
 
     const view = await this.responses.withRoundWriteLock(roundId, async (unit) => {
@@ -136,7 +152,9 @@ export class ResponsesService {
       const existingId = await unit.findExistingId(member.memberId);
       if (existingId === null) {
         if (dto.expectedRevision !== 0) throw Errors.staleVersion();
-        throw Errors.invalidInput(completenessErrors({ budgetKind: 'UNANSWERED', activityAnswers: [] }, round.activityIds));
+        throw Errors.invalidInput(
+          completenessErrors({ budgetKind: 'UNANSWERED', activityAnswers: [] }, round.activityIds),
+        );
       }
 
       const current = await unit.load(existingId);
@@ -149,7 +167,8 @@ export class ResponsesService {
         throw Errors.staleVersion('The options changed; reload the form before submitting');
       }
       if (!isComplete(current, round.activityIds, round.questions)) {
-        if (round.questions?.length) throw Errors.invalidInput([{ field: 'answers', message: 'Answer all required questions before submitting' }]);
+        if (round.questions?.length)
+          throw Errors.invalidInput([{ field: 'answers', message: 'Answer all required questions before submitting' }]);
         throw Errors.invalidInput(completenessErrors(current, round.activityIds));
       }
       if (current.status !== 'SUBMITTED') {
@@ -193,7 +212,11 @@ export class ResponsesService {
     const round = await this.rounds.findById(roundId);
     if (!round) throw Errors.notFound('This round is not open for responses');
     if (round.planId !== member.planId) throw Errors.forbidden();
-    if ((round.rosterPolicy !== 'close' || round.state === 'FROZEN') && round.memberIds?.length && !round.memberIds.some(id => id.toLowerCase() === member.memberId.toLowerCase())) {
+    if (
+      (round.rosterPolicy !== 'close' || round.state === 'FROZEN') &&
+      round.memberIds?.length &&
+      !round.memberIds.some((id) => id.toLowerCase() === member.memberId.toLowerCase())
+    ) {
       throw Errors.forbidden();
     }
     return round;

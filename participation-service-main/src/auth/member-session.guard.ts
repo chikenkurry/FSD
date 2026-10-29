@@ -48,8 +48,6 @@ export class MemberSessionGuard implements CanActivate {
   }
 }
 
-export const CurrentMember = createParamDecorator(
-  (_data: unknown, context: ExecutionContext): AuthorisedMember => {
-    return context.switchToHttp().getRequest<AuthenticatedRequest>().member as AuthorisedMember;
-  },
-);
+export const CurrentMember = createParamDecorator((_data: unknown, context: ExecutionContext): AuthorisedMember => {
+  return context.switchToHttp().getRequest<AuthenticatedRequest>().member as AuthorisedMember;
+});

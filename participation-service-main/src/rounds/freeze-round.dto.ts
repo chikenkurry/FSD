@@ -1,4 +1,14 @@
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsUUID, IsOptional, IsInt, Min, IsBoolean } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsUUID,
+  IsOptional,
+  IsInt,
+  Min,
+  IsBoolean,
+} from 'class-validator';
 
 /** Body of Planning's idempotent "freeze round" command. */
 export class FreezeRoundDto {

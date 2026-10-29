@@ -12,10 +12,15 @@
     "start:dev": "node --env-file-if-exists=.env node_modules/@nestjs/cli/bin/nest.js start --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:cov:all": "jest --config test/jest-coverage.json --coverage --runInBand",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy",
+    "lint": "eslint src test",
+    "format": "prettier --write src test",
+    "format:check": "prettier --check src test"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -29,17 +34,23 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.0.0",
     "@types/supertest": "^6.0.2",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
     "jest": "^29.7.0",
+    "prettier": "^3.9.10",
     "prisma": "^6.0.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.72.1"
   },
   "jest": {
     "rootDir": "src",
@@ -52,6 +63,16 @@
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.spec.ts",
+      "!main.ts"
+    ],
+    "coverageDirectory": "../coverage",
+    "coverageReporters": [
+      "text-summary",
+      "lcov"
+    ]
   }
 }
