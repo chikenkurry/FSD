@@ -2,18 +2,25 @@ import { test, expect, type Page } from '@playwright/test';
 
 // UI-only: every API call is answered here, so this runs without the services.
 async function mockApi(page: Page) {
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
-    const reply = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
+    const reply = (value: unknown, status = 200) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
     if (path.includes('/plans/member/')) return reply([]);
     if (path.endsWith('/v1/users/remembered-user')) return reply({ id: 'remembered-user', username: 'Rosa' });
     if (path.endsWith('/v1/users')) return reply({ id: 'new-user', username: 'Nia', session_token: 'synthetic-token' });
     return reply({});
   });
 }
-const signedIn = (page: Page, name = 'Rosa') => page.addInitScript(([user]) => {
-  sessionStorage.setItem('user_id', 'remembered-user'); sessionStorage.setItem('username', user!); sessionStorage.setItem('session_token', 'synthetic-token');
-}, [name]);
+const signedIn = (page: Page, name = 'Rosa') =>
+  page.addInitScript(
+    ([user]) => {
+      sessionStorage.setItem('user_id', 'remembered-user');
+      sessionStorage.setItem('username', user!);
+      sessionStorage.setItem('session_token', 'synthetic-token');
+    },
+    [name],
+  );
 
 test('landing offers start and join, and rejects links that are not invitations', async ({ page }) => {
   await mockApi(page);
@@ -56,7 +63,8 @@ test('a return link signs in and is removed from the address bar', async ({ page
 
 test('sidebar collapses, remembers it, and the join dialog validates links', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'The collapsible rail is a desktop layout; phones use a tab bar');
-  await mockApi(page); await signedIn(page);
+  await mockApi(page);
+  await signedIn(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Collapse sidebar' }).click();
   await expect(page.locator('.shell')).toHaveClass(/collapsed/);
@@ -75,7 +83,8 @@ test('sidebar collapses, remembers it, and the join dialog validates links', asy
 
 test('phones get a bottom tab bar that fits the screen', async ({ page }, info) => {
   test.skip(info.project.name === 'desktop', 'Phone layout only');
-  await mockApi(page); await signedIn(page);
+  await mockApi(page);
+  await signedIn(page);
   await page.goto('/');
   const tabs = page.getByRole('navigation', { name: 'Main navigation' });
   await expect(tabs.getByRole('button', { name: 'My forms' })).toBeVisible();
