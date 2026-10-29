@@ -1,7 +1,7 @@
 <template>
   <Transition name="view" mode="out-in">
     <div v-if="resuming" class="resuming" role="status"><BrandMark /><p>Signing you back in…</p></div>
-    <Login v-else-if="!auth.token" :invited="!!inviteToken" @navigate="afterLogin" />
+    <SignInScreen v-else-if="!auth.token" :invited="!!inviteToken" @navigate="afterLogin" />
     <div v-else :class="['shell', { collapsed }]">
       <a class="skip-link" href="#main-content" @click.prevent="focusContent">Skip to content</a>
       <aside class="sidebar" aria-label="Application">
@@ -46,7 +46,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import BrandMark from '@/components/BrandMark.vue';
 import UiIcon from '@/components/UiIcon.vue';
-import Login from '@/components/Login.vue';
+import SignInScreen from '@/components/SignInScreen.vue';
 import JoinDialog from '@/components/JoinDialog.vue';
 import FormsDashboard from '@/components/FormsDashboard.vue';
 import FormCreator from '@/components/FormCreator.vue';

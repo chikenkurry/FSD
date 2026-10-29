@@ -421,7 +421,8 @@ function correctOverview(option:DecisionOption,value:string){ option.summary=val
 function slug(text: string) { return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^(\d)/, 'q_$1').slice(0, 50) || 'preference'; }
 function ensureCriterion(q: Question, index: number) {
   if (q.criterion || q.role === 'informational') return;
-  let base = slug(q.title) || `preference_${index + 1}`, name = base, n = 2;
+  const base = slug(q.title) || `preference_${index + 1}`;
+  let name = base, n = 2;
   while (form.questions.some(o => o !== q && o.criterion === name)) name = `${base}_${n++}`;
   q.criterion = name;
 }
