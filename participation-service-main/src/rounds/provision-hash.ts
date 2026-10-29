@@ -27,8 +27,14 @@ export function hashProvisionPayload(payload: ProvisionPayload): string {
     optionRevision: payload.optionRevision,
     activityIds: canonicalIds(payload.activityIds),
     memberIds: canonicalIds(payload.memberIds ?? []),
-    questions: [...(payload.questions ?? [])].sort((a, b) => a.questionId.localeCompare(b.questionId))
-      .map(q => ({questionId: normaliseId(q.questionId), required: q.required, answerFormat: q.answerFormat, choices: q.choices ?? []})),
+    questions: [...(payload.questions ?? [])]
+      .sort((a, b) => a.questionId.localeCompare(b.questionId))
+      .map((q) => ({
+        questionId: normaliseId(q.questionId),
+        required: q.required,
+        answerFormat: q.answerFormat,
+        choices: q.choices ?? [],
+      })),
     currency: payload.currency ?? 'SGD',
     minorDigits: payload.minorDigits ?? 2,
     optionSnapshotId: payload.optionSnapshotId ?? null,

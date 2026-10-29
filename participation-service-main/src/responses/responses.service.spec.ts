@@ -173,10 +173,7 @@ describe('ResponsesService', () => {
     it('drops answers for activities that are no longer offered', async () => {
       const { service, rounds } = setup();
       await service.saveDraft(ROUND_ID, member1, aDraft());
-      rounds.rounds.set(
-        NEXT_ROUND_ID,
-        aRound({ id: NEXT_ROUND_ID, optionRevision: 2, activityIds: [ACTIVITY_B] }),
-      );
+      rounds.rounds.set(NEXT_ROUND_ID, aRound({ id: NEXT_ROUND_ID, optionRevision: 2, activityIds: [ACTIVITY_B] }));
 
       const copied = await service.copyDraft(NEXT_ROUND_ID, ROUND_ID, member1);
 

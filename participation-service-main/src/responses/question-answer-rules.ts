@@ -12,10 +12,8 @@ function validJson(value: unknown): boolean {
 }
 
 export function answeredRequiredQuestions(answers: QuestionAnswerDto[], questions: QuestionDefinitionDto[]): boolean {
-  const present = new IdSet(
-    answers.filter((answer) => isAnswered(answer.value)).map((answer) => answer.question_id),
-  );
-  return questions.every(q => !q.required || present.has(q.questionId));
+  const present = new IdSet(answers.filter((answer) => isAnswered(answer.value)).map((answer) => answer.question_id));
+  return questions.every((q) => !q.required || present.has(q.questionId));
 }
 
 function isAnswered(value: unknown): boolean {

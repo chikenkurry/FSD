@@ -17,7 +17,12 @@ describe('stored fingerprints stay stable', () => {
         memberIds: ['EEEEEEEE-eeee-4eee-8eee-eeeeeeeeeeee', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'],
         questions: [
           { questionId: '32345678-1234-4234-8234-123456789ABC', required: true, answerFormat: 'text' },
-          { questionId: '12345678-1234-4234-8234-123456789abc', required: false, answerFormat: 'choice', choices: ['a', 'b'] },
+          {
+            questionId: '12345678-1234-4234-8234-123456789abc',
+            required: false,
+            answerFormat: 'choice',
+            choices: ['a', 'b'],
+          },
         ],
         currency: 'USD',
         minorDigits: 2,

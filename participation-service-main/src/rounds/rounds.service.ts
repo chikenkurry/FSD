@@ -58,9 +58,11 @@ export class RoundsService {
         { field: 'optionSnapshotId', message: 'A close-roster round needs an immutable form identity' },
       ]);
     }
-    if (hasDuplicateIds(dto.memberIds ?? [])
-        || hasDuplicateIds((dto.questions ?? []).map(q => q.questionId))
-        || hasDuplicateIds(dto.activityIds)) {
+    if (
+      hasDuplicateIds(dto.memberIds ?? []) ||
+      hasDuplicateIds((dto.questions ?? []).map((q) => q.questionId)) ||
+      hasDuplicateIds(dto.activityIds)
+    ) {
       throw Errors.invalidInput([{ field: 'provision', message: 'Identifiers must be unique' }]);
     }
     const hash = hashProvisionPayload(dto);
@@ -135,8 +137,11 @@ export class RoundsService {
         };
       }
 
-      if (unit.round.rosterPolicy !== 'close' && unit.round.memberIds?.length
-          && !sameIds(unit.round.memberIds, dto.memberIds)) {
+      if (
+        unit.round.rosterPolicy !== 'close' &&
+        unit.round.memberIds?.length &&
+        !sameIds(unit.round.memberIds, dto.memberIds)
+      ) {
         throw Errors.operationConflict('Freeze roster must match the published roster');
       }
       if (hasDuplicateIds(dto.memberIds)) {
