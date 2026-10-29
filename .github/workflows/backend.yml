@@ -120,10 +120,14 @@ jobs:
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: docker compose -f compose.integration.yaml up -d --build --wait --wait-timeout 240
+      # Planning runs with coverage instrumentation so the journeys below count towards it.
+      - run: mkdir -p .local-data/coverage/planning/e2e && chmod 777 .local-data/coverage/planning/e2e
+      - run: docker compose -f compose.integration.yaml -f compose.coverage.yaml up -d --build --wait --wait-timeout 240
       - run: python integration/test_http_lifecycle.py
       - run: npm run test:e2e
         working-directory: frontend
+      - name: Report Planning coverage (unit and end-to-end)
+        run: scripts/planning-coverage.sh --report
       - if: failure()
         run: docker compose -f compose.integration.yaml logs --tail 100
       - if: always()

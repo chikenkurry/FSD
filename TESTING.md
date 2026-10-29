@@ -35,13 +35,17 @@ CI (`.github/workflows/`) runs the three service suites, the frontend build, and
 ```bash
 # Decision (from FSD/)
 coverage run --source=decision_service --omit="decision_service/tests/*" -m unittest discover -s decision_service/tests -t . -q && coverage report
-# Participation
-cd participation-service-main && npm run test:cov
-# Planning (set PLANNING_TEST_DATABASE_URL to include the access-guard tests)
-cd planning-service && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | tail -1
+# Participation: unit and end-to-end tests together (needs a migrated PostgreSQL, as for test:e2e)
+cd participation-service-main && npm run test:cov:all
+# Planning: unit tests plus the HTTP and browser journeys against an instrumented build (needs the Docker stack)
+scripts/planning-coverage.sh          # add --http to skip the browser journeys
 ```
 
-CI prints each total. The latest measured figures are in the [README](README.md#test-coverage).
+`planning-coverage.sh` rebuilds Planning with Go coverage instrumentation (`compose.coverage.yaml`),
+runs the journeys, stops Planning so it writes its counters, merges them with the unit tests and
+restores the normal build. It prints unit, end-to-end and combined totals and writes a profile to
+`.local-data/coverage/planning/combined.out`. CI prints the same totals on every push. The latest
+measured figures are in the [README](README.md#test-coverage).
 
 ## Writing and changing tests
 

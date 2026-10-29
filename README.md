@@ -113,12 +113,14 @@ Statement coverage measured on 29 October 2026, as CI reports it:
 | Service | Tests | Coverage |
 | --- | --- | --- |
 | Decision (Python) | 387 unit, contract and PostgreSQL tests | 83% |
-| Participation (NestJS) | 69 unit tests, plus 17 end-to-end tests against PostgreSQL | 53% (unit tests only) |
-| Planning (Go) | Access guard, rate limits, invitations, OpenAPI routes, snapshots, client | 11% overall; 100% of the access guard (`Guard`, `planForPath`, `allowPlanMutation`, `editsDefinition`) and 97% of the rate limiter |
+| Participation (NestJS) | 69 unit tests and 17 end-to-end tests against PostgreSQL | 82% |
+| Planning (Go) | Unit tests plus the HTTP lifecycle and full-stack browser journeys | 49% overall (12% from unit tests alone); 100% of the access guard (`Guard`, `planForPath`, `allowPlanMutation`, `editsDefinition`) and 97% of the rate limiter |
 | Frontend (Vue) | 16 mocked browser tests, each at desktop, phone and 320px widths, plus full-stack journeys | Not measured; covered by browser tests |
 
-Planning's handlers and repositories are exercised by the HTTP lifecycle and full-stack browser
-journeys rather than by unit tests, which is why its unit coverage is low outside the access path.
+Planning's figure comes from a coverage-instrumented build of the service running under the
+end-to-end journeys, merged with its unit tests (`scripts/planning-coverage.sh`). Most of the
+remaining code is older CRUD endpoints that the frontend no longer calls and the Gemini and
+Google Places research handlers, which the browser tests mock.
 
 ## Use the APIs
 

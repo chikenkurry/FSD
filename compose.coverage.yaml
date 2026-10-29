@@ -1,0 +1,13 @@
+# Coverage overlay for compose.integration.yaml. Planning is built with Go coverage
+# instrumentation and writes its counters to .local-data/coverage/planning/e2e when it
+# stops gracefully. Used by scripts/planning-coverage.sh and CI; not for normal runs.
+services:
+  planning:
+    build:
+      context: planning-service
+      args:
+        GO_COVER: "1"
+    environment:
+      GOCOVERDIR: /coverage
+    volumes:
+      - ./.local-data/coverage/planning/e2e:/coverage
