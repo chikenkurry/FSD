@@ -49,21 +49,6 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 	return &user, nil
 }
 
-// GetByUsername fetches a single user by their username
-func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
-	var user model.User
-
-	err := database.ContextDB(ctx, r.db).First(&user, "username = ?", username).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-		return nil, err
-	}
-
-	return &user, nil
-}
-
 // GetByIDWithRelations fetches a user and preloads their created plans and memberships
 func (r *UserRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var user model.User
@@ -81,24 +66,7 @@ func (r *UserRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID)
 	return &user, nil
 }
 
-// List fetches users with pagination
-func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]model.User, int64, error) {
-	var users []model.User
-	var total int64
 
-	db := database.ContextDB(ctx, r.db).Model(&model.User{})
-
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	err := db.Order("username ASC").
-		Limit(limit).
-		Offset(offset).
-		Find(&users).Error
-
-	return users, total, err
-}
 
 // Update replaces a user's username and email. An empty email clears it
 // (email is optional; see migration 004).

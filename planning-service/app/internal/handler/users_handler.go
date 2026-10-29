@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"planning-service/app/internal/httpapi"
 	"planning-service/app/internal/model"
@@ -103,63 +102,8 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /v1/usersbyname/{username} - get single user by username
-func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
-	username := r.PathValue("username")
-	if username == "" {
-		httpapi.StatusError(w, http.StatusBadRequest, "username query parameter is required")
-		return
-	}
 
-	user, err := h.repo.GetByUsername(r.Context(), username)
-	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
-			httpapi.StatusError(w, http.StatusNotFound, "User not found with this username")
-			return
-		}
-		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to fetch user")
-		return
-	}
 
-	httpapi.JSON(w, http.StatusOK, UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-	})
-}
-
-// GET /users - List users with pagination
-func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	if offset < 0 {
-		offset = 0
-	}
-
-	users, total, err := h.repo.List(r.Context(), limit, offset)
-	if err != nil {
-		httpapi.StatusError(w, http.StatusInternalServerError, "Failed to fetch users")
-		return
-	}
-
-	responseList := make([]UserResponse, len(users))
-	for i, u := range users {
-		responseList[i] = UserResponse{
-			ID:       u.ID,
-			Username: u.Username,
-		}
-	}
-
-	httpapi.JSON(w, http.StatusOK, map[string]interface{}{
-		"data":   responseList,
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
-	})
-}
 
 // PUT /users/{id} - Update user
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
