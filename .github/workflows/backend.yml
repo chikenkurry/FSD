@@ -26,7 +26,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r decision_service/requirements-test.txt
-      - run: python -m unittest discover -s decision_service/tests -t . -q
+      - run: coverage run --source=decision_service --omit="decision_service/tests/*" -m unittest discover -s decision_service/tests -t . -q
+      - run: coverage report | tail -1
       - run: python -m decision_service.evaluation --tag structured
       - run: python -m integration.benchmark_decision_service --jobs 24 --output /tmp/decision-load.json
       - run: python -m integration.benchmark_decision_efficiency --idle-seconds 1 --output /tmp/decision-efficiency.json
@@ -93,7 +94,7 @@ jobs:
       - run: npm ci
       - run: npm run prisma:generate
       - run: npm run typecheck
-      - run: npm test -- --runInBand
+      - run: npm run test:cov -- --runInBand
       - run: npm run migrate:deploy
       - run: npm run test:e2e
       - run: npm run build

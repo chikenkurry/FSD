@@ -12,6 +12,7 @@
     "start:dev": "node --env-file-if-exists=.env node_modules/@nestjs/cli/bin/nest.js start --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
+    "test:cov": "jest --coverage",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
@@ -52,6 +53,16 @@
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.spec.ts",
+      "!main.ts"
+    ],
+    "coverageDirectory": "../coverage",
+    "coverageReporters": [
+      "text-summary",
+      "lcov"
+    ]
   }
 }
