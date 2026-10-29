@@ -12,8 +12,9 @@ It prints a PASS/FAIL line per layer and exits non-zero if anything fails.
 
 **One-time setup**
 
-- Python: `python3 -m venv .venv && .venv/bin/pip install -r decision_service/requirements-test.txt`. The script finds `.venv` automatically, or point it at an interpreter with `PYTHON=/path/to/python`.
-- Browsers: `cd frontend && npx playwright install chromium`. To use installed Chrome instead, set `PLAYWRIGHT_CHANNEL=chrome`.
+- Python 3.10 or newer: `python3 -m venv .venv && .venv/bin/pip install -r decision_service/requirements-test.txt`. The script finds `.venv` automatically, or point it at an interpreter with `PYTHON=/path/to/python`. macOS's built-in `python3` is 3.9 and cannot install the pinned `psycopg`; use a Homebrew or python.org interpreter.
+- Browsers: `cd frontend && npx playwright install chromium`. To use installed Chrome instead, set `PLAYWRIGHT_CHANNEL=chrome`. Use Chrome if the download fails with `SELF_SIGNED_CERT_IN_CHAIN`, which happens on networks that inspect TLS traffic.
+- Planning's access tests need PostgreSQL: set `PLANNING_TEST_DATABASE_URL` to an empty, disposable database (for example `postgres://planning:planning@localhost:5432/planning?sslmode=disable`). Without it, those tests are skipped and the rest still run. Never point it at the stack's real Planning database.
 - Full-stack tests need the Docker stack from `compose.integration.yaml` (frontend on `http://127.0.0.1:15173`, override with `FRONTEND_URL`) and the local Ollama model it is configured with. Web research is mocked inside the tests, so no Gemini key is needed for them.
 
 ## Layers
@@ -21,13 +22,26 @@ It prints a PASS/FAIL line per layer and exits non-zero if anything fails.
 | Layer | Command | What it protects |
 |---|---|---|
 | Decision service (Python, ~390 tests) | `python -m unittest discover -s decision_service/tests -t .` | Preprocessing, scoring, fairness ranking, contracts, research parsing, ratings, importance, AI similarity (frozen per run), early close, date-poll summary, result views |
-| Participation (NestJS, ~70 tests) | `cd participation-service-main && npm run prisma:generate && npm run typecheck && npx jest` | Answer validation per format (incl. ratings, importance, date polls), drafts, submit, freeze snapshots, early-close freeze |
-| Planning (Go) | `cd planning-service && go vet ./... && go test ./...` | Access policy, snapshots, upstream client, confirmation date/time validation and retries |
-| Frontend build | `cd frontend && npm run type-check && npm run build-only` | Types across components and services |
+| Participation (NestJS, ~70 tests) | `cd participation-service-main && npm run prisma:generate && npm run lint && npm run typecheck && npx jest` | Answer validation per format (incl. ratings, importance, date polls), drafts, submit, freeze snapshots, early-close freeze |
+| Planning (Go) | `cd planning-service && go vet ./... && go test ./...` | Access guard (sessions, membership, organiser-only writes, published-round protection), rate limits, invitation links, OpenAPI route coverage, snapshots, upstream client, confirmation date/time validation and retries |
+| Frontend build | `cd frontend && npm run lint && npm run format:check && npm run type-check && npm run build-only` | Lint rules, formatting and types across components and services |
 | Browser, UI-only | `cd frontend && npm run test:ui` | App shell, landing and join, remembered sessions and return links, creator recovery, research and fact review, member review, pending results. Every API call is mocked; runs at desktop, Pixel 7 and 320px widths |
 | Browser, full-stack (`@stack`) | `cd frontend && npm run test:stack` | Real services end to end: create → invite → private answers → close → rank → confirm → RSVP; ratings + importance + AI-suggested weights changing the actual scores; deadline, reminders, early close; fact re-check; date poll and a dated confirmation with the calendar file; returning members not duplicated; public proxy hiding internal APIs |
 
 CI (`.github/workflows/`) runs the three service suites, the frontend build, and the UI-only browser tests on every push. The `@stack` journeys need Docker and the local model, so run them locally with `scripts/regression.sh` before merging a refactor.
+
+## Coverage
+
+```bash
+# Decision (from FSD/)
+coverage run --source=decision_service --omit="decision_service/tests/*" -m unittest discover -s decision_service/tests -t . -q && coverage report
+# Participation
+cd participation-service-main && npm run test:cov
+# Planning (set PLANNING_TEST_DATABASE_URL to include the access-guard tests)
+cd planning-service && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | tail -1
+```
+
+CI prints each total. The latest measured figures are in the [README](README.md#test-coverage).
 
 ## Writing and changing tests
 

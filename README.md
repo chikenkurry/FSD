@@ -75,7 +75,9 @@ revision, automatic result updates and server-backed draft recovery.
 | Decision workers | Preprocessing, ranking and evidence collection; reserved preview and research pools | Internal health endpoints only |
 | Participation PostgreSQL | Participation data; also available for database tests | `127.0.0.1:15432` |
 
-Participation's Swagger UI is at [http://127.0.0.1:13002/docs](http://127.0.0.1:13002/docs).
+Swagger UI for Planning is at [http://127.0.0.1:18080/docs](http://127.0.0.1:18080/docs)
+(spec: [planning-service/app/api/openapi.yaml](planning-service/app/api/openapi.yaml)), and for
+Participation at [http://127.0.0.1:13002/docs](http://127.0.0.1:13002/docs).
 Decision has no host port; call recommendations through Planning.
 
 ## Check the integration
@@ -103,6 +105,21 @@ The checks use explicit question definitions and synthetic facts. They cover lat
 joins, stale previews, concurrent recommendations, confirm/reopen races, sessions,
 guest replacement and RSVP history. They do not measure live LLM interpretation accuracy.
 
+## Test coverage
+
+[TESTING.md](TESTING.md) describes every test layer and the one-command regression run.
+Statement coverage measured on 29 October 2026, as CI reports it:
+
+| Service | Tests | Coverage |
+| --- | --- | --- |
+| Decision (Python) | 387 unit, contract and PostgreSQL tests | 83% |
+| Participation (NestJS) | 69 unit tests, plus 17 end-to-end tests against PostgreSQL | 53% (unit tests only) |
+| Planning (Go) | Access guard, rate limits, invitations, OpenAPI routes, snapshots, client | 11% overall; 100% of the access guard (`Guard`, `planForPath`, `allowPlanMutation`, `editsDefinition`) and 97% of the rate limiter |
+| Frontend (Vue) | 16 mocked browser tests, each at desktop, phone and 320px widths, plus full-stack journeys | Not measured; covered by browser tests |
+
+Planning's handlers and repositories are exercised by the HTTP lifecycle and full-stack browser
+journeys rather than by unit tests, which is why its unit coverage is low outside the access path.
+
 ## Use the APIs
 
 Create a guest session through Planning:
@@ -116,6 +133,11 @@ curl --fail -X POST http://127.0.0.1:18080/v1/users \
 Keep the returned `session_token` and send `Authorization: Bearer <session_token>`
 to both public services. Planning checks membership; members join plans through
 invitations. A username or user ID alone does not authenticate a request.
+
+Some Planning routes keep older names for compatibility: `/v1/question` is singular,
+`/v1/proposed_activity` and `/v1/plan_members` use snake_case, and `/v1/rounds/open/{id}` puts a
+verb in the path. New routes follow `/v1/rounds/{id}/<action>`; renaming the older ones is planned
+together with a frontend update.
 
 The [integration guide](integration/README.md) documents option facts, question
 definitions, request bodies and the lifecycle endpoints. It also explains the
@@ -163,6 +185,8 @@ the [integration guide](integration/README.md#run-and-check).
 
 ## Service documentation
 
+- [Planning API reference (OpenAPI)](planning-service/app/api/openapi.yaml)
+- [Regression testing](TESTING.md)
 - [CI/CD proof of concept](docs/CI_CD.md)
 - [On-demand laptop deployment](docs/DEPLOYMENT.md)
 - [Integration guide and API lifecycle](integration/README.md)
