@@ -96,9 +96,9 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
-      - run: npm run test:cov -- --runInBand
       - run: npm run migrate:deploy
-      - run: npm run test:e2e
+      # Unit and end-to-end tests run together so coverage counts both.
+      - run: npm run test:cov:all
       - run: npm run build
   integration:
     needs: [decision, planning, participation]

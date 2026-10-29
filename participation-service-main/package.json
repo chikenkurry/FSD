@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
     "test:cov": "jest --coverage",
+    "test:cov:all": "jest --config test/jest-coverage.json --coverage --runInBand",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
