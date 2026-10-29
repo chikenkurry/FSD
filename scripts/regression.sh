@@ -55,7 +55,7 @@ planning_tests() {
     (cd "$ROOT/planning-service" && go vet ./... && go test ./...)
   else
     # No local Go toolchain: use the same image the service builds with.
-    docker run --rm -v "$ROOT/planning-service":/src -v w2d-gomod:/go/pkg/mod -w /src golang:1.27.2 sh -c 'go vet ./... && go test ./...'
+    docker run --rm -e PLANNING_TEST_DATABASE_URL -v "$ROOT/planning-service":/src -v w2d-gomod:/go/pkg/mod -w /src golang:1.27.2 sh -c 'go vet ./... && go test ./...'
   fi
 }
 
