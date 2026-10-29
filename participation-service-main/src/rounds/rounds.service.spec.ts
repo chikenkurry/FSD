@@ -49,9 +49,10 @@ describe('RoundsService.provision', () => {
   it('returns the same round when the call is replayed, whatever the activity order', async () => {
     const { service } = setup();
     await service.provision(request());
-    await expect(
-      service.provision(request({ activityIds: [ACTIVITY_B, ACTIVITY_A] })),
-    ).resolves.toMatchObject({ roundId: ROUND_ID, alreadyProvisioned: true });
+    await expect(service.provision(request({ activityIds: [ACTIVITY_B, ACTIVITY_A] }))).resolves.toMatchObject({
+      roundId: ROUND_ID,
+      alreadyProvisioned: true,
+    });
   });
 
   it('rejects the same round with a different payload', async () => {
@@ -73,9 +74,9 @@ describe('RoundsService.provision', () => {
   it('rejects an operationId that already provisioned a different round', async () => {
     const { service } = setup();
     await service.provision(request());
-    await expect(
-      service.provision(request({ roundId: '12121212-1212-4121-8121-121212121212' })),
-    ).rejects.toMatchObject({ code: 'OPERATION_CONFLICT' });
+    await expect(service.provision(request({ roundId: '12121212-1212-4121-8121-121212121212' }))).rejects.toMatchObject(
+      { code: 'OPERATION_CONFLICT' },
+    );
   });
 
   it('treats losing an insert race to an identical call as a replay', async () => {
@@ -97,17 +98,21 @@ describe('RoundsService.freeze', () => {
   it('keeps collection open and remembers rejected close commands across later submissions', async () => {
     const { service, members, rounds } = setup();
     await service.provision(request());
-    const command = {operationId:freezeOp,roundId:ROUND_ID,memberIds:[MEMBER_1],requireComplete:true};
-    await expect(service.freeze(command)).rejects.toMatchObject({code:'RESPONSES_INCOMPLETE'});
+    const command = { operationId: freezeOp, roundId: ROUND_ID, memberIds: [MEMBER_1], requireComplete: true };
+    await expect(service.freeze(command)).rejects.toMatchObject({ code: 'RESPONSES_INCOMPLETE' });
     expect(rounds.rounds.get(ROUND_ID)?.state).toBe('COLLECTING');
-    await members.saveDraft(ROUND_ID,member,aDraft());
-    await members.submit(ROUND_ID,member,{expectedRevision:1});
+    await members.saveDraft(ROUND_ID, member, aDraft());
+    await members.submit(ROUND_ID, member, { expectedRevision: 1 });
     // A delayed reconciler retry of the rejected operation remains rejected.
-    await expect(service.freeze(command)).rejects.toMatchObject({code:'RESPONSES_INCOMPLETE'});
+    await expect(service.freeze(command)).rejects.toMatchObject({ code: 'RESPONSES_INCOMPLETE' });
     expect(rounds.rounds.get(ROUND_ID)?.state).toBe('COLLECTING');
-    await expect(service.freeze({...command,memberIds:[MEMBER_1,MEMBER_2]})).rejects.toMatchObject({code:'OPERATION_CONFLICT'});
-    await expect(service.freeze({...command,operationId:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'})).resolves.toMatchObject({state:'FROZEN'});
-    await expect(service.freeze(command)).rejects.toMatchObject({code:'RESPONSES_INCOMPLETE'});
+    await expect(service.freeze({ ...command, memberIds: [MEMBER_1, MEMBER_2] })).rejects.toMatchObject({
+      code: 'OPERATION_CONFLICT',
+    });
+    await expect(
+      service.freeze({ ...command, operationId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' }),
+    ).resolves.toMatchObject({ state: 'FROZEN' });
+    await expect(service.freeze(command)).rejects.toMatchObject({ code: 'RESPONSES_INCOMPLETE' });
   });
 
   it('freezes the round and returns a Decision-shaped snapshot', async () => {
@@ -171,40 +176,72 @@ describe('RoundsService.freeze', () => {
   });
 });
 
-
 describe('Final roster admission', () => {
   const formId = '10101010-1010-4010-8010-101010101010';
   const evaluationId = '20202020-2020-4020-8020-202020202020';
   const question = { questionId: ACTIVITY_A, required: true, answerFormat: 'number' };
 
   it('accepts an authorised late member and freezes the exact final roster and identity', async () => {
-    const {service, members} = setup();
-    await service.provision(request({rosterPolicy:'close', optionSnapshotId:formId, memberIds:[MEMBER_1], questions:[question]}));
-    await members.saveDraft(ROUND_ID, {memberId:MEMBER_2,planId:PLAN_ID}, {
-      expectedRevision:0, acknowledgedOptionRevision:1, availability:[],budget:{kind:'UNANSWERED'},
-      activityAnswers:[],answers:[{question_id:ACTIVITY_A,value:1.2}],
-    });
-    await members.submit(ROUND_ID,{memberId:MEMBER_2,planId:PLAN_ID},{expectedRevision:1});
-    const body = {operationId:'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1',roundId:ROUND_ID,
-      memberIds:[MEMBER_1,MEMBER_2],optionSnapshotId:evaluationId,optionRevision:1};
+    const { service, members } = setup();
+    await service.provision(
+      request({ rosterPolicy: 'close', optionSnapshotId: formId, memberIds: [MEMBER_1], questions: [question] }),
+    );
+    await members.saveDraft(
+      ROUND_ID,
+      { memberId: MEMBER_2, planId: PLAN_ID },
+      {
+        expectedRevision: 0,
+        acknowledgedOptionRevision: 1,
+        availability: [],
+        budget: { kind: 'UNANSWERED' },
+        activityAnswers: [],
+        answers: [{ question_id: ACTIVITY_A, value: 1.2 }],
+      },
+    );
+    await members.submit(ROUND_ID, { memberId: MEMBER_2, planId: PLAN_ID }, { expectedRevision: 1 });
+    const body = {
+      operationId: 'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1',
+      roundId: ROUND_ID,
+      memberIds: [MEMBER_1, MEMBER_2],
+      optionSnapshotId: evaluationId,
+      optionRevision: 1,
+    };
     const frozen = await service.freeze(body);
     expect(frozen.snapshot.option_snapshot_id).toBe(evaluationId);
-    expect(frozen.snapshot.participants).toEqual(expect.arrayContaining([
-      expect.objectContaining({participant_id:MEMBER_2,response_status:'complete'}),
-    ]));
+    expect(frozen.snapshot.participants).toEqual(
+      expect.arrayContaining([expect.objectContaining({ participant_id: MEMBER_2, response_status: 'complete' })]),
+    );
     expect((await service.freeze(body)).snapshotId).toBe(frozen.snapshotId);
-    await expect(service.freeze({...body,optionSnapshotId:formId})).rejects.toMatchObject({code:'OPERATION_CONFLICT'});
-    await expect(members.saveDraft(ROUND_ID,{memberId:MEMBER_2,planId:PLAN_ID},{
-      expectedRevision:2,acknowledgedOptionRevision:1,availability:[],budget:{kind:'UNANSWERED'},
-      activityAnswers:[],answers:[{question_id:ACTIVITY_A,value:1.2}],
-    }))
-      .rejects.toMatchObject({code:'ROUND_CLOSED'});
+    await expect(service.freeze({ ...body, optionSnapshotId: formId })).rejects.toMatchObject({
+      code: 'OPERATION_CONFLICT',
+    });
+    await expect(
+      members.saveDraft(
+        ROUND_ID,
+        { memberId: MEMBER_2, planId: PLAN_ID },
+        {
+          expectedRevision: 2,
+          acknowledgedOptionRevision: 1,
+          availability: [],
+          budget: { kind: 'UNANSWERED' },
+          activityAnswers: [],
+          answers: [{ question_id: ACTIVITY_A, value: 1.2 }],
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'ROUND_CLOSED' });
   });
 
   it('rejects a final snapshot with a different form revision', async () => {
-    const {service}=setup();
-    await service.provision(request({rosterPolicy:'close',optionSnapshotId:formId,memberIds:[MEMBER_1]}));
-    await expect(service.freeze({operationId:'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1',roundId:ROUND_ID,
-      memberIds:[MEMBER_1],optionSnapshotId:evaluationId,optionRevision:2})).rejects.toMatchObject({code:'OPERATION_CONFLICT'});
+    const { service } = setup();
+    await service.provision(request({ rosterPolicy: 'close', optionSnapshotId: formId, memberIds: [MEMBER_1] }));
+    await expect(
+      service.freeze({
+        operationId: 'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1',
+        roundId: ROUND_ID,
+        memberIds: [MEMBER_1],
+        optionSnapshotId: evaluationId,
+        optionRevision: 2,
+      }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CONFLICT' });
   });
 });

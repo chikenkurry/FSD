@@ -52,12 +52,17 @@ export class RoundsService {
    */
   async provision(dto: ProvisionRoundDto): Promise<ProvisionResult> {
     if (dto.rosterPolicy === 'close' && !dto.optionSnapshotId) {
-      throw Errors.invalidInput([{ field: 'optionSnapshotId', message: 'A close-roster round needs an immutable form identity' }]);
+      throw Errors.invalidInput([
+        { field: 'optionSnapshotId', message: 'A close-roster round needs an immutable form identity' },
+      ]);
     }
-    const ids = (dto.memberIds ?? []).map(id => id.toLowerCase());
-    const qids = (dto.questions ?? []).map(q => q.questionId.toLowerCase());
-    if (new Set(ids).size !== ids.length || new Set(qids).size !== qids.length
-        || new Set(dto.activityIds.map(id => id.toLowerCase())).size !== dto.activityIds.length) {
+    const ids = (dto.memberIds ?? []).map((id) => id.toLowerCase());
+    const qids = (dto.questions ?? []).map((q) => q.questionId.toLowerCase());
+    if (
+      new Set(ids).size !== ids.length ||
+      new Set(qids).size !== qids.length ||
+      new Set(dto.activityIds.map((id) => id.toLowerCase())).size !== dto.activityIds.length
+    ) {
       throw Errors.invalidInput([{ field: 'provision', message: 'Identifiers must be unique' }]);
     }
     const hash = hashProvisionPayload(dto);
@@ -75,7 +80,7 @@ export class RoundsService {
       provisionPayloadHash: hash,
       questions: dto.questions ?? [],
       memberIds: dto.memberIds ?? [],
-      currency: dto.currency ?? "SGD",
+      currency: dto.currency ?? 'SGD',
       minorDigits: dto.minorDigits ?? 2,
       optionSnapshotId: dto.optionSnapshotId ?? null,
     });
@@ -89,9 +94,7 @@ export class RoundsService {
 
   private replay(existing: RoundRecord, operationId: string, hash: string): ProvisionResult {
     if (existing.provisionOperationId !== operationId || existing.provisionPayloadHash !== hash) {
-      throw Errors.operationConflict(
-        'This round is already provisioned with a different operationId or payload',
-      );
+      throw Errors.operationConflict('This round is already provisioned with a different operationId or payload');
     }
     return this.view(existing, true);
   }
@@ -120,9 +123,7 @@ export class RoundsService {
       }
       if (unit.round.state === 'FROZEN') {
         if (unit.round.freezeOperationId !== dto.operationId || unit.round.freezePayloadHash !== hash) {
-          throw Errors.operationConflict(
-            'This round is already frozen with a different operationId or roster',
-          );
+          throw Errors.operationConflict('This round is already frozen with a different operationId or roster');
         }
         if (!unit.round.snapshotId || !unit.round.snapshot) {
           throw Errors.operationConflict('This round is frozen but has no snapshot');
@@ -136,11 +137,15 @@ export class RoundsService {
         };
       }
 
-      if (unit.round.rosterPolicy !== 'close' && unit.round.memberIds?.length && JSON.stringify([...unit.round.memberIds].map(id => id.toLowerCase()).sort())
-          !== JSON.stringify([...dto.memberIds].map(id => id.toLowerCase()).sort())) {
+      if (
+        unit.round.rosterPolicy !== 'close' &&
+        unit.round.memberIds?.length &&
+        JSON.stringify([...unit.round.memberIds].map((id) => id.toLowerCase()).sort()) !==
+          JSON.stringify([...dto.memberIds].map((id) => id.toLowerCase()).sort())
+      ) {
         throw Errors.operationConflict('Freeze roster must match the published roster');
       }
-      if (new Set(dto.memberIds.map(id => id.toLowerCase())).size !== dto.memberIds.length) {
+      if (new Set(dto.memberIds.map((id) => id.toLowerCase())).size !== dto.memberIds.length) {
         throw Errors.invalidInput([{ field: 'memberIds', message: 'Members must be unique' }]);
       }
       if (dto.optionRevision !== undefined && dto.optionRevision !== unit.round.optionRevision) {
@@ -158,7 +163,7 @@ export class RoundsService {
         optionRevision: unit.round.optionRevision,
         activityIds: unit.round.activityIds,
         questions: unit.round.questions ?? [],
-        currency: unit.round.currency ?? "SGD",
+        currency: unit.round.currency ?? 'SGD',
         minorDigits: unit.round.minorDigits ?? 2,
         optionSnapshotId: dto.optionSnapshotId ?? unit.round.optionSnapshotId ?? null,
         memberIds: dto.memberIds,
@@ -168,14 +173,21 @@ export class RoundsService {
       });
       // Check while holding the same round lock as writes and freeze. A separate
       // progress check cannot protect against a member editing during closure.
-      const counted = snapshot.participants.filter(p => p.is_required_for_decision);
-      if ((dto.requireComplete && snapshot.participants.some(p => p.response_status !== 'complete'))
-          || (dto.countRespondedOnly && !counted.length)) {
+      const counted = snapshot.participants.filter((p) => p.is_required_for_decision);
+      if (
+        (dto.requireComplete && snapshot.participants.some((p) => p.response_status !== 'complete')) ||
+        (dto.countRespondedOnly && !counted.length)
+      ) {
         await unit.rejectFreeze(dto.operationId, hash);
         return { incomplete: true };
       }
       if (Buffer.byteLength(JSON.stringify(snapshot)) > 1_500_000) {
-        throw Errors.invalidInput([{ field: 'responses', message: 'Combined snapshot exceeds 1.5 MB; shorten answers or merge availability intervals' }]);
+        throw Errors.invalidInput([
+          {
+            field: 'responses',
+            message: 'Combined snapshot exceeds 1.5 MB; shorten answers or merge availability intervals',
+          },
+        ]);
       }
       await unit.freeze({
         memberIds: dto.memberIds,
@@ -217,8 +229,11 @@ export class RoundsService {
     if (!round) throw Errors.notFound('Round not found');
     const stored = await this.responses.listByRound(roundId);
     const responses = stored
-      .map((r) => ({ memberId: r.memberId, status: r.status,
-        decisionStatus: decisionStatus(r, round.optionRevision, round.activityIds, round.questions) }))
+      .map((r) => ({
+        memberId: r.memberId,
+        status: r.status,
+        decisionStatus: decisionStatus(r, round.optionRevision, round.activityIds, round.questions),
+      }))
       .sort((a, b) => a.memberId.localeCompare(b.memberId));
     return {
       roundId: round.id,

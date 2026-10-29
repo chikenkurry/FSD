@@ -18,8 +18,14 @@ export function validateDraft(
     ...validateAvailability(dto.availability),
     ...validateBudget(dto.budget),
     ...validateActivityAnswers(dto.activityAnswers, round.activityIds),
-    ...(round.optionSnapshotId && dto.activityAnswers.some(a => a.kind === 'RATING' || a.kind === 'NO_PREFERENCE')
-      ? [{ field: 'activityAnswers', message: 'ACTIVITY_RATINGS_NOT_SUPPORTED: use published question answers for preferences' }] : []),
+    ...(round.optionSnapshotId && dto.activityAnswers.some((a) => a.kind === 'RATING' || a.kind === 'NO_PREFERENCE')
+      ? [
+          {
+            field: 'activityAnswers',
+            message: 'ACTIVITY_RATINGS_NOT_SUPPORTED: use published question answers for preferences',
+          },
+        ]
+      : []),
     ...validateQuestionAnswers(dto.answers ?? [], round.questions ?? []),
   ];
 }
@@ -54,9 +60,7 @@ function validateAvailability(intervals: AvailabilityIntervalDto[]): FieldError[
     }
   }
 
-  const sorted = parsed
-    .filter((p) => !Number.isNaN(p.start) && !Number.isNaN(p.end))
-    .sort((a, b) => a.start - b.start);
+  const sorted = parsed.filter((p) => !Number.isNaN(p.start) && !Number.isNaN(p.end)).sort((a, b) => a.start - b.start);
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i].start < sorted[i - 1].end) {
       errors.push({

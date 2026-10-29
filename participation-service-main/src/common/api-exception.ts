@@ -43,11 +43,14 @@ export class ApiException extends HttpException {
 }
 
 export const Errors = {
-  responsesIncomplete: () => new ApiException(409, 'RESPONSES_INCOMPLETE', 'Every member must submit a complete response before collection closes'),
-  unauthenticated: (message = 'Authentication required') =>
-    new ApiException(401, 'UNAUTHENTICATED', message),
-  forbidden: (message = 'You do not have access to this resource') =>
-    new ApiException(403, 'FORBIDDEN', message),
+  responsesIncomplete: () =>
+    new ApiException(
+      409,
+      'RESPONSES_INCOMPLETE',
+      'Every member must submit a complete response before collection closes',
+    ),
+  unauthenticated: (message = 'Authentication required') => new ApiException(401, 'UNAUTHENTICATED', message),
+  forbidden: (message = 'You do not have access to this resource') => new ApiException(403, 'FORBIDDEN', message),
   notFound: (message = 'Resource not found') => new ApiException(404, 'NOT_FOUND', message),
   invalidInput: (fieldErrors: FieldError[], message = 'Request validation failed') =>
     new ApiException(400, 'INVALID_INPUT', message, false, fieldErrors),

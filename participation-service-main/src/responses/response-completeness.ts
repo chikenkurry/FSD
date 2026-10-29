@@ -13,9 +13,7 @@ export function decisionStatus(
 ): DecisionResponseStatus {
   if (!response) return 'incomplete';
   if (response.acknowledgedOptionRevision !== optionRevision) return 'stale';
-  return isComplete(response, activityIds, questions) && response.status === 'SUBMITTED'
-    ? 'complete'
-    : 'incomplete';
+  return isComplete(response, activityIds, questions) && response.status === 'SUBMITTED' ? 'complete' : 'incomplete';
 }
 
 export function isComplete(

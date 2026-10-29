@@ -1,13 +1,5 @@
 import { InMemoryResponseRepository, InMemoryRoundRepository } from '../testing/in-memory-repositories';
-import {
-  ACTIVITY_A,
-  MEMBER_1,
-  MEMBER_2,
-  PLAN_ID,
-  ROUND_ID,
-  aDraft,
-  aRound,
-} from '../testing/fixtures';
+import { ACTIVITY_A, MEMBER_1, MEMBER_2, PLAN_ID, ROUND_ID, aDraft, aRound } from '../testing/fixtures';
 import { ResponsesService } from './responses.service';
 
 const member1 = { memberId: MEMBER_1, planId: PLAN_ID };
@@ -36,12 +28,12 @@ describe('ResponsesService', () => {
 
     it('is not found for a round that was never provisioned', async () => {
       const { service } = setup();
-      await expect(
-        service.getOwn('99999999-9999-4999-8999-999999999999', member1),
-      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(service.getOwn('99999999-9999-4999-8999-999999999999', member1)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
     });
 
-    it("is forbidden for a session from a different plan", async () => {
+    it('is forbidden for a session from a different plan', async () => {
       const { service } = setup();
       const outsider = { memberId: MEMBER_1, planId: '77777777-7777-4777-8777-777777777777' };
       await expect(service.getOwn(ROUND_ID, outsider)).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -85,32 +77,28 @@ describe('ResponsesService', () => {
         }),
       );
       expect(saved.availability).toEqual([]);
-      expect(saved.activityAnswers).toEqual([
-        { activityId: ACTIVITY_A, kind: 'CANNOT_JOIN', rating: null },
-      ]);
+      expect(saved.activityAnswers).toEqual([{ activityId: ACTIVITY_A, kind: 'CANNOT_JOIN', rating: null }]);
     });
 
     it('stores instants in UTC regardless of the offset sent', async () => {
       const { service } = setup();
       const saved = await service.saveDraft(ROUND_ID, member1, aDraft());
-      expect(saved.availability).toEqual([
-        { startAt: '2026-10-09T03:00:00.000Z', endAt: '2026-10-09T05:00:00.000Z' },
-      ]);
+      expect(saved.availability).toEqual([{ startAt: '2026-10-09T03:00:00.000Z', endAt: '2026-10-09T05:00:00.000Z' }]);
     });
 
     it('rejects a stale revision instead of overwriting', async () => {
       const { service } = setup();
       await service.saveDraft(ROUND_ID, member1, aDraft());
-      await expect(
-        service.saveDraft(ROUND_ID, member1, aDraft({ expectedRevision: 0 })),
-      ).rejects.toMatchObject({ code: 'STALE_VERSION' });
+      await expect(service.saveDraft(ROUND_ID, member1, aDraft({ expectedRevision: 0 }))).rejects.toMatchObject({
+        code: 'STALE_VERSION',
+      });
     });
 
     it('rejects a first save that claims an earlier revision exists', async () => {
       const { service } = setup();
-      await expect(
-        service.saveDraft(ROUND_ID, member1, aDraft({ expectedRevision: 3 })),
-      ).rejects.toMatchObject({ code: 'STALE_VERSION' });
+      await expect(service.saveDraft(ROUND_ID, member1, aDraft({ expectedRevision: 3 }))).rejects.toMatchObject({
+        code: 'STALE_VERSION',
+      });
     });
 
     it('reports STALE_VERSION when another first save wins the race', async () => {
@@ -169,11 +157,7 @@ describe('ResponsesService', () => {
 
     it('rejects an incomplete draft', async () => {
       const { service } = setup();
-      await service.saveDraft(
-        ROUND_ID,
-        member1,
-        aDraft({ budget: { kind: 'UNANSWERED' }, activityAnswers: [] }),
-      );
+      await service.saveDraft(ROUND_ID, member1, aDraft({ budget: { kind: 'UNANSWERED' }, activityAnswers: [] }));
       await expect(service.submit(ROUND_ID, member1, { expectedRevision: 1 })).rejects.toMatchObject({
         code: 'INVALID_INPUT',
       });

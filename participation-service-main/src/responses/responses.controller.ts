@@ -24,10 +24,7 @@ export class ResponsesController {
     summary: "Read the caller's own draft",
     description: 'Returns an empty draft with revision 0 if the member has never saved.',
   })
-  get(
-    @Param('roundId') roundId: string,
-    @CurrentMember() member: AuthorisedMember,
-  ): Promise<MyResponseView> {
+  get(@Param('roundId') roundId: string, @CurrentMember() member: AuthorisedMember): Promise<MyResponseView> {
     return this.responses.getOwn(roundId, member);
   }
 
@@ -62,9 +59,12 @@ export class ResponsesController {
 
   @Post('copy')
   @HttpCode(200)
-  @ApiOperation({summary:'Copy the caller’s earlier answers into a new draft requiring review'})
-  copy(@Param('roundId') roundId: string, @CurrentMember() member: AuthorisedMember,
-       @Body() dto: CopyResponseDto): Promise<MyResponseView> {
+  @ApiOperation({ summary: 'Copy the caller’s earlier answers into a new draft requiring review' })
+  copy(
+    @Param('roundId') roundId: string,
+    @CurrentMember() member: AuthorisedMember,
+    @Body() dto: CopyResponseDto,
+  ): Promise<MyResponseView> {
     return this.responses.copyDraft(roundId, dto.sourceRoundId, member);
   }
 }

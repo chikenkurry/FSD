@@ -13,9 +13,7 @@ import { SessionAuthoriser } from './session-authoriser';
       provide: SessionAuthoriser,
       inject: [AppConfig, RoundRepository],
       useFactory: (config: AppConfig, rounds: RoundRepository): SessionAuthoriser =>
-        config.authMode === 'dev'
-          ? new DevSessionAuthoriser(rounds)
-          : new PlanningSessionAuthoriser(config),
+        config.authMode === 'dev' ? new DevSessionAuthoriser(rounds) : new PlanningSessionAuthoriser(config),
     },
     MemberSessionGuard,
     InternalTokenGuard,

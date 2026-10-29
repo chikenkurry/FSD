@@ -61,9 +61,7 @@ describe('MemberSessionGuard', () => {
   });
 
   it('propagates the authoriser failing closed', async () => {
-    const authorise = jest.fn().mockRejectedValue(
-      Object.assign(new Error('down'), { code: 'UPSTREAM_UNAVAILABLE' }),
-    );
+    const authorise = jest.fn().mockRejectedValue(Object.assign(new Error('down'), { code: 'UPSTREAM_UNAVAILABLE' }));
     const req = requestWith({ authorization: 'Bearer t' }, { roundId: ROUND });
     await expect(guardWith(authorise).canActivate(contextFor(req))).rejects.toMatchObject({
       code: 'UPSTREAM_UNAVAILABLE',

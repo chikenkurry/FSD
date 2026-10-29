@@ -12,9 +12,7 @@ function aStored(overrides: Partial<ResponseRecord> = {}): ResponseRecord {
     budgetCapMinor: 3500,
     privateNote: 'must never appear',
     updatedAt: new Date('2026-10-09T12:00:00.000Z'),
-    availability: [
-      { startAt: new Date('2026-10-09T03:00:00.000Z'), endAt: new Date('2026-10-09T05:00:00.000Z') },
-    ],
+    availability: [{ startAt: new Date('2026-10-09T03:00:00.000Z'), endAt: new Date('2026-10-09T05:00:00.000Z') }],
     activityAnswers: [
       { activityId: ACTIVITY_A, kind: 'RATING', rating: 4 },
       { activityId: ACTIVITY_B, kind: 'NEEDS_INFO', rating: null },
@@ -45,9 +43,7 @@ describe('toDecisionSnapshot', () => {
       budget: { kind: 'limited', max_cost_minor: 3500, currency: 'SGD' },
       activity_flags: [{ activity_id: ACTIVITY_B, flag: 'needs_information' }],
     });
-    expect(snapshot.preferences).toEqual([
-      { participant_id: MEMBER_1, activity_id: ACTIVITY_A, rating: 4 },
-    ]);
+    expect(snapshot.preferences).toEqual([{ participant_id: MEMBER_1, activity_id: ACTIVITY_A, rating: 4 }]);
     expect(JSON.stringify(snapshot)).not.toContain('must never appear');
   });
 
@@ -72,22 +68,15 @@ describe('toDecisionSnapshot', () => {
       createdAt: new Date('2026-10-10T00:00:00.000Z'),
     });
     expect(snapshot.constraints[0].budget).toEqual({ kind: 'unlimited', currency: 'SGD' });
-    expect(snapshot.preferences).toEqual([
-      { participant_id: MEMBER_1, activity_id: ACTIVITY_A, rating: 2 },
-    ]);
-    expect(snapshot.constraints[0].activity_flags).toEqual([
-      { activity_id: ACTIVITY_B, flag: 'cannot_join' },
-    ]);
+    expect(snapshot.preferences).toEqual([{ participant_id: MEMBER_1, activity_id: ACTIVITY_A, rating: 2 }]);
+    expect(snapshot.constraints[0].activity_flags).toEqual([{ activity_id: ACTIVITY_B, flag: 'cannot_join' }]);
   });
 });
 
 describe('isComplete', () => {
   it('requires a budget and an answer for every activity', () => {
     expect(
-      isComplete({ budgetKind: 'UNANSWERED', activityAnswers: [{ activityId: ACTIVITY_A }] }, [
-        ACTIVITY_A,
-        ACTIVITY_B,
-      ]),
+      isComplete({ budgetKind: 'UNANSWERED', activityAnswers: [{ activityId: ACTIVITY_A }] }, [ACTIVITY_A, ACTIVITY_B]),
     ).toBe(false);
     expect(
       isComplete(
