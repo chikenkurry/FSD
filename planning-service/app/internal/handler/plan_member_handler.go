@@ -90,7 +90,7 @@ func (h *PlanMemberHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /v1/plan_members/{plan_id}
-func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request)  {
+func (h *PlanMemberHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	planID, ok := httpapi.PathUUID(w, r, "plan_id", "Invalid Plan UUID format")
 	if !ok {
 		return

@@ -81,8 +81,6 @@ func (r *UserRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID)
 	return &user, nil
 }
 
-
-
 // Update replaces a user's username and email. An empty email clears it
 // (email is optional; see migration 004).
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {

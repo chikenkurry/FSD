@@ -102,9 +102,6 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
-
 // PUT /users/{id} - Update user
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	userID, ok := httpapi.PathUUID(w, r, "id", "Invalid UUID format")
