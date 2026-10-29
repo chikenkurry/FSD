@@ -44,7 +44,7 @@ type ProposedActivityResponse struct {
 	EstCostPerPerson float64         `json:"est_cost_per_person"`
 	DurationMinutes  int             `json:"duration_minutes"`
 	Metadata         json.RawMessage `json:"metadata"`
-	CreatedAt        time.Time  	 `json:"created_at"`
+	CreatedAt        time.Time       `json:"created_at"`
 }
 
 // POST /v1/proposed_activity/plans/{plan_id} - Add activity to a plan

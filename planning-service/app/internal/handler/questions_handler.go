@@ -53,13 +53,13 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	question := &model.Question{
-		PlanID: req.PlanID,
-		Title: req.Title,
-		Type: req.Type,
+		PlanID:      req.PlanID,
+		Title:       req.Title,
+		Type:        req.Type,
 		Description: req.Description,
-		IsRequired: req.IsRequired,
-		SortOrder: req.SortOrder,
-		Options: req.Options,
+		IsRequired:  req.IsRequired,
+		SortOrder:   req.SortOrder,
+		Options:     req.Options,
 	}
 	if err := h.repo.Create(r.Context(), question); err != nil {
 		WriteError(w, http.StatusInternalServerError, "Fail to create question")
@@ -69,10 +69,10 @@ func (h *QuestionHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /v1/plans/question/{plan_id}
-func (h *QuestionHandler)GetQuestionByPlanId(w http.ResponseWriter, r *http.Request) {
+func (h *QuestionHandler) GetQuestionByPlanId(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("plan_id")
 	planID, err := uuid.Parse(id)
-	if err != nil{
+	if err != nil {
 		WriteError(w, http.StatusBadRequest, "Invalid Plan UUID format")
 		return
 	}

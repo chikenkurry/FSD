@@ -9,7 +9,7 @@ import (
 type InvitationStatus string
 
 const (
-	InvitationStatusPending InvitationStatus = "PENDING"
+	InvitationStatusPending  InvitationStatus = "PENDING"
 	InvitationStatusAccepted InvitationStatus = "ACCEPTED"
 	InvitationStatusRevoked  InvitationStatus = "REVOKED"
 	InvitationStatusExpired  InvitationStatus = "EXPIRED"
@@ -25,7 +25,7 @@ type Invitation struct {
 	CreatedAt time.Time        `gorm:"autoCreateTime" json:"created_at"`
 
 	// Optional limits
-	MaxUses  int `gorm:"default:0" json:"max_uses"`  // 0 = unlimited
+	MaxUses  int `gorm:"default:0" json:"max_uses"` // 0 = unlimited
 	UseCount int `gorm:"default:0" json:"use_count"`
 
 	// Relations
