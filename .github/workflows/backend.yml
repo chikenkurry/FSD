@@ -93,6 +93,8 @@ jobs:
           cache-dependency-path: participation-service-main/package-lock.json
       - run: npm ci
       - run: npm run prisma:generate
+      - run: npm run lint
+      - run: npm run format:check
       - run: npm run typecheck
       - run: npm run test:cov -- --runInBand
       - run: npm run migrate:deploy
