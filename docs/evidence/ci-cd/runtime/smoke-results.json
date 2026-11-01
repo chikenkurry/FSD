@@ -1,0 +1,26 @@
+﻿{
+    "checkedAtUtc":  "2026-10-24T11:53:30.1459029Z",
+    "imageTag":  "c5af120d1fd7-dirty",
+    "result":  "pass",
+    "checks":  [
+                   {
+                       "check":  "Frontend",
+                       "url":  "http://127.0.0.1:15173/health",
+                       "status":  "pass"
+                   },
+                   {
+                       "check":  "Planning",
+                       "url":  "http://127.0.0.1:18080/health",
+                       "status":  "pass"
+                   },
+                   {
+                       "check":  "Participation",
+                       "url":  "http://127.0.0.1:13002/health/ready",
+                       "status":  "pass"
+                   },
+                   {
+                       "check":  "Compose services",
+                       "status":  "pass"
+                   }
+               ]
+}

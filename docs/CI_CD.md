@@ -19,6 +19,9 @@ push or pull request
   -> downloadable evidence artifact
 ```
 
+The completed demonstration, its screenshots and the claims each item supports
+are recorded in [CI/CD demonstration evidence](CI_CD_EVIDENCE.md).
+
 ## Existing continuous integration
 
 - `.github/workflows/backend.yml` tests Decision, Planning and Participation, then
