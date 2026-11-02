@@ -21,13 +21,25 @@
       </figure>
     </div>
     <div class="body">
-      <div class="head">
+      <div v-if="position || kindLabel" class="eyebrow">
         <span v-if="position" class="position" aria-hidden="true">{{ position }}</span>
-        <h3>{{ title }}</h3>
-        <span v-if="kind" class="kind">{{ kindLabel }}</span>
+        <span v-if="kindLabel" class="kind">{{ kindLabel }}</span>
       </div>
-      <p v-if="facts1" class="meta">{{ facts1 }}</p>
-      <p v-if="facts2" class="meta address">{{ facts2 }}</p>
+      <h3>
+        <span class="name">{{ heading.name }}</span
+        ><template v-if="heading.detail"
+          ><span class="sr-only"> – </span><span class="detail">{{ heading.detail }}</span></template
+        >
+      </h3>
+      <p v-if="data?.rating || details.length" class="meta">
+        <span v-if="data?.rating" class="rating"
+          ><span class="star" aria-hidden="true">★</span><strong>{{ data.rating.toFixed(1) }}</strong
+          ><span class="sr-only"> stars</span
+          ><span v-if="data.rating_count" class="count">({{ data.rating_count.toLocaleString() }})</span></span
+        >
+        <span v-for="part in details" :key="part" class="detail-part">{{ part }}</span>
+      </p>
+      <p v-if="facts2" class="address"><UiIcon name="pin" />{{ facts2 }}</p>
       <div v-if="loading" class="loading" aria-hidden="true">
         <span class="skeleton line"></span><span class="skeleton line"></span><span class="skeleton line short"></span>
       </div>
@@ -42,10 +54,13 @@
           <p>{{ data.review_summary }}</p>
           <p v-if="data.review_disclosure" class="disclosure">{{ data.review_disclosure }}</p>
         </details>
-        <p class="provenance">
-          <a v-if="data?.maps_url" :href="data.maps_url" target="_blank" rel="noopener noreferrer"
-            >View on Google Maps</a
-          >
+        <p
+          v-if="data?.maps_url || source === 'organiser' || source === 'ai_general' || sources.length"
+          class="provenance"
+        >
+          <a v-if="data?.maps_url" class="maps-link" :href="data.maps_url" target="_blank" rel="noopener noreferrer"
+            >View on Google Maps<UiIcon name="external"
+          /></a>
           <span v-if="source === 'organiser'">Overview corrected by the organiser.</span>
           <span v-else-if="source === 'ai_general'">General description by AI, not about a specific venue.</span>
           <span v-else-if="sources.length"
@@ -73,6 +88,8 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import type { Brief, Overview, OptionKind, PublishedFact } from '@/types/form';
 import { factLabel, factValue } from '@/services/facts';
 import { apiService } from '@/services/api';
+import { splitTitle } from '@/services/labels';
+import UiIcon from './UiIcon.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -147,17 +164,18 @@ const sources = computed(() => {
     })
     .slice(0, 2);
 });
-const facts1 = computed(() => {
+const heading = computed(() => splitTitle(props.title));
+// The rating is shown on its own; the rest of the live details follow it.
+const details = computed(() => {
   const d = data.value;
   const parts: string[] = [];
-  if (d?.rating) parts.push(`${d.rating.toFixed(1)} ★${d.rating_count ? ` (${d.rating_count.toLocaleString()})` : ''}`);
   if (d?.price_level != null) parts.push(d.price_level === 0 ? 'Free' : '$'.repeat(d.price_level));
   if (d?.kind_label) parts.push(d.kind_label);
   const note = brief.value?.price_note || d?.price_note;
   if (note) parts.push(note);
   const when = brief.value?.when || d?.when;
   if (when) parts.push(when);
-  return parts.join(' · ');
+  return parts;
 });
 const facts2 = computed(() => data.value?.address || brief.value?.where || data.value?.where || '');
 
@@ -216,7 +234,7 @@ onBeforeUnmount(() => Object.values(urls).forEach((url) => URL.revokeObjectURL(u
   grid-template-columns: 2fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 2px;
-  height: 188px;
+  height: 200px;
   background: var(--sky-100);
 }
 .photo-strip:has(figure:only-child) {
@@ -250,6 +268,9 @@ onBeforeUnmount(() => Object.values(urls).forEach((url) => URL.revokeObjectURL(u
   opacity: 1;
   transform: none;
 }
+.overview-card:hover .photo-strip img.ready {
+  transform: scale(1.03);
+}
 .photo-placeholder {
   position: absolute;
   inset: 0;
@@ -262,10 +283,14 @@ figcaption {
   bottom: 8px;
   max-width: calc(100% - 16px);
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 0.6875rem;
   color: #fff;
-  background: rgba(10, 33, 80, 0.72);
+  background: rgba(10, 20, 40, 0.55);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 figcaption a {
   color: #fff;
@@ -282,16 +307,32 @@ figcaption a {
   flex: 1;
   min-width: 0;
 }
-.head {
+.eyebrow {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
-.head h3 {
-  font-size: 1.125rem;
+h3 {
   margin: 0;
   overflow-wrap: anywhere;
+}
+h3 .name {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  color: var(--night);
+}
+h3 .detail {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.compact h3 .name {
+  font-size: 1.125rem;
 }
 .position {
   display: inline-grid;
@@ -305,26 +346,62 @@ figcaption a {
   font-size: 0.8125rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  align-self: center;
 }
 .chosen .position {
   background: var(--blue);
   color: #fff;
 }
 .kind {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--muted);
-  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   font-size: 0.875rem;
   color: var(--muted);
-  margin: 6px 0 0;
+  margin: 10px 0 0 -16px;
+  overflow-wrap: anywhere;
+  /* Every part carries a leading dot; the dot of whichever part starts a line falls in the clipped edge. */
+  clip-path: inset(0 0 0 16px);
+}
+.meta > * {
+  position: relative;
+  margin-left: 16px;
+}
+.meta > *::before {
+  content: '·';
+  position: absolute;
+  left: -11px;
+  color: var(--faint);
+}
+.rating strong {
+  color: var(--ink);
+}
+.star {
+  margin-right: 3px;
+  color: #d98a00;
+}
+.count {
+  margin-left: 4px;
+}
+.address {
+  display: flex;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 4px 0 0;
   overflow-wrap: anywhere;
 }
-.meta.address {
-  margin-top: 0;
+.address .ui-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 3px;
 }
 .tagline {
   font-size: 0.9375rem;
@@ -361,40 +438,61 @@ figcaption a {
   color: var(--muted);
 }
 .highlights {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .highlights li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  font-size: 0.875rem;
-  color: var(--ink-2);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--sky-50);
+  border: 1px solid var(--sky-100);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--blue-ink);
   min-width: 0;
   overflow-wrap: anywhere;
-}
-.highlights li::before {
-  content: '';
-  flex-shrink: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 1px;
-  background: var(--blue);
-  transform: translateY(-2px);
 }
 .compact .reviews {
   display: none;
 }
+/* Links sit at the foot of the card so cards in a row line up. */
 .provenance {
+  position: relative;
   font-size: 0.8125rem;
   color: var(--muted);
-  margin: 12px 0 0;
+  margin: auto 0 0;
+  padding-top: 32px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  flex-direction: column;
+  gap: 6px;
+}
+.provenance::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+.maps-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.maps-link:hover {
+  text-decoration: underline;
+}
+.maps-link .ui-icon {
+  width: 14px;
+  height: 14px;
 }
 .loading {
   display: grid;
