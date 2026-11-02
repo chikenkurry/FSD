@@ -1,7 +1,7 @@
 <template>
   <div v-if="invited" class="invite-page">
     <aside class="invite-side">
-      <span class="brand on-dark"><BrandMark />What2Do</span>
+      <span class="brand invite-brand"><BrandMark />What2Do</span>
       <div class="invite-side-body">
         <p class="invite-side-title">Someone wants your view on a group decision.</p>
         <ol class="mini-route">
@@ -774,7 +774,8 @@ onBeforeUnmount(() => observer?.disconnect());
   background: var(--night);
   color: #fff;
 }
-.brand.on-dark {
+.invite-brand {
+  align-self: flex-start;
   color: #fff;
 }
 .invite-side-body {

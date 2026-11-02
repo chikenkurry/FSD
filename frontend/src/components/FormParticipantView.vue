@@ -1,6 +1,12 @@
 <template>
   <section v-if="snapshot && draft" :class="['response-flow', { guided }]" aria-labelledby="flow-heading">
-    <p v-if="recoveryNotice" class="helper-text">{{ recoveryNotice }}</p>
+    <Transition name="reveal"
+      ><p v-if="recoveryNotice" class="flow-notice" role="status">
+        <UiIcon name="refresh" /><span>{{ recoveryNotice }}</span
+        ><button type="button" class="btn-quiet btn-icon" aria-label="Dismiss" @click="recoveryNotice = ''">
+          <UiIcon name="close" />
+        </button></p
+    ></Transition>
     <div v-if="snapshot.previous_round_id && draft.revision === 0 && !closed" class="callout">
       <p>
         This is a new round. You can copy your earlier answers, then review them against the revised options and confirm
@@ -18,10 +24,12 @@
       <div v-if="page.kind === 'intro'" key="intro" class="flow-page intro">
         <div class="intro-head">
           <div>
-            <h1 id="flow-heading" ref="heading" tabindex="-1">{{ question }}</h1>
             <p v-if="question !== title" class="plan-context">
-              Part of <strong>{{ title }}</strong>
+              <UiIcon name="people" /><span
+                >Part of <strong>{{ title }}</strong></span
+              >
             </p>
+            <h1 id="flow-heading" ref="heading" tabindex="-1">{{ question }}</h1>
             <p v-if="description" class="lede">{{ description }}</p>
           </div>
           <div class="intro-start">
@@ -35,9 +43,12 @@
             <span v-if="dueText" :class="['due', { overdue: overdue }]">{{ dueText }}</span>
           </div>
         </div>
-        <h2 class="section-label">
-          The options <span class="muted">{{ snapshot.options.length }}</span>
-        </h2>
+        <div class="options-head">
+          <h2 class="section-label">
+            The options <span class="muted">{{ snapshot.options.length }}</span>
+          </h2>
+          <p class="helper-text">Have a look before you start. The questions ask what matters to you.</p>
+        </div>
         <OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" />
         <p class="privacy-note">
           <UiIcon name="lock" />Your answers are private. The group only sees the combined result.
@@ -53,21 +64,17 @@
         novalidate
       >
         <fieldset :disabled="busy || closed">
-          <p :class="['role-tag', page.q.role || 'soft']">
-            {{
-              page.q.answer_format === 'option_rating'
-                ? 'Your ratings · options you love rank higher'
-                : page.q.answer_format === 'date_poll'
-                  ? 'Helps pick the date · doesn’t change which option wins'
-                  : roleHint(page.q.role)
-            }}
-          </p>
+          <div class="question-tags">
+            <span :class="['role-tag', page.q.role || 'soft']">{{ questionKind(page.q).name }}</span>
+            <span v-if="page.q.required" class="required-tag">Required</span>
+          </div>
           <template v-if="page.q.answer_format === 'date_poll'">
             <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
               <legend>
                 <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">
-                  {{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span>
+                  {{ page.q.label }}
                 </h2>
+                <span class="question-help">{{ questionKind(page.q).help }}</span>
               </legend>
               <ul class="rating-list">
                 <li v-for="(day, di) in pollDates(page.q)" :key="day" class="rating-row" :style="{ '--i': di }">
@@ -100,8 +107,9 @@
             <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
               <legend>
                 <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">
-                  {{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span>
+                  {{ page.q.label }}
                 </h2>
+                <span class="question-help">{{ questionKind(page.q).help }}</span>
               </legend>
               <ul class="rating-list">
                 <li
@@ -110,7 +118,13 @@
                   class="rating-row"
                   :style="{ '--i': oi }"
                 >
-                  <span class="rating-option" :id="`rate-label-${option.option_id}`">{{ option.title }}</span>
+                  <span class="rating-option" :id="`rate-label-${option.option_id}`"
+                    >{{ splitTitle(option.title).name
+                    }}<template v-if="splitTitle(option.title).detail"
+                      ><span class="sr-only"> – </span
+                      ><span class="rating-detail">{{ splitTitle(option.title).detail }}</span></template
+                    ></span
+                  >
                   <div class="rating-scale" role="radiogroup" :aria-labelledby="`rate-label-${option.option_id}`">
                     <label
                       v-for="level in ratingLevels"
@@ -137,12 +151,10 @@
             <fieldset class="answer-group" :aria-describedby="error ? 'flow-error' : undefined">
               <legend>
                 <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">
-                  {{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span>
+                  {{ page.q.label }}
                 </h2>
+                <span class="question-help">{{ questionKind(page.q).help }}</span>
               </legend>
-              <p v-if="page.q.answer_format === 'multi_choice'" class="helper-text choose-any">
-                Choose all that apply.
-              </p>
               <div v-if="page.q.answer_format === 'choice'" class="choice-list stacked">
                 <label v-for="choice in page.q.choices" :key="choiceId(choice)" class="choice-option"
                   ><input
@@ -191,31 +203,46 @@
           </template>
           <template v-else>
             <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">
-              <label :for="`answer-${page.q.question_id}`"
-                >{{ page.q.label }}<span v-if="page.q.required" class="required-mark" aria-hidden="true">*</span></label
-              >
+              <label :for="`answer-${page.q.question_id}`">{{ page.q.label }}</label>
             </h2>
-            <div class="single-input">
+            <p :id="`help-${page.q.question_id}`" class="question-help">{{ questionKind(page.q).help }}</p>
+            <div v-if="page.q.answer_format === 'number'" class="number-field">
               <input
-                v-if="page.q.answer_format === 'number'"
                 :id="`answer-${page.q.question_id}`"
                 v-model.number="values[page.q.question_id]"
                 type="number"
                 step="any"
                 inputmode="decimal"
-                :aria-describedby="error ? 'flow-error' : undefined"
-              />
-              <input
-                v-else
-                :id="`answer-${page.q.question_id}`"
-                v-model="values[page.q.question_id]"
-                :aria-describedby="error ? 'flow-error' : undefined"
+                placeholder="0"
+                :aria-describedby="describedBy(page.q)"
               />
               <span v-if="page.q.mapping?.unit" class="unit">{{ page.q.mapping.unit }}</span>
+            </div>
+            <div v-else class="text-answer">
+              <textarea
+                :id="`answer-${page.q.question_id}`"
+                :value="textValue(page.q)"
+                @input="values[page.q.question_id] = ($event.target as HTMLTextAreaElement).value"
+                rows="4"
+                :maxlength="textLimit"
+                placeholder="Write your answer in your own words"
+                :aria-describedby="describedBy(page.q)"
+                @keydown.ctrl.enter.exact.prevent="next"
+                @keydown.meta.enter.exact.prevent="next"
+              ></textarea>
+              <div class="text-answer-foot" aria-hidden="true">
+                <span class="shortcut"
+                  ><kbd>{{ submitKey }}</kbd> + <kbd>Enter</kbd> to continue</span
+                >
+                <span :class="['char-count', { near: textLength(page.q) > textLimit * 0.9 }]"
+                  >{{ textLength(page.q) }} / {{ textLimit }}</span
+                >
+              </div>
             </div>
           </template>
           <fieldset v-if="weighable(page.q)" class="importance">
             <legend>How much does this matter to you?</legend>
+            <p class="helper-text">This only changes how much your own answer counts.</p>
             <div class="importance-scale">
               <label
                 v-for="level in importanceLevels"
@@ -358,33 +385,38 @@
 
       <!-- Submitted -->
       <div v-else key="done" class="flow-page done">
-        <span class="seal" aria-hidden="true"
-          ><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg
-        ></span>
+        <p class="done-status"><UiIcon name="check" />Submitted</p>
         <h2 id="flow-heading" ref="heading" tabindex="-1" class="question-title">Your response is in</h2>
         <p class="lede">
-          Thanks{{ name ? `, ${name}` : '' }}. Once the organiser closes collection, the recommendation will appear
-          here.<template v-if="dueText && !overdue">
-            You can change your answers until then ({{ dueText.toLowerCase() }}).</template
-          >
+          Thanks{{ name ? `, ${name}` : '' }}. Only you can see these answers. When the organiser closes the round, the
+          options are ranked using everyone’s answers and the result appears on this page.
         </p>
-        <div class="return-card">
-          <p>
-            <strong>Coming back later?</strong> This device remembers you. To check results from another phone or
-            computer, keep your private return link.
-          </p>
-          <button type="button" class="btn-small" @click="copyReturn">
-            <UiIcon :name="returnCopied ? 'check' : 'link'" />{{
-              returnCopied ? 'Return link copied' : 'Copy my return link'
-            }}
-          </button>
+        <p v-if="dueText && !overdue" class="done-due">{{ dueText }}. You can change your answers until then.</p>
+
+        <div class="done-answers">
+          <h3>Your answers</h3>
+          <dl>
+            <div v-for="q in snapshot.questions" :key="q.question_id">
+              <dt>{{ q.label }}</dt>
+              <dd :class="{ muted: !answered(q) }">{{ answerText(q) }}</dd>
+            </div>
+          </dl>
         </div>
-        <div class="flow-actions centred">
+
+        <div class="flow-actions">
           <button v-if="guided" class="btn-primary" @click="emit('refresh')">
             <UiIcon name="refresh" />Check for results
           </button>
           <button @click="go(pages.length - 1)">Edit my response</button>
         </div>
+        <p class="return-line">
+          <span>On another phone or computer?</span>
+          <button type="button" class="btn-quiet btn-small" @click="copyReturn">
+            <UiIcon :name="returnCopied ? 'check' : 'link'" />{{
+              returnCopied ? 'Return link copied' : 'Copy my return link'
+            }}
+          </button>
+        </p>
         <details v-if="guided" class="done-options">
           <summary>See the options again</summary>
           <OptionCards :options="snapshot.options" :currency="snapshot.currency" :round-id="roundId" compact />
@@ -409,6 +441,7 @@ import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue';
 import { checkpointKey, readCheckpoint, writeCheckpoint, removeCheckpoint } from '@/services/checkpoints';
 import { apiService } from '@/services/api';
 import { returnLink } from '@/services/returnLink';
+import { splitTitle } from '@/services/labels';
 import { useAuthStore } from '@/stores/auth';
 import type { Snapshot, Draft, Answer, Choice, DateAnswer, Importance, PublishedQuestion } from '@/types/form';
 const props = withDefaults(
@@ -601,12 +634,30 @@ const progressLabel = computed(() =>
       : 'Review',
 );
 
-function roleHint(role?: string) {
-  return role === 'hard'
-    ? 'Requirement · options that don’t match are ruled out'
-    : role === 'informational'
-      ? 'For context · doesn’t affect the ranking'
-      : 'Preference · helps rank the options';
+// A short name for what the question does, and one plain sentence on how the answer is used.
+function questionKind(q: PublishedQuestion) {
+  const extra = q.answer_format === 'multi_choice' ? ' Choose all that apply.' : '';
+  if (q.answer_format === 'option_rating')
+    return { name: 'Your ratings', help: 'Options you love rank higher for the group.' };
+  if (q.answer_format === 'date_poll')
+    return { name: 'Dates', help: 'This helps pick the date. It doesn’t change which option wins.' };
+  if (q.role === 'hard') return { name: 'Requirement', help: `Options that don’t meet this are ruled out.${extra}` };
+  if (q.role === 'informational')
+    return { name: 'For context', help: `This is shared with the organiser and doesn’t affect the ranking.${extra}` };
+  return { name: 'Preference', help: `Your answer helps rank the options.${extra}` };
+}
+// Written answers are stored with the rest of the response, which the server caps at 16,000 characters.
+const textLimit = 2000;
+const submitKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl';
+function textValue(q: PublishedQuestion) {
+  const v = values[q.question_id];
+  return typeof v === 'string' ? v : '';
+}
+function textLength(q: PublishedQuestion) {
+  return textValue(q).length;
+}
+function describedBy(q: PublishedQuestion) {
+  return [`help-${q.question_id}`, error.value ? 'flow-error' : ''].filter(Boolean).join(' ');
 }
 function choiceId(choice: Choice) {
   return typeof choice === 'string' ? choice : choice.choice_id;
@@ -861,7 +912,8 @@ async function load() {
           submitted.value = false;
         }
         at.value = Math.max(0, Math.min(pages.value.length - 1, recovered.at));
-        recoveryNotice.value = 'Your response and place in the form were restored.';
+        // Only mention recovery when unsaved edits were actually brought back.
+        if (recovered.dirty) recoveryNotice.value = 'We brought back the answers you hadn’t saved yet.';
       } else if (recovered) {
         removeCheckpoint(recoveryKey);
         recoveryNotice.value =
@@ -959,12 +1011,24 @@ onMounted(() => {
   outline: none;
 }
 .plan-context {
-  font-size: 1.0625rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background: var(--sky-50);
+  border: 1px solid var(--sky-100);
+  font-size: 0.875rem;
   color: var(--muted);
-  margin-bottom: 8px;
+  margin-bottom: 14px;
+}
+.plan-context .ui-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--blue);
 }
 .plan-context strong {
-  color: var(--ink);
+  color: var(--blue-ink);
   font-weight: 600;
 }
 .intro-start {
@@ -992,6 +1056,20 @@ onMounted(() => {
   overflow-wrap: anywhere;
   font-size: 1.0625rem;
 }
+.options-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 24px;
+  margin: 32px 0 16px;
+}
+.options-head .section-label {
+  margin: 0;
+}
+.options-head .helper-text {
+  margin: 0;
+}
 .section-label {
   font-size: 1.125rem;
   margin: 28px 0 14px;
@@ -1016,42 +1094,56 @@ onMounted(() => {
   margin-top: 2px;
   color: var(--blue);
 }
-.role-tag {
+.question-tags {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--blue-ink);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
-.role-tag::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--blue);
+.role-tag,
+.required-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.role-tag {
+  background: var(--sky-50);
+  color: var(--blue-ink);
 }
 .role-tag.hard {
+  background: var(--warn-soft);
   color: var(--warn);
 }
-.role-tag.hard::before {
-  background: #d98a00;
-}
 .role-tag.informational {
+  background: #eef2f7;
   color: var(--muted);
 }
-.role-tag.informational::before {
-  background: var(--faint);
+.required-tag {
+  padding: 1px 9px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
 }
 .question-title {
-  font-size: clamp(1.5rem, 1.2rem + 1vw, 2.125rem);
-  font-weight: 300;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.5rem, 1.25rem + 0.8vw, 2rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   color: var(--night);
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+  max-width: 36ch;
   overflow-wrap: anywhere;
+}
+.question-help {
+  display: block;
+  margin: 0 0 24px;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--muted);
 }
 .question-title label {
   margin: 0;
@@ -1062,10 +1154,7 @@ onMounted(() => {
   width: 100%;
 }
 .answer-group > legend .question-title {
-  margin-bottom: 24px;
-}
-.choose-any {
-  margin: -14px 0 16px;
+  margin-bottom: 8px;
 }
 .choice-list.stacked {
   grid-template-columns: minmax(0, 1fr);
@@ -1095,17 +1184,77 @@ onMounted(() => {
 .choice-option input[type='checkbox'] {
   margin-right: 14px;
 }
-.single-input {
+/* Written answers: a roomy box that grows with the text. */
+.text-answer textarea {
+  display: block;
+  min-height: 148px;
+  max-height: 420px;
+  padding: 14px 16px;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  border-radius: 12px;
+  resize: vertical;
+  field-sizing: content;
+}
+.text-answer-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.shortcut kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.char-count.near {
+  color: var(--warn);
+  font-weight: 600;
+}
+@media (hover: none) {
+  .shortcut {
+    visibility: hidden;
+  }
+}
+/* Numbers: the unit sits inside the field. */
+.number-field {
   display: flex;
   align-items: center;
-  gap: 12px;
-  max-width: 480px;
+  max-width: 320px;
+  border: 1px solid var(--control-line);
+  border-radius: 12px;
+  background: var(--surface);
+  transition:
+    border-color var(--fast) ease-out,
+    box-shadow var(--fast) ease-out;
 }
-.single-input input {
-  font-size: 1.1875rem;
+.number-field:hover:not(:focus-within) {
+  border-color: var(--ink-2);
+}
+.number-field:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(21, 87, 192, 0.2);
+}
+.number-field input {
+  border: 0;
   min-height: 56px;
+  font-size: 1.1875rem;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+}
+.number-field input:focus-visible {
+  box-shadow: none;
 }
 .unit {
+  padding: 0 16px 0 4px;
   color: var(--muted);
   font-weight: 600;
 }
@@ -1131,9 +1280,6 @@ onMounted(() => {
   justify-content: space-between;
   padding-top: 24px;
   border-top: 1px solid var(--line);
-}
-.flow-actions.centred {
-  justify-content: center;
 }
 .flow-actions .helper-text {
   margin: 0;
@@ -1166,6 +1312,13 @@ onMounted(() => {
   font-weight: 600;
   font-size: 1.0625rem;
   overflow-wrap: anywhere;
+}
+.rating-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted);
 }
 .rating-scale,
 .importance-scale {
@@ -1226,14 +1379,29 @@ onMounted(() => {
 .poll-scale .poll-no.on span {
   background: #8a3340;
 }
+/* Importance is a small panel of its own, not a line through the form. */
 .importance {
   margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  padding: 18px 20px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
 }
 .importance > legend {
-  font-size: 0.9375rem;
-  margin-bottom: 10px;
+  float: left;
+  width: 100%;
+  margin: 0;
+  font-size: 1rem;
+}
+.importance > .helper-text {
+  clear: both;
+  margin: 2px 0 14px;
+}
+.importance-scale {
+  display: grid;
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
 }
 .restrictions {
   margin-top: 8px;
@@ -1258,7 +1426,7 @@ onMounted(() => {
   position: relative;
   margin-top: 28px;
 }
-.char-count {
+.note-field .char-count {
   position: absolute;
   right: 0;
   top: 0;
@@ -1302,65 +1470,108 @@ onMounted(() => {
 .answer-summary dd button {
   flex-shrink: 0;
 }
-.done {
-  text-align: center;
-  padding-top: 40px !important;
-}
-.done .lede {
-  margin-left: auto;
-  margin-right: auto;
-}
-.seal {
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 24px;
-  border-radius: 50%;
-  background: var(--blue);
-  animation: pop-in 520ms var(--ease-out) both;
-}
-.seal svg {
-  width: 34px;
-  height: 34px;
-  fill: none;
-  stroke: #fff;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 20;
-  animation: draw 600ms 260ms var(--ease-out) both;
-}
-@keyframes draw {
-  from {
-    stroke-dashoffset: 20;
-  }
-}
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-}
-.return-card {
+.flow-notice {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  max-width: 560px;
-  margin: 24px auto 0;
-  padding: 16px 18px;
-  border-radius: 14px;
+  gap: 10px;
+  margin: 0 auto 16px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--sky-200);
+  border-radius: 12px;
   background: var(--sky-50);
-  text-align: left;
-}
-.return-card p {
-  margin: 0;
+  color: var(--blue-ink);
   font-size: 0.9375rem;
+}
+.flow-notice > span {
+  flex: 1;
+}
+.flow-notice > .ui-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.flow-notice button {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  justify-content: center;
+  color: var(--blue-ink);
+}
+.guided > .flow-notice {
+  max-width: 820px;
+}
+.done-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ok);
+}
+.done-status .ui-icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.4;
+}
+.done .lede {
+  max-width: 60ch;
+  white-space: normal;
+}
+.done-due {
+  margin: 4px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--ink-2);
 }
-.return-card button {
-  flex-shrink: 0;
+.done-answers {
+  margin-top: 28px;
+}
+.done-answers h3 {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.done-answers dl {
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.done-answers dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 4px 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9375rem;
+}
+.done-answers dt {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.done-answers dd {
+  margin: 0;
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.done-answers dd.muted {
+  color: var(--faint);
+}
+.return-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  margin: 16px 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.return-line button {
+  min-height: 32px;
+  padding: 4px 8px;
 }
 .done-options {
   margin-top: 32px;
@@ -1395,11 +1606,10 @@ onMounted(() => {
   .flow-actions .btn-large {
     width: 100%;
   }
-  .flow-actions.centred {
-    flex-direction: column;
-    align-items: stretch;
+  .done-answers dl > div {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .return-card {
+  .done .flow-actions {
     flex-direction: column;
     align-items: stretch;
   }

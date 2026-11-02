@@ -36,8 +36,15 @@ withDefaults(
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
+/* One or two options keep a card-like width instead of stretching across the page. */
+.option-cards:has(> li:only-child) {
+  max-width: 480px;
+}
+.option-cards:has(> li:nth-child(2):last-child) {
+  max-width: 980px;
 }
 .option-cards > li {
   display: flex;

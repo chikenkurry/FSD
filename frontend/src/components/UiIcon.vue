@@ -33,6 +33,8 @@ const paths = {
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
   key: 'M14 10a4 4 0 1 0-4 4l-6 6m3-3 2 2m5-9h.01',
   user: 'M18 20a6 6 0 0 0-12 0M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+  pin: 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11M14.5 10a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0',
+  external: 'M14 4h6v6m0-6-9 9M18 14v6H4V6h6',
 };
 defineProps<{ name: keyof typeof paths }>();
 </script>
