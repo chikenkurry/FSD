@@ -182,9 +182,19 @@ export function useResearch(form: Form, saveDraft: () => Promise<void>) {
         'questions',
         {
           ...context(),
+          // Type, price and highlights carry most of what distinguishes the options.
           options: options().map((o) => ({
             title: o.title.trim(),
-            summary: (o.brief?.summary || o.overview?.summary || o.overview?.review_summary || '').slice(0, 1500),
+            summary: [
+              o.overview?.kind_label,
+              o.brief?.price_note || o.overview?.price_note,
+              o.brief?.summary || o.overview?.summary || o.overview?.review_summary,
+              (o.brief?.highlights?.length ? o.brief.highlights : o.overview?.highlights || []).join('; '),
+            ]
+              .map((part) => part?.trim().replace(/[.\s]+$/, ''))
+              .filter(Boolean)
+              .join('. ')
+              .slice(0, 1500),
           })),
         },
         signal,
