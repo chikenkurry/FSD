@@ -346,6 +346,8 @@ export function useResearch(form: Form, saveDraft: () => Promise<void>) {
       state.facts = 'failed';
       state.message = researchMessage(error);
     } finally {
+      // Early returns (publishing, a cancelled tab) must not leave the "looking up" notice showing.
+      if (state.facts === 'loading') state.facts = 'idle';
       // A leaving tab must retain its pending operation for refresh recovery.
       if (!signal.cancelled) {
         for (const o of list)

@@ -233,7 +233,7 @@
                   <OverviewCard
                     v-for="(option, index) in form.decisionOptions"
                     :key="keyOf(option)"
-                    class="rise"
+                    class="rise wide"
                     :style="{ '--i': index }"
                     :title="option.title"
                     :overview="option.overview"
@@ -280,7 +280,8 @@
                   </OverviewCard>
                 </div>
                 <p v-if="research.state.facts === 'loading'" class="drafting" role="status">
-                  Looking up supporting facts… You can continue while this runs.
+                  Looking up prices and other details for each option. This can take a minute or two, and you can
+                  continue meanwhile.
                 </p>
                 <details v-if="reviewDefinitions.length" class="option-evidence">
                   <summary>View or correct supporting facts</summary>
@@ -1812,9 +1813,10 @@ const submitForm = async (): Promise<void> => {
 }
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: 16px;
   margin-top: 24px;
+  /* Cards lie side by side with their photos once there is room; see OverviewCard. */
+  container-type: inline-size;
 }
 .card-tools {
   display: flex;

@@ -507,6 +507,27 @@ h3 .detail {
 .skeleton.short {
   width: 60%;
 }
+/* Horizontal layout: photos on the left, details on the right, when the list is wide enough. */
+@container (min-width: 640px) {
+  .overview-card.wide {
+    flex-direction: row;
+  }
+  .wide .photo-strip {
+    flex: 0 0 clamp(260px, 38%, 400px);
+    height: auto;
+    min-height: 260px;
+  }
+  .wide .body {
+    padding: 22px 26px 22px;
+  }
+  .wide .summary,
+  .wide .tagline {
+    max-width: 68ch;
+  }
+  .wide .provenance {
+    padding-top: 28px;
+  }
+}
 .facts {
   margin: 14px 0 0;
   padding-top: 12px;
