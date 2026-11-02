@@ -133,12 +133,13 @@ const joining = ref(false);
 const resuming = ref(false);
 const linkCopied = ref(false);
 const initial = computed(() => auth.username.trim().charAt(0).toUpperCase() || '?');
-// The collapsed sidebar is a per-viewer convenience; storage may be unavailable.
+// The sidebar starts collapsed so the content has room; expanding it is a per-viewer
+// convenience that is remembered when storage is available.
 function storedCollapse() {
   try {
-    return localStorage.getItem('w2d.sidebar') === 'collapsed';
+    return localStorage.getItem('w2d.sidebar-expanded') !== '1';
   } catch {
-    return false;
+    return true;
   }
 }
 const collapsed = ref(storedCollapse());
@@ -146,7 +147,8 @@ function toggleSidebar() {
   collapsed.value = !collapsed.value;
   if (menu.value) menu.value.open = false;
   try {
-    localStorage.setItem('w2d.sidebar', collapsed.value ? 'collapsed' : 'open');
+    if (collapsed.value) localStorage.removeItem('w2d.sidebar-expanded');
+    else localStorage.setItem('w2d.sidebar-expanded', '1');
   } catch {
     /* keep in memory */
   }

@@ -61,17 +61,21 @@ test('a return link signs in and is removed from the address bar', async ({ page
   expect(page.url()).not.toContain('resume=');
 });
 
-test('sidebar collapses, remembers it, and the join dialog validates links', async ({ page }, info) => {
+test('sidebar starts collapsed, remembers expanding, and the join dialog validates links', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'The collapsible rail is a desktop layout; phones use a tab bar');
   await mockApi(page);
   await signedIn(page);
   await page.goto('/');
+  await expect(page.locator('.shell')).toHaveClass(/collapsed/);
+  await expect(page.getByRole('button', { name: 'My forms', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand sidebar' }).click();
+  await expect(page.locator('.shell')).not.toHaveClass(/collapsed/);
+  await page.reload();
+  await expect(page.locator('.shell')).not.toHaveClass(/collapsed/);
   await page.getByRole('button', { name: 'Collapse sidebar' }).click();
   await expect(page.locator('.shell')).toHaveClass(/collapsed/);
   await page.reload();
   await expect(page.locator('.shell')).toHaveClass(/collapsed/);
-  await expect(page.getByRole('button', { name: 'My forms', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Expand sidebar' }).click();
   await page.getByRole('button', { name: 'Join with a link', exact: true }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Join a plan' });
   await dialog.getByLabel('Paste the invitation link').fill('nonsense');
