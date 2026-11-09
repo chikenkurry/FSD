@@ -480,7 +480,9 @@ def preprocess_sparse(
                                            "interpretation_policy": interpretation_policy,
                                            "scenario_policy": {"max_requests": scenario_limit}}
         handoff["context"]["semantic_artifact_id"] = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
-        issues.append(_issue("EXECUTION_ADAPTER_REQUIRED", "preparation", "Sparse meanings need a supported execution adapter before ranking"))
+        # This is the preprocessing artifact status. The workflow routes a
+        # ready packet through the adapter selected by execution_mode; do not
+        # surface the retired adapter-required placeholder as a user issue.
         status = "needs_clarification" if any(i["code"] in MEMBER_ISSUES for i in issues) else "provisional"
         return {"status": status, "issues": issues, "algorithm_input": None, "preparation": handoff, "semantic_evidence": frozen}
     except InputError as exc:

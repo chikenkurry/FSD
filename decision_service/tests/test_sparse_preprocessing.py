@@ -194,7 +194,7 @@ class SparsePreprocessingTests(unittest.TestCase):
         self.assertEqual(result["preparation"]["scenario_requests"], [])
         self.assertIn("MISSING_OPTION_FACTS", [i["code"] for i in result["issues"]])
 
-    def test_sourced_facts_still_require_an_execution_adapter(self):
+    def test_sourced_facts_produce_a_ready_generic_preparation(self):
         baseline = preprocess(self.planning, self.responses, semantic_provider=FakeProvider())
         self.planning["options"] = [
             {"option_id": c["option_id"], "title": c["title"], "facts": [
@@ -212,7 +212,7 @@ class SparsePreprocessingTests(unittest.TestCase):
         ]
         result = preprocess(self.planning, self.responses, semantic_provider=FakeProvider())
         self.assertEqual(result["status"], "provisional")
-        self.assertEqual([i["code"] for i in result["issues"]], ["EXECUTION_ADAPTER_REQUIRED"])
+        self.assertEqual(result["issues"], [])
         self.assertIsNone(result["algorithm_input"])
         self.assertEqual(result["preparation"]["scenario_requests"][0]["cost_evidence"]["amount"], "2500")
 
@@ -265,7 +265,7 @@ class SparsePreprocessingTests(unittest.TestCase):
                      ]}]}
         result = preprocess(planning, responses)
         self.assertEqual(result["status"], "provisional")
-        self.assertEqual([i["code"] for i in result["issues"]], ["EXECUTION_ADAPTER_REQUIRED"])
+        self.assertEqual(result["issues"], [])
         self.assertIsNone(result["algorithm_input"])
         self.assertEqual(result["preparation"]["scenario_requests"], [])
         self.assertEqual(result["preparation"]["scoring_model"]["questions"][1]["weight"], 1.0)
@@ -292,7 +292,7 @@ class SparsePreprocessingTests(unittest.TestCase):
                      ]}]}
         result = preprocess(planning, responses, semantic_provider=MuseumProvider())
         self.assertEqual(result["status"], "provisional")
-        self.assertEqual([i["code"] for i in result["issues"]], ["EXECUTION_ADAPTER_REQUIRED"])
+        self.assertEqual(result["issues"], [])
         self.assertIsNone(result["algorithm_input"])
         question = result["preparation"]["scoring_model"]["questions"][0]
         self.assertEqual((question["role"], question["weight"]), ("soft", 1.0))

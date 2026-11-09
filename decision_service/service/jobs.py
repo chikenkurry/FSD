@@ -231,6 +231,11 @@ class JobWorkers(JobQueue):
                 if time.monotonic() > started + self.timeout:
                     self.store.fail(job, "EXECUTION_DEADLINE_EXCEEDED")
                 elif run["status"] == "upstream_unavailable":
+                    logging.warning(
+                        "job_upstream_unavailable run_id=%s issues=%s",
+                        job["id"],
+                        [issue.get("message") for issue in run.get("issues", []) if isinstance(issue, dict)],
+                    )
                     self.store.fail(job, "SEMANTIC_SERVICE_UNAVAILABLE")
                 else:
                     self.store.complete(job, run)
