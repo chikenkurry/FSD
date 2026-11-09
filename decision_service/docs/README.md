@@ -33,6 +33,10 @@ See [ALGORITHM_DESIGN_JOURNEY.md](ALGORITHM_DESIGN_JOURNEY.md) for the
 algorithm's decision sequence, fairness policies, ranking/tie behavior,
 considered alternatives, and verification strategy.
 
+The frozen current behaviour for generic-option question and member weights is
+documented in [WEIGHTING_POLICY_V1.md](WEIGHTING_POLICY_V1.md). It is the
+baseline for a future versioned weighting-policy upgrade.
+
 ## Generic preprocessing flow
 
 See [FLOW.md](FLOW.md) for the input/output contract, each processing step,
