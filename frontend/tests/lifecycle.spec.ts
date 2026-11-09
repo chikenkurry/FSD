@@ -377,7 +377,11 @@ test(
     await expect(page.getByRole('cell', { name: /^(Category )?Work$/ })).toBeVisible();
     await fits(page);
     await capture(page, info.project.name, 'long-content');
-    await page.getByText('Session details', { exact: true }).click();
+    // The desktop sidebar may be collapsed, hiding the summary text while
+    // leaving the session menu/avatar available. Target the interactive
+    // summary rather than its hidden label.
+    await page.locator('details.session-menu > summary').click();
+    await expect(page.locator('.session-popover')).toBeVisible();
     const box = await page.locator('.session-popover').boundingBox();
     expect(box).not.toBeNull();
     expect(box!.x).toBeGreaterThanOrEqual(0);
