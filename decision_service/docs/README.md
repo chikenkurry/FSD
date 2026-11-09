@@ -35,7 +35,9 @@ considered alternatives, and verification strategy.
 
 The frozen current behaviour for generic-option question and member weights is
 documented in [WEIGHTING_POLICY_V1.md](WEIGHTING_POLICY_V1.md). It is the
-baseline for a future versioned weighting-policy upgrade.
+default for existing sessions. [WEIGHTING_POLICY_V2.md](WEIGHTING_POLICY_V2.md)
+documents the criterion-first policy used by newly created sessions and its
+frozen handoff metadata.
 
 ## Generic preprocessing flow
 

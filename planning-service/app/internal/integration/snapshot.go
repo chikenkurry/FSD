@@ -25,6 +25,9 @@ type Settings struct {
 	// DecisionQuestion is the question members help answer; the plan title is used when empty.
 	DecisionQuestion     string `json:"decision_question,omitempty"`
 	InterpretationPolicy string `json:"interpretation_policy,omitempty"`
+	// WeightingPolicyVersion selects the Decision Service's versioned question
+	// weighting calculation. Empty is retained for historical v1 snapshots.
+	WeightingPolicyVersion string `json:"weighting_policy_version,omitempty"`
 }
 
 func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, settings Settings) (map[string]any, error) {
@@ -127,6 +130,12 @@ func BuildSnapshot(plan model.Plan, round model.PlanRound, id uuid.UUID, setting
 	}
 	if settings.InterpretationPolicy != "" {
 		snapshot["interpretation_policy"] = settings.InterpretationPolicy
+	}
+	if settings.WeightingPolicyVersion != "" {
+		if settings.WeightingPolicyVersion != "v1" && settings.WeightingPolicyVersion != "v2" {
+			return nil, fmt.Errorf("unknown weighting policy version")
+		}
+		snapshot["weighting_policy_version"] = settings.WeightingPolicyVersion
 	}
 	if settings.Criteria != nil {
 		snapshot["criteria"] = settings.Criteria

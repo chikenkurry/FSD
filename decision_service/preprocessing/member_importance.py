@@ -70,6 +70,7 @@ def compile_member_weights(handoff: dict, entries: list[dict], issues: list[dict
     not a numerical ratio claimed by the member or predicted by the model.
     """
     questions = {q["question_id"]: q for q in handoff["scoring_model"]["questions"]}
+    policy_version = handoff["scoring_model"].get("weighting_policy", {}).get("version", "v1")
     exported, rows = [], []
     for member in handoff["participants"]:
         pid = member["participant_id"]
@@ -129,7 +130,9 @@ def compile_member_weights(handoff: dict, entries: list[dict], issues: list[dict
         member_rows = []
         ordered_attributes = {aid for edge in edges for aid in edge}
         for qid, attributes in grouped.items():
-            base = questions[qid]["weight"] / len(attributes)
+            question_weight = questions[qid]["weight"]
+            criteria_count = len(attributes)
+            base = question_weight / criteria_count
             for aid in sorted(attributes):
                 multiplier = multipliers.get(aid, levels.get(aid, 1)) if not unresolved else 1
                 source = "default"
@@ -142,6 +145,11 @@ def compile_member_weights(handoff: dict, entries: list[dict], issues: list[dict
                 member_rows.append({"participant_id": pid, "source_question_id": qid, "attribute_id": aid,
                                     "base_weight": base, "importance_multiplier": multiplier,
                                     "importance_source": source,
+                                    "weight_explanation": {
+                                        "policy_version": policy_version,
+                                        "question_weight": question_weight,
+                                        "criteria_in_question": criteria_count,
+                                    },
                                     "raw_weight": base * multiplier})
         total = sum(row["raw_weight"] for row in member_rows)
         if member_rows and total == 0:
@@ -155,6 +163,10 @@ def compile_member_weights(handoff: dict, entries: list[dict], issues: list[dict
             raw = row.pop("raw_weight")
             row.update(effective_weight=round(raw / total, 12) if total and not unresolved else None,
                        status="unresolved" if unresolved else "resolved")
+            row["weight_explanation"].update(
+                raw_weight=raw,
+                normalization_total=total if total else None,
+            )
         rows.extend(member_rows)
     handoff["importance"] = exported
     handoff["scoring_model"].update(member_weights=rows, member_weight_policy="question_share_times_importance_v1",

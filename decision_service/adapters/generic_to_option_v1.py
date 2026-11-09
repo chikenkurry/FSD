@@ -97,6 +97,8 @@ def adapt_generic_to_option_v1(preparation: dict[str, Any]) -> dict:
             "group_objective": objective,
             "ranking_policy": ranking_policy,
             "missing_fact_policy": "unresolved",
+            **({"weighting_policy": deepcopy(preparation["scoring_model"]["weighting_policy"])}
+               if "weighting_policy" in preparation.get("scoring_model", {}) else {}),
         },
     }
     try:

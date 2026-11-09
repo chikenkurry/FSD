@@ -299,6 +299,18 @@
       "average_score_weight": 0.4,
       "fairness_weight": 0.0
     },
+    "weighting_policy": {
+      "version": "v1",
+      "base_strategy": "question_relevance_v1",
+      "organiser_levels": {
+        "less": 0.25,
+        "normal": 0.5,
+        "more": 1.0
+      },
+      "duplicate_criterion_policy": "automatic_topic_share_v1",
+      "member_importance_policy": "question_share_times_importance_v1",
+      "ordinal_importance_policy": "longest_path_tiers_v1"
+    },
     "member_weights": [
       {
         "participant_id": "p1",
@@ -307,6 +319,13 @@
         "base_weight": 0.5,
         "importance_multiplier": 1,
         "importance_source": "default",
+        "weight_explanation": {
+          "policy_version": "v1",
+          "question_weight": 0.5,
+          "criteria_in_question": 1,
+          "raw_weight": 0.5,
+          "normalization_total": 1.0
+        },
         "effective_weight": 0.5,
         "status": "resolved"
       },
@@ -317,6 +336,13 @@
         "base_weight": 0.5,
         "importance_multiplier": 1,
         "importance_source": "default",
+        "weight_explanation": {
+          "policy_version": "v1",
+          "question_weight": 0.5,
+          "criteria_in_question": 1,
+          "raw_weight": 0.5,
+          "normalization_total": 1.0
+        },
         "effective_weight": 0.5,
         "status": "resolved"
       }

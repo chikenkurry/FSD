@@ -211,6 +211,7 @@ export interface Snapshot {
   round_id: string;
   previous_round_id?: string;
   interpretation_policy?: 'facts-v1' | 'choice-labels-v1';
+  weighting_policy_version?: 'v1' | 'v2';
   option_revision: number;
   decision_question: string;
   currency: string;

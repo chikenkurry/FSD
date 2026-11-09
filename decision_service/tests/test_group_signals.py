@@ -105,6 +105,27 @@ class ImportanceScaleTests(unittest.TestCase):
 
 
 class QuestionWeightTests(unittest.TestCase):
+    def test_v1_weighting_policy_is_frozen_from_preparation_to_execution(self):
+        run = execute(*snapshots([soft("cuisine", "cuisine")], {"m1": [{"question_id": "cuisine", "value": "ramen"}]}))
+        expected = {
+            "version": "v1",
+            "base_strategy": "question_relevance_v1",
+            "organiser_levels": {"less": 0.25, "normal": 0.5, "more": 1.0},
+            "duplicate_criterion_policy": "automatic_topic_share_v1",
+            "member_importance_policy": "question_share_times_importance_v1",
+            "ordinal_importance_policy": "longest_path_tiers_v1",
+        }
+        self.assertEqual(run["processing"]["preparation"]["scoring_model"]["weighting_policy"], expected)
+        self.assertEqual(run["algorithm_input"]["scoring_model"]["weighting_policy"], expected)
+        row = run["algorithm_input"]["scoring_model"]["member_weights"][0]
+        self.assertEqual(row["weight_explanation"], {
+            "policy_version": "v1",
+            "question_weight": 1.0,
+            "criteria_in_question": 1,
+            "raw_weight": 1.0,
+            "normalization_total": 1.0,
+        })
+
     def test_organiser_levels_set_base_weights_and_shared_details_split_one_share(self):
         questions = [soft("cuisine", "cuisine", relevance=1), soft("vibe", "vibe", relevance=0.25),
                      soft("vibe2", "vibe", relevance=0.25), soft("rate_ok", "price", relevance=0.5)]
@@ -118,6 +139,30 @@ class QuestionWeightTests(unittest.TestCase):
         # More : Normal : Less = 4 : 2 : 1, and two Less questions on "vibe" share one Less share.
         self.assertAlmostEqual(weights["cuisine"] / weights["rate_ok"], 2)
         self.assertAlmostEqual((weights["vibe"] + weights["vibe2"]) / weights["rate_ok"], 0.5)
+
+    def test_v2_allocates_one_criterion_mass_then_splits_repeated_questions(self):
+        questions = [soft("cuisine", "cuisine", relevance=1),
+                     soft("cuisine_detail", "cuisine", relevance=.25),
+                     soft("vibe", "vibe", relevance=.5)]
+        options = [{"option_id": "a", "title": "a", "facts": [
+            {"criterion": criterion, "value": value, "value_type": "category", "status": "confirmed", "source": "s"}
+            for criterion, value in (("cuisine", "ramen"), ("vibe", "quiet"))]}]
+        answers = {"m1": [{"question_id": question_id, "value": value} for question_id, value in
+                          (("cuisine", "ramen"), ("cuisine_detail", "ramen"), ("vibe", "quiet"))]}
+        plan, replies = snapshots(questions, answers, options=options)
+        plan["weighting_policy_version"] = "v2"
+        run = execute(plan, replies)
+        self.assertEqual(run["status"], "ranked", run.get("issues"))
+        weights = {q["question_id"]: q["weight"]
+                   for q in run["processing"]["preparation"]["scoring_model"]["questions"]}
+        self.assertAlmostEqual(weights["cuisine"], 1 / 3)
+        self.assertAlmostEqual(weights["cuisine_detail"], 1 / 3)
+        self.assertAlmostEqual(weights["vibe"], 1 / 3)
+        policy = run["algorithm_input"]["scoring_model"]["weighting_policy"]
+        self.assertEqual(policy["version"], "v2")
+        self.assertEqual(policy["duplicate_criterion_policy"], "criterion_mass_split_equally_v2")
+        member_weight = run["algorithm_input"]["scoring_model"]["member_weights"][0]
+        self.assertEqual(member_weight["weight_explanation"]["policy_version"], "v2")
 
 
 class FakeSimilarityProvider:

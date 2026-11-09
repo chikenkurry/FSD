@@ -9,6 +9,16 @@ from .snapshots import map_snapshots
 from .views import member_review, public_result
 
 
+def _processing_policy(plan: dict) -> dict | None:
+    """Pass only supported, versioned processing controls to preprocessing."""
+    policy = {}
+    if plan.get("group_objective"):
+        policy["group_objective"] = plan["group_objective"]
+    if plan.get("weighting_policy_version") is not None:
+        policy["weighting_policy_version"] = plan["weighting_policy_version"]
+    return policy or None
+
+
 def _supplement_discovered_facts(planning, responses, processed, enrichment, *,
                                  initial_requests, fact_enricher, semantic_provider, policy):
     if fact_enricher is None or enrichment is None:
@@ -67,7 +77,7 @@ def _execute(planning: dict, responses: dict, *, semantic_provider=None, fact_en
             initial_requests = {(r["option_id"], r["attribute_id"]) for r in requested_facts(planning, responses)}
         planning, enrichment = fact_enricher.enrich(planning, responses)
         plan, reply = map_snapshots(planning, responses)
-    policy = {"group_objective": plan["group_objective"]} if plan.get("group_objective") else None
+    policy = _processing_policy(plan)
     processed = preprocess(plan, reply, policy=policy, semantic_provider=semantic_provider)
     planning, processed, enrichment = _supplement_discovered_facts(
         planning, responses, processed, enrichment,
@@ -101,7 +111,7 @@ def preview(planning: dict, responses: dict, *, semantic_provider=None, fact_enr
             initial_requests = {(r["option_id"], r["attribute_id"]) for r in requested_facts(planning, responses)}
         planning, enrichment = fact_enricher.enrich(planning, responses)
         plan, reply = map_snapshots(planning, responses)
-    policy = {"group_objective": plan["group_objective"]} if plan.get("group_objective") else None
+    policy = _processing_policy(plan)
     processed = preprocess(plan, reply, policy=policy, semantic_provider=semantic_provider)
     planning, processed, enrichment = _supplement_discovered_facts(
         planning, responses, processed, enrichment,

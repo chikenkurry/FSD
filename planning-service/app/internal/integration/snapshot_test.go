@@ -40,6 +40,13 @@ func TestSnapshotUsesEvidenceAndStableQuestionIdentity(t *testing.T) {
 	if err != nil || asked["decision_question"] != "Which device should the team buy?" {
 		t.Fatal("organiser decision question lost")
 	}
+	v2, err := BuildSnapshot(plan, round, uuid.New(), Settings{WeightingPolicyVersion: "v2"})
+	if err != nil || v2["weighting_policy_version"] != "v2" {
+		t.Fatal("v2 weighting policy was not frozen into the snapshot")
+	}
+	if _, err := BuildSnapshot(plan, round, uuid.New(), Settings{WeightingPolicyVersion: "v3"}); err == nil {
+		t.Fatal("unknown weighting policy version accepted")
+	}
 	question := snapshot["questions"].([]map[string]any)[0]
 	if question["question_id"] != plan.Questions[0].ID.String() || question["answer_format"] != "number" {
 		t.Fatal("question mapping lost")

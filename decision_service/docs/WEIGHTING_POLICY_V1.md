@@ -1,9 +1,15 @@
 # Weighting policy v1
 
-This document freezes the current generic-option weighting behaviour before a
-later policy revision. It describes the behaviour implemented by sparse
-preprocessing, `generic_to_option_v1`, and the generic matcher; it does not
-propose new weighting rules.
+This document freezes the legacy generic-option weighting behaviour. It
+describes the behaviour implemented by sparse preprocessing,
+`generic_to_option_v1`, and the generic matcher; it does not propose new
+weighting rules.
+
+The normal frontend publishing flow now writes `weighting_policy_version:
+"v2"` for newly created sessions. `v1` remains supported exclusively for
+snapshots created before that change, explicit compatibility/replay, and
+controlled comparisons. A snapshot that omits the version is still interpreted
+as v1 to preserve historical results.
 
 ## Scope and authority
 
@@ -140,7 +146,9 @@ The prepared handoff retains enough information to audit the result:
 - `scoring_model.questions[]`: question weight, source, relevance, role, and
   utility rule;
 - `scoring_model.member_weights[]`: base weight, importance multiplier/source,
-  effective weight, and resolution status;
+  effective weight, resolution status, and a `weight_explanation` containing
+  the question mass, criterion split count, raw weight, and per-member
+  normalisation total;
 - `importance[]`: the member declarations and their evidence/provenance;
 - `scoring_model.group_objective`: the frozen fairness mode and parameters.
 
