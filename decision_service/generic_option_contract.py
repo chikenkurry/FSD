@@ -63,6 +63,7 @@ def _validate_handoff(handoff: dict[str, Any]) -> None:
     questions = {q["question_id"] for q in handoff["scoring_model"]["questions"]}
     _validate_objective(handoff["scoring_model"])
     _validate_ranking_policy(handoff["scoring_model"])
+    _validate_weighting_policy(handoff["scoring_model"])
     _validate_facts(handoff["candidates"], definitions)
     _validate_participants(handoff["participants"])
     _validate_answer_references(
@@ -122,6 +123,31 @@ def _validate_ranking_policy(model: dict) -> None:
     objective = model["group_objective"]
     if policy.get("sort_order") != ranking_order(objective):
         raise ContractError("Ranking order conflicts with group objective")
+
+
+def _validate_weighting_policy(model: dict) -> None:
+    """Accept historical handoffs without metadata and validate frozen v1/v2 records."""
+    policy = model.get("weighting_policy")
+    if policy is None:
+        return
+    expected_v1 = {
+        "version": "v1",
+        "base_strategy": "question_relevance_v1",
+        "organiser_levels": {"less": 0.25, "normal": 0.5, "more": 1.0},
+        "duplicate_criterion_policy": "automatic_topic_share_v1",
+        "member_importance_policy": "question_share_times_importance_v1",
+        "ordinal_importance_policy": "longest_path_tiers_v1",
+    }
+    expected_v2 = {
+        "version": "v2",
+        "base_strategy": "criterion_max_relevance_v2",
+        "organiser_levels": {"less": 0.25, "normal": 0.5, "more": 1.0},
+        "duplicate_criterion_policy": "criterion_mass_split_equally_v2",
+        "member_importance_policy": "question_share_times_importance_v1",
+        "ordinal_importance_policy": "longest_path_tiers_v1",
+    }
+    if policy != expected_v1 and policy != expected_v2:
+        raise ContractError("Unsupported weighting policy")
 
 
 def _validate_facts(candidates: list[dict], definitions: dict) -> None:

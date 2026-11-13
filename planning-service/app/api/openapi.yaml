@@ -1018,3 +1018,4 @@ components:
         group_objective: {type: object}
         decision_question: {type: string}
         interpretation_policy: {type: string}
+        weighting_policy_version: {type: string, enum: [v1, v2]}

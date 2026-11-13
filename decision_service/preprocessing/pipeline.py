@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from typing import Any
 
 from decision_service.contract import (
@@ -495,4 +496,7 @@ def preprocess(
     except ContractError as exc:
         return {"status": "invalid_input", "issues": [_issue("INVALID_HANDOFF", "algorithm_input", str(exc))], "algorithm_input": None}
     except SemanticServiceError as exc:
+        # Keep the public result generic, but retain the provider failure reason
+        # in worker logs for local diagnosis. Do not log the semantic payload.
+        logging.warning("semantic_provider_unavailable type=%s error=%s", type(exc).__name__, exc)
         return {"status": "upstream_unavailable", "issues": [_issue("SEMANTIC_SERVICE_UNAVAILABLE", "semantic_provider", str(exc))], "algorithm_input": None}

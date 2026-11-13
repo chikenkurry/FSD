@@ -205,6 +205,9 @@ function publishSettings(form: Form) {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     execution_mode: 'options',
     interpretation_policy: 'facts-v1',
+    // v2 is the normal policy for sessions published by the app. Existing
+    // snapshots that omit this field remain reproducible under v1.
+    weighting_policy_version: 'v2',
     ...(question ? { decision_question: question } : {}),
   };
 }

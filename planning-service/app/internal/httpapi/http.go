@@ -20,11 +20,7 @@ type errorResponse struct {
 func (w *errorResponse) WriteHeader(code int) {
 	if code >= 400 && !strings.Contains(w.Header().Get("Content-Type"), "application/json") {
 		w.muted = true
-		name := map[int]string{400: "INVALID_INPUT", 401: "UNAUTHENTICATED", 403: "FORBIDDEN", 404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 429: "RATE_LIMITED"}[code]
-		if name == "" {
-			name = "INTERNAL"
-		}
-		Error(w.ResponseWriter, code, name, http.StatusText(code))
+		Error(w.ResponseWriter, code, CodeForStatus(code), http.StatusText(code))
 		return
 	}
 	w.ResponseWriter.WriteHeader(code)

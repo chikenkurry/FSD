@@ -527,10 +527,16 @@ SIMILARITY_INSTRUCTIONS = (
 class OllamaSemanticProvider:
     """Use a locally hosted Ollama model through the same validated contract."""
 
-    def __init__(self, model: str = "qwen3:4b-instruct", base_url: str | None = None, timeout: float = 120.0):
+    def __init__(self, model: str = "qwen3:4b-instruct", base_url: str | None = None,
+                 timeout: float | None = None, num_ctx: int | None = None):
         self.model = model
         self.base_url = (base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else float(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "120"))
+        if self.timeout <= 0:
+            raise SemanticServiceError("OLLAMA_TIMEOUT_SECONDS must be positive")
+        self.num_ctx = num_ctx if num_ctx is not None else int(os.environ.get("OLLAMA_NUM_CTX", "8192"))
+        if self.num_ctx < 4096:
+            raise SemanticServiceError("OLLAMA_NUM_CTX must be at least 4096")
         parsed = urlparse(self.base_url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path or parsed.query or parsed.fragment:
             raise SemanticServiceError("OLLAMA_BASE_URL must be an HTTP(S) server URL without a path")
@@ -540,7 +546,7 @@ class OllamaSemanticProvider:
             "model": self.model,
             "stream": False,
             "format": schema,
-            "options": {"temperature": 0},
+            "options": {"temperature": 0, "num_ctx": self.num_ctx},
             "messages": [
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
@@ -555,8 +561,19 @@ class OllamaSemanticProvider:
         try:
             with urlopen(request, timeout=remaining_timeout(self.timeout)) as response:
                 data = json.load(response)
-        except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
-            raise SemanticServiceError("Local semantic model request failed") from exc
+        except HTTPError as exc:
+            try:
+                response_detail = exc.read().decode("utf-8", errors="replace")[:500]
+            except (OSError, ValueError):
+                response_detail = "<unavailable>"
+            raise SemanticServiceError(
+                f"Local semantic model request failed (HTTPError: {exc}; response={response_detail})"
+            ) from exc
+        except (URLError, TimeoutError, OSError, ValueError) as exc:
+            # Preserve a safe diagnostic summary. Do not include the request
+            # body, which may contain participant answers or other private data.
+            detail = f"{type(exc).__name__}: {exc}"
+            raise SemanticServiceError(f"Local semantic model request failed ({detail})") from exc
         if not isinstance(data, dict) or data.get("done") is not True:
             raise SemanticServiceError("Local semantic model response was incomplete")
         message = data.get("message")

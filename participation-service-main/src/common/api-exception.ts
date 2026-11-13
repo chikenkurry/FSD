@@ -62,3 +62,9 @@ export const Errors = {
   upstreamUnavailable: (message = 'A required service is unavailable, please retry') =>
     new ApiException(503, 'UPSTREAM_UNAVAILABLE', message, true),
 };
+
+/** Returns the value, or fails with 404 when a lookup found nothing (null or undefined). */
+export function orNotFound<T>(value: T | null | undefined, message = 'Resource not found'): T {
+  if (value === null || value === undefined) throw Errors.notFound(message);
+  return value;
+}

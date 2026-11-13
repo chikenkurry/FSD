@@ -10,7 +10,6 @@ import math
 import hashlib
 import json
 import re
-from collections import Counter
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -24,6 +23,7 @@ from .generic_answers import process_answers
 from .similarity import assess_similarity
 from .scenarios import DEFAULT_MAX_SCENARIO_REQUESTS, build_scenario_requests
 from .member_importance import importance_question
+from .weighting_policy import resolve_question_weights, v1_policy, v2_policy
 from .semantics import (
     SemanticProvider, SemanticServiceError,
     validate_sparse_option_suggestions, validate_sparse_question_assessment,
@@ -197,6 +197,8 @@ def preprocess_sparse(
         responses = require_object(response_snapshot, "responses")
         policy = require_object({} if policy is None else policy, "policy")
         objective = group_objective(policy.get("group_objective"))
+        weighting_policy_version = require_in(policy.get("weighting_policy_version", "v1"), {"v1", "v2"},
+                                              "policy.weighting_policy_version")
         scenario_limit = require_int(policy.get("max_scenario_requests", DEFAULT_MAX_SCENARIO_REQUESTS), "policy.max_scenario_requests", minimum=1)
         round_id = require_text(planning.get("round_id"), "planning.round_id")
         revision = require_text(planning.get("option_revision"), "planning.option_revision")
@@ -371,16 +373,12 @@ def preprocess_sparse(
             if question["mapping"]["status"] == "unresolved" and question["role"] != "unclassified":
                 issues.append(_issue("UNRESOLVED_QUESTION_MAPPING", path, "Define a supported comparison or numeric scale for this question"))
         soft = [q for q in questions if q["role"] == "soft"]
-        topic_counts = Counter(q["criterion"] for q in soft if q["leader_weight"] is None)
-        leader_scale = max([1.0] + [float(q["leader_weight"]) for q in soft if q["leader_weight"] is not None])
-        raw_weights = {q["question_id"]: (float(q["leader_weight"]) / leader_scale if q["leader_weight"] is not None
-                                          else q["relevance"] / topic_counts[q["criterion"]]) for q in soft}
-        total = sum(raw_weights.values())
-        if soft and total == 0:
+        raw_weights, weight_sources = resolve_question_weights(questions, weighting_policy_version)
+        if soft and not raw_weights:
             issues.append(_issue("NO_RELEVANT_SOFT_QUESTION", "planning.questions", "No soft criterion has positive relevance"))
         for q in questions:
-            q["weight"] = round(raw_weights[q["question_id"]] / total, 12) if q["role"] == "soft" and total else None
-            q["weight_source"] = ("leader" if q["leader_weight"] is not None else q["inference_source"]) if q["role"] == "soft" else None
+            q["weight"] = round(raw_weights[q["question_id"]], 12) if q["role"] == "soft" and raw_weights else None
+            q["weight_source"] = weight_sources.get(q["question_id"]) if q["role"] == "soft" else None
             del q["leader_weight"]
 
         constraints, preferences, informational, unclassified_answers, members, importance_entries = process_answers(
@@ -461,7 +459,9 @@ def preprocess_sparse(
                    "constraints": constraints, "preferences": preferences, "informational_answers": informational,
                    "unclassified_answers": unclassified_answers, "importance_entries": importance_entries,
                    "canonicalization": canonicalizer.packet(),
-                   "scoring_model": {"questions": questions, "missing_fact_policy": "unresolved", "group_objective": objective}}
+                   "scoring_model": {"questions": questions, "missing_fact_policy": "unresolved",
+                                     "group_objective": objective,
+                                     "weighting_policy": v1_policy() if weighting_policy_version == "v1" else v2_policy()}}
         handoff = compile_preparation(handoff, registry, issues)
         similarity = assess_similarity(handoff, similarity_assessments, semantic_provider if semantic_evidence is None else None, context)
         if similarity:
@@ -480,7 +480,9 @@ def preprocess_sparse(
                                            "interpretation_policy": interpretation_policy,
                                            "scenario_policy": {"max_requests": scenario_limit}}
         handoff["context"]["semantic_artifact_id"] = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if frozen else None
-        issues.append(_issue("EXECUTION_ADAPTER_REQUIRED", "preparation", "Sparse meanings need a supported execution adapter before ranking"))
+        # This is the preprocessing artifact status. The workflow routes a
+        # ready packet through the adapter selected by execution_mode; do not
+        # surface the retired adapter-required placeholder as a user issue.
         status = "needs_clarification" if any(i["code"] in MEMBER_ISSUES for i in issues) else "provisional"
         return {"status": status, "issues": issues, "algorithm_input": None, "preparation": handoff, "semantic_evidence": frozen}
     except InputError as exc:

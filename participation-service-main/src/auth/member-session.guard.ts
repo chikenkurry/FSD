@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, createParamDecorator } from '@nestjs/common';
 import { Errors } from '../common/api-exception';
-import { isUuid } from '../common/validation';
+import { normaliseId } from '../common/ids';
+import { assertUuid } from '../common/validation';
 import { AppConfig } from '../config/app-config';
 import { AuthenticatedRequest, AuthorisedMember, SessionAuthoriser } from './session-authoriser';
 
@@ -35,14 +36,12 @@ export class MemberSessionGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
     const roundId = req.params.roundId;
-    if (!isUuid(roundId)) {
-      throw Errors.invalidInput([{ field: 'roundId', message: 'roundId must be a UUID' }]);
-    }
+    assertUuid(roundId, 'roundId');
 
     const token = extractToken(req, this.config.sessionCookieName);
     if (!token) throw Errors.unauthenticated();
 
-    req.params.roundId = roundId.toLowerCase();
+    req.params.roundId = normaliseId(roundId);
     req.member = await this.authoriser.authorise(token, req.params.roundId, req.requestId);
     return true;
   }

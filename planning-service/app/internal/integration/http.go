@@ -9,14 +9,11 @@ import (
 	"gorm.io/datatypes"
 )
 
-func respond(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(body)
-}
-func fail(w http.ResponseWriter, status int, code string) {
-	httpapi.Error(w, status, code, code)
-}
+// Package shorthands over the shared httpapi helpers. Integration endpoints use
+// the error code as the message and reject unknown request fields.
+
+func respond(w http.ResponseWriter, status int, body any) { httpapi.JSON(w, status, body) }
+func fail(w http.ResponseWriter, status int, code string) { httpapi.Error(w, status, code, code) }
 func respondRun(w http.ResponseWriter, run map[string]any) {
 	status := 200
 	if run["status"] == "pending" {
@@ -26,16 +23,10 @@ func respondRun(w http.ResponseWriter, run map[string]any) {
 	respond(w, status, run)
 }
 func decode(w http.ResponseWriter, r *http.Request, value any) error {
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2_000_000))
-	decoder.DisallowUnknownFields()
-	return decoder.Decode(value)
+	return httpapi.DecodeStrict(w, r, value)
 }
 func rowID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		fail(w, 400, "INVALID_INPUT")
-	}
-	return id, err == nil
+	return httpapi.PathUUID(w, r, "id", "INVALID_INPUT")
 }
 func encoded(value any) datatypes.JSON { data, _ := json.Marshal(value); return data }
 func refs(round Round) map[string]any {

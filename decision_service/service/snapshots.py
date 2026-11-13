@@ -24,6 +24,8 @@ def _validate_metadata(snapshot: dict) -> None:
         raise SnapshotError("Invalid option revision")
     if snapshot.get("execution_mode", "options") not in {"options", "scheduled", "scenarios"}:
         raise SnapshotError("Unknown execution mode")
+    if snapshot.get("weighting_policy_version", "v1") not in {"v1", "v2"}:
+        raise SnapshotError("Unknown weighting policy version")
     currency = snapshot.get("currency")
     if not isinstance(currency, str) or not re.fullmatch(r"[A-Z]{3}", currency):
         raise SnapshotError("Currency must be a three-letter uppercase code")
@@ -154,7 +156,11 @@ def validate_planning_snapshot(snapshot: dict) -> None:
     reply = {"round_id": snapshot["round_id"], "option_revision": planning["option_revision"],
              "response_snapshot_id": "definition-validation", "participants": [
                  {"participant_id": pid, "response_status": "complete", "answers": []} for pid in snapshot.get("roster", [])]}
-    policy = {"group_objective": snapshot["group_objective"]} if snapshot.get("group_objective") else None
+    policy = {}
+    if snapshot.get("group_objective"):
+        policy["group_objective"] = snapshot["group_objective"]
+    if snapshot.get("weighting_policy_version") is not None:
+        policy["weighting_policy_version"] = snapshot["weighting_policy_version"]
     result = preprocess(planning, reply, policy=policy)
     if result["status"] == "invalid_input":
         raise SnapshotError(result["issues"][0]["message"])

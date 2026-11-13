@@ -45,11 +45,6 @@ func (r *QuestionRepository) Create(ctx context.Context, q *model.Question) erro
 	})
 }
 
-// CreateBatch seeds a list of questions (e.g. default form template) for a plan
-func (r *QuestionRepository) CreateBatch(ctx context.Context, questions []model.Question) error {
-	return database.ContextDB(ctx, r.db).Create(&questions).Error
-}
-
 // ListByPlanID returns all questions for a given plan ordered by form position
 func (r *QuestionRepository) ListByPlanID(ctx context.Context, planID uuid.UUID) ([]model.Question, error) {
 	var questions []model.Question

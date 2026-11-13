@@ -62,6 +62,18 @@ class ServiceIntegrationTests(unittest.TestCase):
         plan['options'][0]['facts'][1]['value'] = float('nan')
         self.assertEqual(execute(plan, replies)['status'], 'invalid_input')
 
+    def test_missing_option_facts_do_not_surface_retired_adapter_indicator(self):
+        plan, replies = snapshots()
+        fact = plan['options'][0]['facts'][1]
+        fact.update(value=None, value_type='number', status='unknown')
+
+        run = execute(plan, replies)
+
+        self.assertEqual(run['status'], 'needs_clarification')
+        self.assertIn('MISSING_OPTION_FACTS', [issue['code'] for issue in run['issues']])
+        self.assertNotIn('EXECUTION_ADAPTER_REQUIRED', [issue['code'] for issue in run['issues']])
+        self.assertEqual(recommendation_view(run)['next_action'], 'OPTION_FACTS_REQUIRED')
+
     def test_refuse_cross_round_revision_and_roster_mismatches(self):
         for key, value in [('round_id', 'other'), ('option_revision', 2), ('option_snapshot_id', 'other')]:
             plan, replies = snapshots()
