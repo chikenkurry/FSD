@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from decimal import Decimal
 
@@ -33,9 +34,11 @@ def validate_preparation(handoff: dict, issues: list[dict] | None = None) -> Non
         seen = set()
         for entry in collection:
             key = (entry["participant_id"], entry["source_question_id"], entry["attribute_id"], entry.get("polarity", "prefer"))
-            if key in seen or key[0] not in participants or key[1] not in questions or key[2] not in registry:
+            # A one-value preference may hold several picks ("Italian or Japanese"); each value is its own entry.
+            unique = (*key, json.dumps(entry.get("preferred_value"), sort_keys=True)) if "required_value" not in entry else key
+            if unique in seen or key[0] not in participants or key[1] not in questions or key[2] not in registry:
                 raise InputError("INVALID_PREPARATION", "preparation", "Duplicate or unknown normalized answer reference")
-            seen.add(key)
+            seen.add(unique)
             if not entry["source_answer_id"] or not entry["evidence"]:
                 raise InputError("INVALID_PREPARATION", "preparation", "Normalized answer needs provenance")
             definition = registry[key[2]]

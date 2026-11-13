@@ -62,8 +62,15 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
                 raw_values, intent, intents = [interval], "range", {"range"}
             if len(intents) != 1:
                 raise InputError("CONFLICTING_ANSWER", path, "Criterion has conflicting preference directions or targets")
+            extra_values = []
             if mapping["attribute_id"] == "availability":
                 value, kind = raw_values[0], "available_dates"
+            elif (hard and question["role"] == "hard" and mapping["value_type"] == "boolean"
+                  and all(str(raw).lower() == "false" for raw in raw_values)):
+                # "No" to a yes/no requirement means no requirement, not that options must lack the attribute.
+                result.append({**provenance, "kind": "unlimited", "attribute_id": mapping["attribute_id"], "scope": "all",
+                               "status": "confirmed", "utility_rule": None, "unit": mapping["unit"]})
+                continue
             elif isinstance(raw_values[0], dict) and raw_values[0].get("kind") in {"indifferent", "unlimited"}:
                 result.append({**provenance, "kind": "indifferent" if not hard else "unlimited",
                                "attribute_id": mapping["attribute_id"], "scope": "all",
@@ -88,10 +95,16 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
                     raw = [item for value in raw_values for item in (value if isinstance(value, list) else [value])]
                     value = normalize_answer(raw, mapping, path)
                 else:
-                    if any(raw != raw_values[0] for raw in raw_values):
+                    distinct = []
+                    for raw in raw_values:
+                        if raw not in distinct:
+                            distinct.append(raw)
+                    # Several picks for a one-value preference (e.g. "Italian or Japanese") mean any of them;
+                    # each becomes its own preference and the question's utilities are averaged.
+                    if len(distinct) > 1 and (hard or mapping["value_type"] != "category"):
                         raise InputError("CONFLICTING_ANSWER", path, "Scalar question has several different values")
-                    raw = raw_values[0]
-                    value = normalize_answer(raw, mapping, path)
+                    value = normalize_answer(distinct[0], mapping, path)
+                    extra_values = [normalize_answer(raw, mapping, path) for raw in distinct[1:]]
                 kind = "attribute_requirement" if hard else "attribute_preference"
             compiled = {
                 **provenance, "attribute_id": mapping["attribute_id"], "kind": kind,
@@ -150,6 +163,7 @@ def compile_answers(entries: list[dict], questions: dict, hard: bool, issues: li
                 if intent in {"maximize", "minimize"}:
                     compiled["direction"] = intent
             result.append(compiled)
+            result.extend({**compiled, "preferred_value": extra} for extra in extra_values)
         except InputError as exc:
             issues.append(exc.as_issue())
     return result
