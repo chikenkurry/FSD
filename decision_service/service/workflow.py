@@ -6,6 +6,7 @@ from .enrichment import requested_facts
 from .execution import execute_preparation, adapt_preparation
 from .date_poll import date_poll_summary
 from .snapshots import map_snapshots
+from decision_service.preprocessing.common import InputError
 from .views import member_review, public_result
 
 
@@ -88,9 +89,44 @@ def _execute(planning: dict, responses: dict, *, semantic_provider=None, fact_en
     base = {"input_refs": refs, "processing": processed, "member_states": member_states}
     if enrichment is not None:
         base["fact_enrichment"] = enrichment
+    if packet and packet["status"] == "needs_information":
+        ranked = _rank_options_with_facts(planning, responses, processed, base, plan)
+        if ranked:
+            return ranked
     if not packet or packet["status"] != "ready":
         return {**base, "status": packet["status"] if packet else processed["status"], "issues": processed["issues"]}
     return {**base, **execute_preparation(packet, plan, responses)}
+
+
+def _rank_options_with_facts(planning, responses, processed, base, plan):
+    """Rank the options whose facts are complete when the only gap is facts on other options.
+
+    Options still missing facts after the evidence check are listed as unresolved instead of
+    blocking the whole result. The prepared answers are reused, so no model call is repeated.
+    Returns None when anything else needs attention.
+    """
+    packet = processed["preparation"]
+    missing = {r["option_id"] for r in packet.get("fact_requests", [])}
+    blocking = [i for i in processed["issues"] if i["code"] not in {"MISSING_OPTION_FACTS", "EXECUTION_ADAPTER_REQUIRED"}]
+    complete = [c for c in packet["candidates"] if c["option_id"] not in missing]
+    if not missing or blocking or len(complete) < 2 or planning.get("execution_mode", "options") != "options":
+        return None
+    trimmed = {**deepcopy(packet), "candidates": deepcopy(complete), "fact_requests": [], "status": "ready"}
+    try:
+        run = execute_preparation(trimmed, plan, responses)
+    except InputError:
+        return None
+    if run.get("status") != "ranked":
+        return None
+    run["result"]["candidate_results"] = [*run["result"].get("candidate_results", []), *(
+        {"option_id": o["option_id"], "feasibility": "unresolved", "explanation_codes": ["MISSING_OPTION_FACT"]}
+        for o in planning["options"] if o["option_id"] in missing)]
+    excluded = [{"option_id": o["option_id"], "title": o.get("title", ""),
+                 "missing": sorted({r["attribute_id"] for r in packet["fact_requests"] if r["option_id"] == o["option_id"]})}
+                for o in planning["options"] if o["option_id"] in missing]
+    retried = {**processed, "status": "ready", "preparation": trimmed,
+               "issues": [i for i in processed["issues"] if i["code"] != "MISSING_OPTION_FACTS"]}
+    return {**base, "processing": retried, "excluded_options": excluded, **run}
 
 
 def preview(planning: dict, responses: dict, *, semantic_provider=None, fact_enricher=None) -> dict:

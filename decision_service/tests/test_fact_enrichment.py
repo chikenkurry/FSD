@@ -74,8 +74,15 @@ class EnrichmentTests(unittest.TestCase):
                           lambda rows:[{**r,'valid_until':'2000-01-01T00:00:00Z'} for r in rows]):
             self.collector.transform=transform
             run=execute(self.plan,self.responses,fact_enricher=FactEnricher(self.collector))
-            self.assertEqual(run['status'],'needs_information')
-            self.assertTrue(run['processing']['preparation']['fact_requests'])
+            # Unusable claims leave those options unresolved: with two complete options the rest are
+            # ranked without them, otherwise the organiser is asked for the facts.
+            if run['status']=='ranked':
+                excluded={o['option_id'] for o in run['excluded_options']}
+                self.assertTrue(excluded)
+                self.assertFalse(excluded & {c['option_id'] for c in run['result']['ranked_candidates']})
+            else:
+                self.assertEqual(run['status'],'needs_information')
+                self.assertTrue(run['processing']['preparation']['fact_requests'])
 
     def test_organiser_corrections_are_preserved_and_complete_snapshots_do_not_search(self):
         for option in self.plan['options']:
@@ -103,7 +110,8 @@ class EnrichmentTests(unittest.TestCase):
     def test_missing_identity_does_not_prevent_other_options_being_researched(self):
         del self.plan['options'][0]['identity']
         run=execute(self.plan,self.responses,fact_enricher=FactEnricher(self.collector))
-        self.assertEqual(run['status'],'needs_information')
+        self.assertEqual(run['status'],'ranked')
+        self.assertEqual([o['option_id'] for o in run['excluded_options']],[self.plan['options'][0]['option_id']])
         self.assertEqual(len(run['fact_enrichment']['applied_facts']),3)
         self.assertEqual(run['fact_enrichment']['issues'][0]['code'],'FACT_IDENTITY_OR_TYPE_REQUIRED')
 

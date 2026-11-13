@@ -30,6 +30,9 @@ def _candidate_catalog(run: dict) -> dict[str, dict]:
             details["scenario"] = {key: candidate["scenario"][key] for key in
                                    ("duration_days", "earliest_start_date", "latest_start_date") if key in candidate["scenario"]}
         catalog[candidate_id] = {"candidate_id": candidate_id, "title": title, **details}
+    # Options left out for missing facts are not algorithm candidates but are still listed.
+    for option in run.get("excluded_options", []):
+        catalog.setdefault(option["option_id"], {"candidate_id": option["option_id"], "title": option["title"] or option["option_id"]})
     return catalog
 
 

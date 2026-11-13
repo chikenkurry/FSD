@@ -101,7 +101,7 @@ class FactSemanticFlowTests(unittest.TestCase):
         self.assertEqual(run['processing']['preparation']['preferences'][0]['preferred_value'],'calm')
         self.assertEqual([c['option_id'] for c in run['result']['ranked_candidates']][:2],['a','c'])
 
-    def test_known_typed_answers_need_no_model_and_missing_facts_block_ranking(self):
+    def test_known_typed_answers_need_no_model_and_missing_facts_exclude_only_that_option(self):
         plan,replies=snapshots()
         plan['questions']=[{'question_id':'q','label':'Cuisine preference?','role':'soft','criterion':'cuisine','relevance':1,
                             'required':True,'answer_format':'choice','choices':['Italian','French']}]
@@ -111,8 +111,13 @@ class FactSemanticFlowTests(unittest.TestCase):
         self.assertEqual((provider.extractions,provider.assessments),(0,[]))
         plan['options'][0]['facts']=[f for f in plan['options'][0]['facts'] if f['criterion']!='cuisine']
         run=execute(plan,replies,semantic_provider=provider)
-        self.assertEqual(run['status'],'needs_information')
-        self.assertEqual(run['processing']['preparation']['fact_requests'][0]['attribute_id'],'cuisine')
+        # The option without the fact is listed as unresolved; the others are still ranked.
+        missing=plan['options'][0]['option_id']
+        self.assertEqual(run['status'],'ranked')
+        self.assertEqual([(o['option_id'],o['missing']) for o in run['excluded_options']],[(missing,['cuisine'])])
+        self.assertNotIn(missing,[c['option_id'] for c in run['result']['ranked_candidates']])
+        self.assertIn({'option_id':missing,'feasibility':'unresolved','explanation_codes':['MISSING_OPTION_FACT']},
+                      run['result']['candidate_results'])
 
     def test_free_text_fails_explicitly_without_semantics_instead_of_becoming_context(self):
         plan,replies=snapshots()
