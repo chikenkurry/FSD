@@ -313,6 +313,9 @@
                     {{ research.state.message }}
                   </p></Transition
                 >
+                <button v-if="canRedraft" type="button" class="btn-secondary redraft" @click="redraftQuestions">
+                  Suggest questions from my options
+                </button>
                 <TransitionGroup name="list" tag="div" class="question-list">
                   <article v-for="(question, qIndex) in form.questions" :key="keyOf(question)" class="question-card">
                     <div class="question-top">
@@ -1365,9 +1368,25 @@ async function startQuestions() {
   if (form.questions.length || form.publishAttempted) return;
   if (overviewWork) await overviewWork;
   if (!alive || form.publishAttempted || form.questions.length || research.state.questions === 'loading') return;
+  // A resumed draft can get here before its options load; drafting from none would fail and use up the one draft.
+  if (namedOptions.value < 2) return;
   const drafted = await research.draftQuestions();
   if (!alive || form.questions.length) return;
   form.questions.push(...(drafted.length ? drafted : [blankQuestion()]));
+  await research.facts(definitions.value);
+}
+// While every question is still blank (drafting failed or found nothing), suggestions can be requested again.
+const canRedraft = computed(
+  () =>
+    currentStep.value === 4 &&
+    research.state.questions !== 'loading' &&
+    namedOptions.value >= 2 &&
+    form.questions.every((q) => !q.title.trim()),
+);
+async function redraftQuestions() {
+  const drafted = await research.draftQuestions();
+  if (!alive || !drafted.length || form.questions.some((q) => q.title.trim())) return;
+  form.questions.splice(0, form.questions.length, ...drafted);
   await research.facts(definitions.value);
 }
 function prevStep() {
@@ -1856,6 +1875,9 @@ const submitForm = async (): Promise<void> => {
   border-radius: 50%;
   background: var(--blue);
   animation: pulse 1.2s ease-in-out infinite;
+}
+.redraft {
+  margin-top: 16px;
 }
 .question-list {
   display: grid;
