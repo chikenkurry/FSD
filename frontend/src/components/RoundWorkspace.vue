@@ -743,7 +743,9 @@ async function pollStatus() {
     if (!alive) return;
     if (latestRun?.status === 'ranked' && previousRunStatus !== 'ranked') podiumKey.value++;
     run.value = latestRun;
-    const chosen = await optional(() => apiService.selection(props.roundId));
+    // A selection only exists after a ranked run is confirmed; skip the probe before that.
+    const chosen =
+      latestRun?.status === 'ranked' ? await optional(() => apiService.selection(props.roundId)) : undefined;
     if (!alive) return;
     if (chosen) {
       const first = !selection.value;
