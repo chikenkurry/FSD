@@ -157,3 +157,34 @@ func TestFullTableRejectsNewClientsUntilEntriesExpire(t *testing.T) {
 		t.Fatalf("expired entries were not cleared for a new client: %d", code)
 	}
 }
+
+func TestTrustedProxyUsesRealClientIP(t *testing.T) {
+	freezeClock(t)
+	t.Setenv("TRUSTED_PROXY_CIDRS", "10.0.0.0/8")
+	handler := Limits(allowAll())
+	viaProxy := func(client string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest("POST", "/v1/users", nil)
+		request.RemoteAddr = "10.0.0.1:5000"
+		request.Header.Set("X-Real-IP", client)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response
+	}
+	for i := 0; i < 100; i++ {
+		if code := viaProxy("203.0.113.9").Code; code != http.StatusNoContent {
+			t.Fatalf("request %d from the first client returned %d", i+1, code)
+		}
+	}
+	assertLimited(t, viaProxy("203.0.113.9"))
+	if code := viaProxy("203.0.113.10").Code; code != http.StatusNoContent {
+		t.Fatalf("second client behind the proxy shared the first client's budget: %d", code)
+	}
+	// A peer outside the trusted networks cannot use the header to escape its bucket.
+	exhaust(t, handler, "POST", "/v1/users", "192.0.2.1:5000", 100)
+	request := httptest.NewRequest("POST", "/v1/users", nil)
+	request.RemoteAddr = "192.0.2.1:5000"
+	request.Header.Set("X-Real-IP", "203.0.113.50")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	assertLimited(t, response)
+}

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -16,20 +17,52 @@ type bucket struct {
 // clock is replaced in tests to move a rate-limit window forward.
 var clock = time.Now
 
-// Bounded local admission limits. Untrusted proxy headers cannot bypass this
-// limit. A gateway should apply shared limits when deploying several replicas.
+// trustedProxies parses TRUSTED_PROXY_CIDRS, e.g. "172.16.0.0/12,10.0.0.0/8".
+// Requests arriving from these networks carry the real client in X-Real-IP.
+func trustedProxies() []*net.IPNet {
+	var nets []*net.IPNet
+	for _, cidr := range strings.Split(os.Getenv("TRUSTED_PROXY_CIDRS"), ",") {
+		if _, network, err := net.ParseCIDR(strings.TrimSpace(cidr)); err == nil {
+			nets = append(nets, network)
+		}
+	}
+	return nets
+}
+
+// clientHost keys the rate limit. X-Real-IP is honoured only when the direct
+// peer is a configured proxy, so untrusted clients cannot spoof their way out.
+func clientHost(r *http.Request, trusted []*net.IPNet) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	peer := net.ParseIP(host)
+	if peer == nil {
+		return host
+	}
+	for _, network := range trusted {
+		if network.Contains(peer) {
+			if real := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); real != nil {
+				return real.String()
+			}
+			break
+		}
+	}
+	return host
+}
+
+// Bounded local admission limits. Proxy headers are ignored unless the peer is
+// in TRUSTED_PROXY_CIDRS; a gateway should apply shared limits across replicas.
 func Limits(next http.Handler) http.Handler {
 	entries := map[string]bucket{}
+	trusted := trustedProxies()
 	var mutex sync.Mutex
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/v1/") {
 			next.ServeHTTP(w, r)
 			return
 		}
-		host, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			host = r.RemoteAddr
-		}
+		host := clientHost(r, trusted)
 		category, limit := "api", 360
 		if r.Method == "POST" && r.URL.Path == "/v1/users" {
 			category, limit = "register", 100

@@ -79,6 +79,8 @@ services:
       planning-db: {condition: service_healthy}
     environment:
       DATABASE_URL: postgresql://planning:planning@planning-db:5432/planning?sslmode=disable
+      # The frontend nginx proxy sets X-Real-IP; Docker bridge pools cover its address.
+      TRUSTED_PROXY_CIDRS: 172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
       PARTICIPATION_BASE_URL: http://participation:3000
       DECISION_BASE_URL: http://decision:8000
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-integration-token-change-me}
