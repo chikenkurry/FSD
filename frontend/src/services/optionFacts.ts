@@ -31,7 +31,7 @@ export function tagValues(value: string): string[] {
     .map((v) => v.trim())
     .filter(Boolean);
 }
-export function definitionFor(q: Question): FactDefinition {
+function definitionFor(q: Question): FactDefinition {
   return { criterion: q.criterion!, valueType: factType(q), unit: q.unit || '' };
 }
 // Direct ratings compare the option itself; there is nothing to research.

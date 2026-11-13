@@ -60,7 +60,7 @@ export async function request<T>(
   if (!response.ok) {
     const messages: Record<string, string> = {
       RESPONSES_INCOMPLETE:
-        'A member has not submitted a complete response. Collection is still open; refresh the progress before closing again.',
+        'There are no complete responses to count, or a member’s response is incomplete. Collection is still open; refresh the progress before closing again.',
       STALE_DRAFT: 'A newer draft round exists. Return to My forms and open it.',
       REOPEN_REQUIRED: 'This round is published. Revise it in a new round to change its definition.',
     };
@@ -75,14 +75,14 @@ export async function request<T>(
 const roundPath = (id: string) => `${planning}/v1/rounds/${encodeURIComponent(id)}`;
 const ownPath = (id: string) => `${participation}/rounds/${encodeURIComponent(id)}/my-response`;
 // Less / Normal / More become relevance; Decision still splits one share between questions on the same detail.
-export const WEIGHT_RELEVANCE: Record<WeightLevel, number> = { less: 0.25, normal: 0.5, more: 1 };
+const WEIGHT_RELEVANCE: Record<WeightLevel, number> = { less: 0.25, normal: 0.5, more: 1 };
 function weightMetadata(q: Question) {
   return {
     weight_level: q.weightLevel || 'normal',
     ...(q.suggestedWeight ? { weight_suggested: q.suggestedWeight } : {}),
   };
 }
-export function questionDefinition(q: Question, index: number) {
+function questionDefinition(q: Question, index: number) {
   // Members rate each option directly; Decision compares the option's own identity.
   // "Which dates work?" picks when, separately from which option wins.
   if (q.type === 'Date poll')
@@ -212,7 +212,7 @@ function publishSettings(form: Form) {
   };
 }
 // The collector searches for this identity; acceptance rejects claims if it changes afterwards.
-export function optionIdentity(option: DecisionOption, form: Form) {
+function optionIdentity(option: DecisionOption, form: Form) {
   const link = option.identity?.source_url?.trim();
   const { place_id, kind } = option.identity || {};
   return {
@@ -246,7 +246,7 @@ function optionMetadata(option: DecisionOption, form: Form) {
   // The summary is stored as the option description so members see it; place content is not.
   return { identity: optionIdentity(option, form), facts, ...(option.brief ? { brief: option.brief } : {}) };
 }
-export function localFact(row: PublishedFact): Fact {
+function localFact(row: PublishedFact): Fact {
   const value = Array.isArray(row.value)
     ? row.value_type === 'tag_set'
       ? JSON.stringify(row.value)

@@ -32,28 +32,3 @@ export function factValue(fact: Pick<PublishedFact, 'criterion' | 'value' | 'val
       : String(value ?? '');
   return unit && !/^[A-Z]{3}$/.test(unit) ? `${text} ${unit}` : text;
 }
-
-function web(url: unknown) {
-  if (typeof url !== 'string') return '';
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : '';
-  } catch {
-    return '';
-  }
-}
-
-// Accepted web claims carry their citations; organiser-typed sources may also be a link.
-export function sourceLink(fact: Pick<PublishedFact, 'source' | 'context'>) {
-  return web(fact.context?.sources?.[0]?.url) || web(fact.source);
-}
-
-export function sourceName(fact: Pick<PublishedFact, 'source' | 'context'>) {
-  const title = fact.context?.sources?.[0]?.title;
-  if (title) return title;
-  try {
-    return new URL(sourceLink(fact)).hostname.replace(/^www\./, '');
-  } catch {
-    return 'Source';
-  }
-}
