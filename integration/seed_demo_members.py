@@ -32,6 +32,9 @@ def invite_parts(link):
     try:
         return fields['round'][0], fields['invite'][0]
     except KeyError:
+        if 'round' in fields:
+            sys.exit('That is the page address, not the invite link. On the organiser page, use "Copy invitation" '
+                     'under Invitation link; it contains "&invite=".')
         sys.exit('That is not an invite link. It should contain "round=" and "invite=".')
 
 
